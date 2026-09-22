@@ -2,24 +2,44 @@
 
 상태: done  
 평가: E-047 pass  
-근거: [TASK-031 evidence](../evidence/TASK-031-safety-hardening-main-integration.md)
+최종 main merge commit: `b583f89de389ce838987b8c3e5b6a2fd0e7c58b9`  
+근거:
+- [initial safety hardening](../evidence/TASK-031-safety-hardening-main-integration.md)
+- [generator containment follow-up](../evidence/TASK-031-generator-containment-followup.md)
 
-Post-TASK-003 review에서 재현된 filesystem/integration 반례를 수정했다. Generator managed-only replacement, path exception diagnostics, POSIX traversal access, public-report redaction, XDG validation, strict schema version을 Linux/Windows에서 재검증했다.
+## 완료 범위
 
-통합 브랜치는 main에서 직접 분기했으며 PR #6이 main을 대상으로 한다. 실제 merge commit은 PR 병합 후 이 문서/후속 세션에서 추적한다.
+Post-TASK-003 review에서 재현된 configuration/doctor 경계 문제와 synthetic corpus generator의 파일 보호 문제를 수정했다.
 
-TASK-004는 TASK-031에 의존하며 현재 dependency가 충족됐다.
+- generator의 임의 디렉터리 전체 삭제 제거.
+- generator ownership marker와 manifest 기반 managed-file 교체.
+- output 자체 및 managed path 구성요소의 symlink escape 거부.
+- managed fixture path를 `corpus/` 아래로 제한.
+- unmanaged generated-path collision overwrite 거부.
+- unmanaged file/empty directory 보존.
+- staging 후 검증된 managed file만 교체.
+- path resolution/status 오류 structured diagnostics.
+- POSIX directory traversal 권한 검사.
+- public doctor report 전체 redaction.
+- XDG empty/relative 값 fallback.
+- strict integer `schema_version = 1`.
 
+## 검증 흐름
 
-## Post-merge review reopening
+첫 TASK-031 검증 이후 PR #6이 main에 병합됐지만, 추가 review가 generator containment 반례 4개를 재현해 작업을 재개방했다. PR #5의 관련 방어 로직을 현재 main에 필요한 범위만 선별 통합해 PR #7을 만들고 새 회귀 테스트를 추가했다.
 
-After the first TASK-031 completion and PR #6 merge, review reproduced four additional generator containment failures on main: an internal symlink escape, manifest ownership expansion outside `corpus/`, overwrite of an unmanaged colliding file, and deletion of an unmanaged empty directory. The prior CI/evidence remains historical evidence, but TASK-031 and E-047 are reopened until these cases pass on the final integration SHA.
+PR #7 reviewed head:
+`9f61a0a727c4c47d507b84600b18b5611e59b277`
 
+실제 main merge:
+`b583f89de389ce838987b8c3e5b6a2fd0e7c58b9`
 
-## Generator containment follow-up
+Main push CI:
+- Package and tooling run 35742263578: Ubuntu/Windows success, 양쪽 56 tests, synthetic corpus 15 tests, Ruff/harness success.
+- Documentation harness run 35742263716: Ubuntu/Windows success.
 
-PR #6 병합 후 추가 리뷰에서 내부 symlink escape, manifest ownership expansion, unmanaged collision overwrite, unmanaged empty-directory deletion이 재현됐다. PR #7 candidate `a5f3ca88c6b6b94e975a881e58bdfacac4db3883`에서 네 사례를 회귀 테스트로 추가했고 Ubuntu/Windows에서 56 tests, synthetic corpus 15 tests, Ruff, harness가 모두 통과했다.
+따라서 TASK-031=done, E-047=pass, F-002=verified로 최종 복구한다. TASK-004 dependency는 충족됐다.
 
-E-047은 새 candidate 검증으로 pass지만, merge 승인이 명시적으로 보류된 상태이므로 TASK-031은 하네스의 active-task 규칙에 맞춰 `doing`으로 유지하고 승인 대기를 state notes에 기록한다. 실제 main merge commit과 main push CI를 기록한 후에만 done으로 복구한다.
+## 비차단 후속
 
-근거: [generator containment follow-up](../evidence/TASK-031-generator-containment-followup.md)
+정상 ownership marker가 존재하는 상태에서 `manifest.json`이 JSON object가 아닌 list/null/string이면 현재 `data.get()`에서 내부 예외가 발생할 수 있다. 재검토에서는 파일 변경 없이 중단되는 것을 확인했으므로 TASK-031 merge blocker로 보지 않았지만, generator가 명시적 오류와 exit 2를 반환하도록 후속 보완해야 한다.

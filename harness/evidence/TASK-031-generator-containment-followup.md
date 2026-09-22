@@ -1,20 +1,21 @@
 # TASK-031 generator containment follow-up evidence
 
 날짜: 2026-09-22  
-검토 기준 main: `f45f4291c5fda08f2df6ff2d42c7532857fa5b99`  
-후속 PR: https://github.com/Gandalem/stellaris-suppoter/pull/7  
-검증 candidate: `a5f3ca88c6b6b94e975a881e58bdfacac4db3883`
+검토 기준 main(before): `f45f4291c5fda08f2df6ff2d42c7532857fa5b99`  
+PR: https://github.com/Gandalem/stellaris-suppoter/pull/7  
+reviewed head: `9f61a0a727c4c47d507b84600b18b5611e59b277`  
+actual main merge commit: `b583f89de389ce838987b8c3e5b6a2fd0e7c58b9`
 
 ## 추가 반례
 
-PR #6 merge 이후 리뷰에서 main 생성기의 다음 네 가지 실패가 재현됐다.
+PR #6 merge 이후 review에서 main 생성기의 다음 네 가지 실패가 재현됐다.
 
 1. `output/corpus/...` 내부 디렉터리 symlink를 따라 output 밖 파일을 변경할 수 있음.
 2. tampered manifest가 `README.md`를 managed path로 추가해 corpus 밖 사용자 파일을 삭제할 수 있음.
 3. 이전 manifest에서 빠진 파일이 새 generated path와 충돌하면 unmanaged file을 덮어씀.
 4. managed 대상이 아닌 empty directory를 cleanup 과정에서 삭제함.
 
-기존 TASK-031 성공 evidence는 삭제하지 않는다. 이 문서는 그 뒤 발견된 반례와 후속 검증을 추가한다.
+기존 TASK-031 성공 evidence는 삭제하지 않고, 이 문서를 후속 재검증 근거로 추가한다.
 
 ## 수정
 
@@ -29,27 +30,44 @@ PR #6 merge 이후 리뷰에서 main 생성기의 다음 네 가지 실패가 �
 
 ## 회귀 테스트
 
-기존 11개 synthetic corpus 테스트에 리뷰 반례 4개를 추가해 총 15개 synthetic corpus 테스트가 실행됐다.
+리뷰에서 실패한 네 사례를 기존 synthetic corpus 테스트에 추가했다.
 
 - internal symlink escape → 외부 sentinel 유지, generator 실패.
 - manifest path outside corpus → README 유지, generator 실패.
 - unmanaged generated-path collision → sentinel 유지, generator 실패.
 - unmanaged empty directory → force refresh 후 디렉터리 유지.
 
-기존 unowned output force 거부, unmanaged README 보존, output 자체 symlink 거부도 계속 실행된다.
+기존 unowned output force 거부, unmanaged README 보존, output 자체 symlink 거부도 계속 실행된다. Reviewer의 독립 재검사에서는 manifest symlink, ownership-marker symlink, managed leaf-file symlink도 거부되고 거부 전후 filesystem state가 유지됨을 확인했다.
 
-## CI
+## PR candidate CI
 
-Package and tooling run: https://github.com/Gandalem/stellaris-suppoter/actions/runs/35740873031
+Package and tooling run: https://github.com/Gandalem/stellaris-suppoter/actions/runs/35741212839
 
 | 환경 | job | Python | pytest | synthetic corpus | Ruff | harness |
 |---|---:|---:|---|---|---|---|
-| ubuntu-latest | 106789976598 | 3.11.16 | 56 passed | 15 passed | success | success |
-| windows-latest | 106789977009 | 3.13.15 | 56 passed | 15 passed | success | success |
+| ubuntu-latest | 106791157588 | 3.11.16 | 56 passed | 15 passed | success | success |
+| windows-latest | 106791157298 | 3.13.15 | 56 passed | 15 passed | success | success |
 
-Documentation harness run: https://github.com/Gandalem/stellaris-suppoter/actions/runs/35740872951  
+Documentation harness run 35741212835도 Ubuntu/Windows 모두 success.
+
+## 실제 main merge 검증
+
+PR #7은 2026-09-22 23:43:06 KST에 merge되었고 실제 merge commit은 `b583f89de389ce838987b8c3e5b6a2fd0e7c58b9`이다.
+
+Main push Package and tooling run: https://github.com/Gandalem/stellaris-suppoter/actions/runs/35742263578
+
+| 환경 | job | Python | pytest | synthetic corpus | Ruff | harness |
+|---|---:|---:|---|---|---|---|
+| windows-latest | 106794770824 | 3.13.15 | 56 passed | 15 passed | success | success |
+| ubuntu-latest | 106794771348 | 3.11.16 | 56 passed | 15 passed | success | success |
+
+Main push Documentation harness run: https://github.com/Gandalem/stellaris-suppoter/actions/runs/35742263716  
 Ubuntu/Windows 모두 success.
 
-## 상태
+## 최종 상태
 
-E-047의 코드/회귀 검증은 pass로 갱신한다. 그러나 리뷰에서 merge 승인이 명시적으로 보류됐고 PR #7은 아직 main에 병합되지 않았으므로 TASK-031은 blocked 상태로 유지한다. 승인 후 실제 merge commit과 main push CI를 추가 기록한 다음에만 TASK-031 done / F-002 verified로 복구한다.
+E-047=pass, TASK-031=done, F-002=verified. TASK-004 Safe inventory dependency가 충족됐다.
+
+## 비차단 후속
+
+`manifest.json`의 top-level 값이 object가 아닌 list/null/string인 손상 입력은 명시적인 ValueError/exit 2로 정규화하는 후속 보완이 필요하다. 현재 재현에서는 traceback이 발생하지만 파일 변경은 없었으므로 이번 containment merge의 차단 사유로는 취급하지 않았다.
