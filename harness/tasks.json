@@ -83,7 +83,8 @@
       ],
       "depends_on": [
         "TASK-002",
-        "TASK-003"
+        "TASK-003",
+        "TASK-031"
       ],
       "eval_ids": [
         "E-005",
@@ -699,6 +700,35 @@
       ],
       "acceptance": [
         "The service layer is reused with loopback binding, escaping and path protection."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-031",
+      "title": "Safety remediation and main integration",
+      "status": "doing",
+      "feature_ids": [
+        "F-002",
+        "F-004",
+        "F-006"
+      ],
+      "depends_on": [
+        "TASK-002",
+        "TASK-003"
+      ],
+      "eval_ids": [
+        "E-047",
+        "E-048"
+      ],
+      "docs": [
+        "SECURITY.md",
+        "docs/ENVIRONMENT.md",
+        "docs/TESTING.md"
+      ],
+      "acceptance": [
+        "Synthetic corpus refresh never recursively deletes an arbitrary output directory and preserves unmanaged files.",
+        "Adversarial configuration paths return bounded diagnostics, public reports do not leak protected path input, and directory access checks include traversal requirements on POSIX.",
+        "TASK-001 through TASK-003 plus remediation are validated together before a main integration PR is opened."
       ],
       "evidence": []
     }

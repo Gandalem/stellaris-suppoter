@@ -18,7 +18,7 @@
       "id": "F-002",
       "title": "Configuration and diagnostics",
       "milestone": "v0.1",
-      "status": "verified",
+      "status": "in_progress",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/ENVIRONMENT.md"
