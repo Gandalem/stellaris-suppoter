@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling>=1.32.4,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stellaris-supporter"
+version = "0.0.1"
+description = "Local-first, evidence-grounded Stellaris data assistant"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=9.1.1,<10",
+  "ruff>=0.16.8,<0.17",
+]
+
+[project.scripts]
+stellaris-supporter = "stellaris_supporter.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stellaris_supporter"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers"
+testpaths = ["tests", "tests_harness"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]

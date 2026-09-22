@@ -1,32 +1,737 @@
-{"schema_version":1,"tasks":[
-{"id":"TASK-001","title":"Package and tooling","status":"todo","feature_ids":["F-001"],"depends_on":[],"eval_ids":["E-001"],"docs":["docs/BACKLOG.md","docs/ENVIRONMENT.md"],"acceptance":["Clean installation, import, help and test commands are reproducible."],"evidence":[]},
-{"id":"TASK-002","title":"Synthetic corpus","status":"todo","feature_ids":["F-004","F-006"],"depends_on":["TASK-001"],"eval_ids":["E-002"],"docs":["docs/BACKLOG.md","docs/TESTING.md"],"acceptance":["Original synthetic normal, error, localisation and collision scenarios are documented."],"evidence":[]},
-{"id":"TASK-003","title":"Configuration and doctor","status":"todo","feature_ids":["F-002"],"depends_on":["TASK-001"],"eval_ids":["E-003","E-004"],"docs":["docs/BACKLOG.md","docs/ENVIRONMENT.md"],"acceptance":["Invalid and overlapping paths are rejected; runtime capabilities are reported."],"evidence":[]},
-{"id":"TASK-004","title":"Safe inventory","status":"todo","feature_ids":["F-003","F-013"],"depends_on":["TASK-002","TASK-003"],"eval_ids":["E-005","E-006"],"docs":["docs/BACKLOG.md","docs/ARCHITECTURE.md"],"acceptance":["Inventory is deterministic, bounded, read-only and contained within allowed roots."],"evidence":[]},
-{"id":"TASK-005","title":"Version and DLC evidence","status":"todo","feature_ids":["F-003"],"depends_on":["TASK-004"],"eval_ids":["E-007","E-008"],"docs":["docs/BACKLOG.md","docs/UPDATES.md"],"acceptance":["Unknown and user-reported versions and separate DLC states are preserved."],"evidence":[]},
-{"id":"TASK-006","title":"Lexer and source spans","status":"todo","feature_ids":["F-004"],"depends_on":["TASK-002"],"eval_ids":["E-009","E-010"],"docs":["docs/BACKLOG.md","docs/PARSING.md"],"acceptance":["Token boundaries remain correct for strings, comments, BOM and CRLF."],"evidence":[]},
-{"id":"TASK-007","title":"Ordered AST parser","status":"todo","feature_ids":["F-004"],"depends_on":["TASK-006"],"eval_ids":["E-011","E-012","E-013"],"docs":["docs/BACKLOG.md","docs/PARSING.md"],"acceptance":["Duplicates and unknown syntax are preserved; malformed and deep input is bounded."],"evidence":[]},
-{"id":"TASK-008","title":"Technology adapter","status":"todo","feature_ids":["F-005"],"depends_on":["TASK-007"],"eval_ids":["E-014"],"docs":["docs/BACKLOG.md","docs/PARSING.md"],"acceptance":["Synthetic technology fields, conditions and prerequisites retain source spans."],"evidence":[]},
-{"id":"TASK-009","title":"Localisation reader","status":"todo","feature_ids":["F-006"],"depends_on":["TASK-007"],"eval_ids":["E-015","E-016","E-017"],"docs":["docs/BACKLOG.md","docs/PARSING.md"],"acceptance":["Fallback, references, cycles and duplicates have explicit outcomes."],"evidence":[]},
-{"id":"TASK-010","title":"Schema and snapshots","status":"todo","feature_ids":["F-007"],"depends_on":["TASK-004","TASK-005","TASK-008","TASK-009"],"eval_ids":["E-018","E-019"],"docs":["docs/BACKLOG.md","docs/DATA_CONTRACTS.md"],"acceptance":["Typed contracts, deterministic IDs and atomic activation are tested."],"evidence":[]},
-{"id":"TASK-011","title":"Retrieval service","status":"todo","feature_ids":["F-008"],"depends_on":["TASK-010"],"eval_ids":["E-020","E-021","E-022"],"docs":["docs/BACKLOG.md","docs/SEARCH_AND_ANSWERS.md"],"acceptance":["Exact IDs, Korean names, short queries and query metacharacters are handled."],"evidence":[]},
-{"id":"TASK-012","title":"Static answers and citations","status":"todo","feature_ids":["F-009"],"depends_on":["TASK-011"],"eval_ids":["E-023","E-024","E-025"],"docs":["docs/BACKLOG.md","docs/SEARCH_AND_ANSWERS.md"],"acceptance":["Every fact has a correct source; unknown and mixed-version claims are blocked."],"evidence":[]},
-{"id":"TASK-013","title":"CLI vertical slice","status":"todo","feature_ids":["F-011"],"depends_on":["TASK-003","TASK-012"],"eval_ids":["E-026"],"docs":["docs/BACKLOG.md","docs/CLI.md"],"acceptance":["Synthetic index to search/show and JSON/error behavior match the command contract."],"evidence":[]},
-{"id":"TASK-014","title":"Remaining domain adapters","status":"todo","feature_ids":["F-005"],"depends_on":["TASK-013"],"eval_ids":["E-027"],"docs":["docs/BACKLOG.md","docs/PARSING.md"],"acceptance":["Each scoped domain has normal, error, collision and localisation coverage."],"evidence":[]},
-{"id":"TASK-015","title":"Static references","status":"todo","feature_ids":["F-010","F-011"],"depends_on":["TASK-014"],"eval_ids":["E-028","E-029"],"docs":["docs/BACKLOG.md","docs/DATA_CONTRACTS.md"],"acceptance":["Missing, ambiguous and cyclic references are bounded and explicit."],"evidence":[]},
-{"id":"TASK-016","title":"Incremental index and diff","status":"todo","feature_ids":["F-012","F-011"],"depends_on":["TASK-010","TASK-014"],"eval_ids":["E-030","E-031"],"docs":["docs/BACKLOG.md","docs/UPDATES.md"],"acceptance":["Adds, changes, deletions and mid-index changes preserve a valid active snapshot."],"evidence":[]},
-{"id":"TASK-017","title":"Safety regression suite","status":"todo","feature_ids":["F-013"],"depends_on":["TASK-013","TASK-016"],"eval_ids":["E-006","E-032","E-033"],"docs":["docs/BACKLOG.md","SECURITY.md"],"acceptance":["Original files, network consent and private data boundaries survive negative tests."],"evidence":[]},
-{"id":"TASK-018","title":"Evaluation runner and corpus","status":"todo","feature_ids":["F-014"],"depends_on":["TASK-013","TASK-014","TASK-015","TASK-016","TASK-017"],"eval_ids":["E-034"],"docs":["docs/BACKLOG.md","docs/EVALUATION.md"],"acceptance":["Automated v0.1 cases have reproducible executions; at least 40 balanced queries exist; manual and later cases stay pending."],"evidence":[]},
-{"id":"TASK-019","title":"Performance baseline","status":"todo","feature_ids":["F-014"],"depends_on":["TASK-018"],"eval_ids":["E-035"],"docs":["docs/BACKLOG.md","docs/EVALUATION.md"],"acceptance":["A 10000-entity benchmark records environment, samples, cold/warm and p95."],"evidence":[]},
-{"id":"TASK-020","title":"Packaging and platform CI","status":"todo","feature_ids":["F-001","F-014"],"depends_on":["TASK-018","TASK-019"],"eval_ids":["E-001","E-036"],"docs":["docs/BACKLOG.md","docs/RELEASE.md"],"acceptance":["Clean Linux and Windows package smoke tests and exact executed commands are recorded."],"evidence":[]},
-{"id":"TASK-021","title":"Local game acceptance","status":"todo","feature_ids":["F-014"],"depends_on":["TASK-020"],"eval_ids":["E-037"],"docs":["docs/BACKLOG.md","docs/TESTING.md"],"acceptance":["User-local read-only checks document actual snapshot, domain coverage and limitations."],"evidence":[]},
-{"id":"TASK-022","title":"Release readiness","status":"todo","feature_ids":["F-014"],"depends_on":["TASK-021"],"eval_ids":["E-038"],"docs":["docs/BACKLOG.md","docs/RELEASE.md"],"acceptance":["Required gates, known limits, rollback, licensing decision and approval are documented."],"evidence":[]},
-{"id":"TASK-023","title":"Official source synchronisation","status":"todo","feature_ids":["F-015"],"depends_on":["TASK-022"],"eval_ids":["E-039"],"docs":["docs/BACKLOG.md","docs/UPDATES.md"],"acceptance":["Dates, channels and sources remain separate; offline and failure states are honest."],"evidence":[]},
-{"id":"TASK-024","title":"Optional LLM provider","status":"todo","feature_ids":["F-016"],"depends_on":["TASK-022"],"eval_ids":["E-040"],"docs":["docs/BACKLOG.md","docs/SEARCH_AND_ANSWERS.md"],"acceptance":["Consent, minimal evidence, provider-none fallback, timeouts and budgets are tested."],"evidence":[]},
-{"id":"TASK-025","title":"LLM grounding and safety","status":"todo","feature_ids":["F-016"],"depends_on":["TASK-023","TASK-024"],"eval_ids":["E-041"],"docs":["docs/BACKLOG.md","docs/SEARCH_AND_ANSWERS.md"],"acceptance":["Invented citations, numbers and injected instructions cannot bypass evidence checks."],"evidence":[]},
-{"id":"TASK-026","title":"Mod discovery investigation","status":"todo","feature_ids":["F-017"],"depends_on":["TASK-022"],"eval_ids":["E-042"],"docs":["docs/BACKLOG.md","docs/UNKNOWNS.md"],"acceptance":["Installed, enabled and ordered mods are evidence-based or unresolved."],"evidence":[]},
-{"id":"TASK-027","title":"Mod load semantics","status":"todo","feature_ids":["F-017"],"depends_on":["TASK-026"],"eval_ids":["E-043"],"docs":["docs/BACKLOG.md","docs/PARSING.md"],"acceptance":["Category-specific replacement and collisions are validated before effective claims."],"evidence":[]},
-{"id":"TASK-028","title":"Save reader","status":"todo","feature_ids":["F-018"],"depends_on":["TASK-027"],"eval_ids":["E-044"],"docs":["docs/BACKLOG.md","SECURITY.md"],"acceptance":["Version, format, archive limits and field semantics are verified without writes."],"evidence":[]},
-{"id":"TASK-029","title":"Calculation tools","status":"todo","feature_ids":["F-019"],"depends_on":["TASK-025","TASK-028"],"eval_ids":["E-045"],"docs":["docs/BACKLOG.md","docs/PRODUCT.md"],"acceptance":["Formulas, units, assumptions and errors are checked against explicit reference cases."],"evidence":[]},
-{"id":"TASK-030","title":"Local interface","status":"todo","feature_ids":["F-020"],"depends_on":["TASK-029"],"eval_ids":["E-046"],"docs":["docs/BACKLOG.md","docs/PRODUCT.md"],"acceptance":["The service layer is reused with loopback binding, escaping and path protection."],"evidence":[]}
-]}
+{
+  "schema_version": 1,
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Package and tooling",
+      "status": "done",
+      "feature_ids": [
+        "F-001"
+      ],
+      "depends_on": [],
+      "eval_ids": [
+        "E-001"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/ENVIRONMENT.md"
+      ],
+      "acceptance": [
+        "Clean installation, import, help and test commands are reproducible."
+      ],
+      "evidence": [
+        "harness/evidence/TASK-001-clean-setup.md"
+      ]
+    },
+    {
+      "id": "TASK-002",
+      "title": "Synthetic corpus",
+      "status": "done",
+      "feature_ids": [
+        "F-004",
+        "F-006"
+      ],
+      "depends_on": [
+        "TASK-001"
+      ],
+      "eval_ids": [
+        "E-002"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/TESTING.md"
+      ],
+      "acceptance": [
+        "Original synthetic normal, error, localisation and collision scenarios are documented."
+      ],
+      "evidence": [
+        "harness/evidence/TASK-002-synthetic-corpus.md"
+      ]
+    },
+    {
+      "id": "TASK-003",
+      "title": "Configuration and doctor",
+      "status": "done",
+      "feature_ids": [
+        "F-002"
+      ],
+      "depends_on": [
+        "TASK-001"
+      ],
+      "eval_ids": [
+        "E-003",
+        "E-004"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/ENVIRONMENT.md"
+      ],
+      "acceptance": [
+        "Invalid and overlapping paths are rejected; runtime capabilities are reported."
+      ],
+      "evidence": [
+        "harness/evidence/TASK-003-configuration-doctor.md"
+      ]
+    },
+    {
+      "id": "TASK-004",
+      "title": "Safe inventory",
+      "status": "todo",
+      "feature_ids": [
+        "F-003",
+        "F-013"
+      ],
+      "depends_on": [
+        "TASK-002",
+        "TASK-003",
+        "TASK-031"
+      ],
+      "eval_ids": [
+        "E-005",
+        "E-006"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "acceptance": [
+        "Inventory is deterministic, bounded, read-only and contained within allowed roots."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-005",
+      "title": "Version and DLC evidence",
+      "status": "todo",
+      "feature_ids": [
+        "F-003"
+      ],
+      "depends_on": [
+        "TASK-004"
+      ],
+      "eval_ids": [
+        "E-007",
+        "E-008"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/UPDATES.md"
+      ],
+      "acceptance": [
+        "Unknown and user-reported versions and separate DLC states are preserved."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-006",
+      "title": "Lexer and source spans",
+      "status": "todo",
+      "feature_ids": [
+        "F-004"
+      ],
+      "depends_on": [
+        "TASK-002"
+      ],
+      "eval_ids": [
+        "E-009",
+        "E-010"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/PARSING.md"
+      ],
+      "acceptance": [
+        "Token boundaries remain correct for strings, comments, BOM and CRLF."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-007",
+      "title": "Ordered AST parser",
+      "status": "todo",
+      "feature_ids": [
+        "F-004"
+      ],
+      "depends_on": [
+        "TASK-006"
+      ],
+      "eval_ids": [
+        "E-011",
+        "E-012",
+        "E-013"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/PARSING.md"
+      ],
+      "acceptance": [
+        "Duplicates and unknown syntax are preserved; malformed and deep input is bounded."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-008",
+      "title": "Technology adapter",
+      "status": "todo",
+      "feature_ids": [
+        "F-005"
+      ],
+      "depends_on": [
+        "TASK-007"
+      ],
+      "eval_ids": [
+        "E-014"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/PARSING.md"
+      ],
+      "acceptance": [
+        "Synthetic technology fields, conditions and prerequisites retain source spans."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-009",
+      "title": "Localisation reader",
+      "status": "todo",
+      "feature_ids": [
+        "F-006"
+      ],
+      "depends_on": [
+        "TASK-007"
+      ],
+      "eval_ids": [
+        "E-015",
+        "E-016",
+        "E-017"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/PARSING.md"
+      ],
+      "acceptance": [
+        "Fallback, references, cycles and duplicates have explicit outcomes."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-010",
+      "title": "Schema and snapshots",
+      "status": "todo",
+      "feature_ids": [
+        "F-007"
+      ],
+      "depends_on": [
+        "TASK-004",
+        "TASK-005",
+        "TASK-008",
+        "TASK-009"
+      ],
+      "eval_ids": [
+        "E-018",
+        "E-019"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/DATA_CONTRACTS.md"
+      ],
+      "acceptance": [
+        "Typed contracts, deterministic IDs and atomic activation are tested."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-011",
+      "title": "Retrieval service",
+      "status": "todo",
+      "feature_ids": [
+        "F-008"
+      ],
+      "depends_on": [
+        "TASK-010"
+      ],
+      "eval_ids": [
+        "E-020",
+        "E-021",
+        "E-022"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/SEARCH_AND_ANSWERS.md"
+      ],
+      "acceptance": [
+        "Exact IDs, Korean names, short queries and query metacharacters are handled."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-012",
+      "title": "Static answers and citations",
+      "status": "todo",
+      "feature_ids": [
+        "F-009"
+      ],
+      "depends_on": [
+        "TASK-011"
+      ],
+      "eval_ids": [
+        "E-023",
+        "E-024",
+        "E-025"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/SEARCH_AND_ANSWERS.md"
+      ],
+      "acceptance": [
+        "Every fact has a correct source; unknown and mixed-version claims are blocked."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-013",
+      "title": "CLI vertical slice",
+      "status": "todo",
+      "feature_ids": [
+        "F-011"
+      ],
+      "depends_on": [
+        "TASK-003",
+        "TASK-012"
+      ],
+      "eval_ids": [
+        "E-026"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/CLI.md"
+      ],
+      "acceptance": [
+        "Synthetic index to search/show and JSON/error behavior match the command contract."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-014",
+      "title": "Remaining domain adapters",
+      "status": "todo",
+      "feature_ids": [
+        "F-005"
+      ],
+      "depends_on": [
+        "TASK-013"
+      ],
+      "eval_ids": [
+        "E-027"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/PARSING.md"
+      ],
+      "acceptance": [
+        "Each scoped domain has normal, error, collision and localisation coverage."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-015",
+      "title": "Static references",
+      "status": "todo",
+      "feature_ids": [
+        "F-010",
+        "F-011"
+      ],
+      "depends_on": [
+        "TASK-014"
+      ],
+      "eval_ids": [
+        "E-028",
+        "E-029"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/DATA_CONTRACTS.md"
+      ],
+      "acceptance": [
+        "Missing, ambiguous and cyclic references are bounded and explicit."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-016",
+      "title": "Incremental index and diff",
+      "status": "todo",
+      "feature_ids": [
+        "F-012",
+        "F-011"
+      ],
+      "depends_on": [
+        "TASK-010",
+        "TASK-014"
+      ],
+      "eval_ids": [
+        "E-030",
+        "E-031"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/UPDATES.md"
+      ],
+      "acceptance": [
+        "Adds, changes, deletions and mid-index changes preserve a valid active snapshot."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-017",
+      "title": "Safety regression suite",
+      "status": "todo",
+      "feature_ids": [
+        "F-013"
+      ],
+      "depends_on": [
+        "TASK-013",
+        "TASK-016"
+      ],
+      "eval_ids": [
+        "E-006",
+        "E-032",
+        "E-033"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "SECURITY.md"
+      ],
+      "acceptance": [
+        "Original files, network consent and private data boundaries survive negative tests."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-018",
+      "title": "Evaluation runner and corpus",
+      "status": "todo",
+      "feature_ids": [
+        "F-014"
+      ],
+      "depends_on": [
+        "TASK-013",
+        "TASK-014",
+        "TASK-015",
+        "TASK-016",
+        "TASK-017"
+      ],
+      "eval_ids": [
+        "E-034"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/EVALUATION.md"
+      ],
+      "acceptance": [
+        "Automated v0.1 cases have reproducible executions; at least 40 balanced queries exist; manual and later cases stay pending."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-019",
+      "title": "Performance baseline",
+      "status": "todo",
+      "feature_ids": [
+        "F-014"
+      ],
+      "depends_on": [
+        "TASK-018"
+      ],
+      "eval_ids": [
+        "E-035"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/EVALUATION.md"
+      ],
+      "acceptance": [
+        "A 10000-entity benchmark records environment, samples, cold/warm and p95."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-020",
+      "title": "Packaging and platform CI",
+      "status": "todo",
+      "feature_ids": [
+        "F-001",
+        "F-014"
+      ],
+      "depends_on": [
+        "TASK-018",
+        "TASK-019"
+      ],
+      "eval_ids": [
+        "E-001",
+        "E-036"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/RELEASE.md"
+      ],
+      "acceptance": [
+        "Clean Linux and Windows package smoke tests and exact executed commands are recorded."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-021",
+      "title": "Local game acceptance",
+      "status": "todo",
+      "feature_ids": [
+        "F-014"
+      ],
+      "depends_on": [
+        "TASK-020"
+      ],
+      "eval_ids": [
+        "E-037"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/TESTING.md"
+      ],
+      "acceptance": [
+        "User-local read-only checks document actual snapshot, domain coverage and limitations."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-022",
+      "title": "Release readiness",
+      "status": "todo",
+      "feature_ids": [
+        "F-014"
+      ],
+      "depends_on": [
+        "TASK-021"
+      ],
+      "eval_ids": [
+        "E-038"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/RELEASE.md"
+      ],
+      "acceptance": [
+        "Required gates, known limits, rollback, licensing decision and approval are documented."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-023",
+      "title": "Official source synchronisation",
+      "status": "todo",
+      "feature_ids": [
+        "F-015"
+      ],
+      "depends_on": [
+        "TASK-022"
+      ],
+      "eval_ids": [
+        "E-039"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/UPDATES.md"
+      ],
+      "acceptance": [
+        "Dates, channels and sources remain separate; offline and failure states are honest."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-024",
+      "title": "Optional LLM provider",
+      "status": "todo",
+      "feature_ids": [
+        "F-016"
+      ],
+      "depends_on": [
+        "TASK-022"
+      ],
+      "eval_ids": [
+        "E-040"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/SEARCH_AND_ANSWERS.md"
+      ],
+      "acceptance": [
+        "Consent, minimal evidence, provider-none fallback, timeouts and budgets are tested."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-025",
+      "title": "LLM grounding and safety",
+      "status": "todo",
+      "feature_ids": [
+        "F-016"
+      ],
+      "depends_on": [
+        "TASK-023",
+        "TASK-024"
+      ],
+      "eval_ids": [
+        "E-041"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/SEARCH_AND_ANSWERS.md"
+      ],
+      "acceptance": [
+        "Invented citations, numbers and injected instructions cannot bypass evidence checks."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-026",
+      "title": "Mod discovery investigation",
+      "status": "todo",
+      "feature_ids": [
+        "F-017"
+      ],
+      "depends_on": [
+        "TASK-022"
+      ],
+      "eval_ids": [
+        "E-042"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/UNKNOWNS.md"
+      ],
+      "acceptance": [
+        "Installed, enabled and ordered mods are evidence-based or unresolved."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-027",
+      "title": "Mod load semantics",
+      "status": "todo",
+      "feature_ids": [
+        "F-017"
+      ],
+      "depends_on": [
+        "TASK-026"
+      ],
+      "eval_ids": [
+        "E-043"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/PARSING.md"
+      ],
+      "acceptance": [
+        "Category-specific replacement and collisions are validated before effective claims."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-028",
+      "title": "Save reader",
+      "status": "todo",
+      "feature_ids": [
+        "F-018"
+      ],
+      "depends_on": [
+        "TASK-027"
+      ],
+      "eval_ids": [
+        "E-044"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "SECURITY.md"
+      ],
+      "acceptance": [
+        "Version, format, archive limits and field semantics are verified without writes."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-029",
+      "title": "Calculation tools",
+      "status": "todo",
+      "feature_ids": [
+        "F-019"
+      ],
+      "depends_on": [
+        "TASK-025",
+        "TASK-028"
+      ],
+      "eval_ids": [
+        "E-045"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/PRODUCT.md"
+      ],
+      "acceptance": [
+        "Formulas, units, assumptions and errors are checked against explicit reference cases."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-030",
+      "title": "Local interface",
+      "status": "todo",
+      "feature_ids": [
+        "F-020"
+      ],
+      "depends_on": [
+        "TASK-029"
+      ],
+      "eval_ids": [
+        "E-046"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/PRODUCT.md"
+      ],
+      "acceptance": [
+        "The service layer is reused with loopback binding, escaping and path protection."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-031",
+      "title": "Safety hardening and main integration",
+      "status": "done",
+      "feature_ids": [
+        "F-002",
+        "F-013",
+        "F-014"
+      ],
+      "depends_on": [
+        "TASK-001",
+        "TASK-002",
+        "TASK-003"
+      ],
+      "eval_ids": [
+        "E-047"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/ENVIRONMENT.md",
+        "SECURITY.md"
+      ],
+      "acceptance": [
+        "Review regressions for generator deletion, path exceptions, directory traversal permissions, public redaction, XDG handling and strict schema types pass on Linux and Windows.",
+        "TASK-001 through TASK-003 are represented on a branch based directly on main and are ready for a main-targeting integration PR."
+      ],
+      "evidence": [
+        "harness/evidence/TASK-031-safety-hardening-main-integration.md"
+      ]
+    }
+  ]
+}

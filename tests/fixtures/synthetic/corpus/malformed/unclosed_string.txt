@@ -1,0 +1,4 @@
+# origin: synthetic
+demo_unclosed_string = {
+    text = "this string never closes
+}

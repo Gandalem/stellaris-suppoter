@@ -1,0 +1,11 @@
+# origin: synthetic
+# Lexical edge cases are intentionally fictional.
+
+demo_lexical_edges = {
+    quoted = "literal # hash and { brace } and \"quoted\""
+    variable = @demo_cost
+    score > 5
+    score <= 9
+    floor >= 2
+    floor < 8
+}
