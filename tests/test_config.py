@@ -142,5 +142,59 @@ def test_game_root_access_check_never_requests_write(tmp_path: Path) -> None:
         seen.append((path, mode))
         return True
     validate_paths(load_settings(config).settings, access_checker=record)
-    assert (game.resolve(), os.R_OK) in seen
-    assert (data.resolve(), os.R_OK | os.W_OK) in seen
+    game_mode = os.R_OK | (os.X_OK if os.name == "posix" else 0)
+    data_mode = os.R_OK | os.W_OK | (os.X_OK if os.name == "posix" else 0)
+    assert (game.resolve(), game_mode) in seen
+    assert (data.resolve(), data_mode) in seen
+
+
+def test_xdg_empty_and_relative_values_are_ignored(tmp_path: Path) -> None:
+    assert default_config_path(
+        system="Linux",
+        env={"XDG_CONFIG_HOME": ""},
+        home=tmp_path,
+    ) == tmp_path / ".config" / "stellaris-supporter" / "config.toml"
+    assert default_data_dir(
+        system="Linux",
+        env={"XDG_DATA_HOME": "relative"},
+        home=tmp_path,
+    ) == tmp_path / ".local" / "share" / "stellaris-supporter"
+
+
+def test_schema_version_requires_integer_not_float(tmp_path: Path) -> None:
+    config = tmp_path / "settings.toml"
+    config.write_text(
+        'schema_version = 1.0\ngame_root = "game"\ndata_dir = "data"\n',
+        encoding="utf-8",
+    )
+    assert "CONFIG_SCHEMA_UNSUPPORTED" in codes(load_settings(config))
+
+
+def test_invalid_user_expansion_becomes_structured_diagnostic(tmp_path: Path) -> None:
+    config = tmp_path / "settings.toml"
+    config.write_text(
+        'schema_version = 1\ngame_root = "~definitely_missing_user_xyz/game"\n'
+        'data_dir = "data"\n',
+        encoding="utf-8",
+    )
+    result = load_settings(config)
+    assert "PATH_INVALID" in codes(result)
+
+
+def test_access_modes_require_directory_traversal_on_posix(tmp_path: Path) -> None:
+    game = tmp_path / "game"
+    data = tmp_path / "data"
+    game.mkdir()
+    data.mkdir()
+    config = tmp_path / "settings.toml"
+    write_config(config)
+    seen: dict[Path, int] = {}
+
+    def record(path: Path, mode: int) -> bool:
+        seen[path] = mode
+        return True
+
+    validate_paths(load_settings(config).settings, access_checker=record)
+    if os.name == "posix":
+        assert seen[game.resolve()] & os.X_OK
+        assert seen[data.resolve()] & os.X_OK

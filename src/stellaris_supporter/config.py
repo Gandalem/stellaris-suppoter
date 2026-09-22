@@ -31,6 +31,7 @@ _ALLOWED_LIMITS = {
     "max_results",
 }
 _LANGUAGE_RE = re.compile(r"^[A-Za-z0-9_-]{2,32}$")
+_PATH_ERRORS = (OSError, RuntimeError, ValueError)
 
 
 @dataclass(frozen=True)
@@ -90,7 +91,9 @@ def default_config_path(
         return base / "StellarisSupporter" / "config.toml"
     if system_name == "darwin":
         return home_dir / "Library" / "Application Support" / "StellarisSupporter" / "config.toml"
-    base = Path(environment.get("XDG_CONFIG_HOME", str(home_dir / ".config")))
+    raw_base = environment.get("XDG_CONFIG_HOME")
+    candidate = Path(raw_base) if raw_base else None
+    base = candidate if candidate is not None and candidate.is_absolute() else home_dir / ".config"
     return base / "stellaris-supporter" / "config.toml"
 
 
@@ -108,7 +111,9 @@ def default_data_dir(
         return base / "StellarisSupporter" / "data"
     if system_name == "darwin":
         return home_dir / "Library" / "Application Support" / "StellarisSupporter" / "data"
-    base = Path(environment.get("XDG_DATA_HOME", str(home_dir / ".local" / "share")))
+    raw_base = environment.get("XDG_DATA_HOME")
+    candidate = Path(raw_base) if raw_base else None
+    base = candidate if candidate is not None and candidate.is_absolute() else home_dir / ".local" / "share"
     return base / "stellaris-supporter"
 
 
@@ -152,7 +157,7 @@ def _validate_keys(parsed: Mapping[str, Any]) -> list[Diagnostic]:
             Diagnostic(
                 "CONFIG_UNKNOWN_KEY",
                 "error",
-                f"Unknown top-level configuration key(s): {', '.join(unknown)}.",
+                "Unknown top-level configuration key(s) are present.",
                 "Remove misspelled or unsupported keys.",
             )
         )
@@ -164,7 +169,7 @@ def _validate_keys(parsed: Mapping[str, Any]) -> list[Diagnostic]:
         extra = sorted(set(network) - _ALLOWED_NETWORK)
         if extra:
             diagnostics.append(
-                Diagnostic("CONFIG_UNKNOWN_KEY", "error", f"Unknown [network] key(s): {', '.join(extra)}.")
+                Diagnostic("CONFIG_UNKNOWN_KEY", "error", "Unknown [network] key(s) are present.")
             )
 
     limits = parsed.get("limits", {})
@@ -174,16 +179,48 @@ def _validate_keys(parsed: Mapping[str, Any]) -> list[Diagnostic]:
         extra = sorted(set(limits) - _ALLOWED_LIMITS)
         if extra:
             diagnostics.append(
-                Diagnostic("CONFIG_UNKNOWN_KEY", "error", f"Unknown [limits] key(s): {', '.join(extra)}.")
+                Diagnostic("CONFIG_UNKNOWN_KEY", "error", "Unknown [limits] key(s) are present.")
             )
     return diagnostics
 
 
-def _resolve_path(value: str, *, base: Path) -> Path:
-    path = Path(value).expanduser()
-    if not path.is_absolute():
-        path = base / path
-    return path.resolve(strict=False)
+def _resolve_path(
+    value: str,
+    *,
+    base: Path,
+    diagnostics: list[Diagnostic],
+    field: str,
+) -> Path | None:
+    try:
+        path = Path(value).expanduser()
+        if not path.is_absolute():
+            path = base / path
+        return path.resolve(strict=False)
+    except _PATH_ERRORS:
+        diagnostics.append(
+            Diagnostic(
+                "PATH_INVALID",
+                "error",
+                f"{field} contains a path that cannot be resolved.",
+                "Use a valid path without invalid characters or unknown user expansion.",
+            )
+        )
+        return None
+
+
+def _safe_exists(path: Path, diagnostics: list[Diagnostic], *, code: str, label: str) -> bool | None:
+    try:
+        return path.exists()
+    except _PATH_ERRORS:
+        diagnostics.append(
+            Diagnostic(
+                code,
+                "error",
+                f"{label} cannot be inspected.",
+                "Check the path syntax and parent-directory permissions.",
+            )
+        )
+        return None
 
 
 def _read_positive_int(
@@ -212,16 +249,41 @@ def load_settings(
     reader: Reader = _default_reader,
 ) -> ConfigResult:
     environment = env if env is not None else os.environ
-    current_dir = (cwd if cwd is not None else Path.cwd()).resolve(strict=False)
+    diagnostics: list[Diagnostic] = []
+    raw_cwd = cwd if cwd is not None else Path.cwd()
+    try:
+        current_dir = raw_cwd.resolve(strict=False)
+    except _PATH_ERRORS:
+        current_dir = raw_cwd
+        diagnostics.append(
+            Diagnostic("CWD_INVALID", "error", "Current working directory cannot be resolved.")
+        )
+
     explicit_config = config_path is not None
     selected_config = config_path or default_config_path(system=system, env=environment, home=home)
     if not selected_config.is_absolute():
         selected_config = current_dir / selected_config
-    selected_config = selected_config.resolve(strict=False)
+    try:
+        selected_config = selected_config.resolve(strict=False)
+        config_exists = _safe_exists(
+            selected_config,
+            diagnostics,
+            code="CONFIG_PATH_INACCESSIBLE",
+            label="Configuration path",
+        )
+    except _PATH_ERRORS:
+        config_exists = None
+        diagnostics.append(
+            Diagnostic(
+                "CONFIG_PATH_INVALID",
+                "error",
+                "Configuration path cannot be resolved.",
+                "Use a valid --config path.",
+            )
+        )
 
-    diagnostics: list[Diagnostic] = []
     parsed: dict[str, Any] = {}
-    if selected_config.exists():
+    if config_exists is True:
         try:
             data = reader(selected_config)
         except OSError:
@@ -237,7 +299,7 @@ def load_settings(
             parsed, parse_diagnostics = _parse_toml(data)
             diagnostics.extend(parse_diagnostics)
             diagnostics.extend(_validate_keys(parsed))
-    elif explicit_config:
+    elif config_exists is False and explicit_config:
         diagnostics.append(
             Diagnostic(
                 "CONFIG_MISSING",
@@ -246,7 +308,7 @@ def load_settings(
                 "Create the file or pass a different --config path.",
             )
         )
-    else:
+    elif config_exists is False:
         diagnostics.append(
             Diagnostic(
                 "CONFIG_DEFAULT_MISSING",
@@ -256,7 +318,7 @@ def load_settings(
         )
 
     schema_version = parsed.get("schema_version", 1)
-    if isinstance(schema_version, bool) or schema_version != 1:
+    if type(schema_version) is not int or schema_version != 1:
         diagnostics.append(
             Diagnostic("CONFIG_SCHEMA_UNSUPPORTED", "error", "schema_version must be integer 1.")
         )
@@ -272,7 +334,12 @@ def load_settings(
                     Diagnostic("CONFIG_INVALID_TYPE", "error", f"{name} override must be a path string.")
                 )
                 return None
-            return _resolve_path(override, base=current_dir)
+            return _resolve_path(
+                override,
+                base=current_dir,
+                diagnostics=diagnostics,
+                field=f"{name} override",
+            )
         value = parsed.get(name)
         if value is None:
             return None
@@ -281,7 +348,7 @@ def load_settings(
                 Diagnostic("CONFIG_INVALID_TYPE", "error", f"{name} must be a non-empty path string.")
             )
             return None
-        return _resolve_path(value, base=config_base)
+        return _resolve_path(value, base=config_base, diagnostics=diagnostics, field=name)
 
     game_root = choose_path("game_root")
     if game_root is None:
@@ -296,8 +363,14 @@ def load_settings(
 
     data_dir = choose_path("data_dir")
     if data_dir is None:
-        data_dir = default_data_dir(system=system, env=environment, home=home)
-        data_dir = data_dir.expanduser().resolve(strict=False)
+        raw_data_dir = default_data_dir(system=system, env=environment, home=home)
+        resolved_data_dir = _resolve_path(
+            str(raw_data_dir),
+            base=current_dir,
+            diagnostics=diagnostics,
+            field="data_dir default",
+        )
+        data_dir = resolved_data_dir if resolved_data_dir is not None else raw_data_dir
 
     language_value: object = (
         cli.get("language") if cli.get("language") is not None else parsed.get("language", "ko")
@@ -372,27 +445,73 @@ def validate_paths(
     game_root = settings.game_root
     data_dir = settings.data_dir
 
-    if game_root is not None and paths_overlap(game_root, data_dir):
-        diagnostics.append(
-            Diagnostic(
-                "PATH_REJECTED",
-                "error",
-                "game_root and data_dir must be disjoint; parent/child overlap is unsafe.",
-                "Choose a data directory outside the game installation tree.",
+    if game_root is not None:
+        try:
+            overlap = paths_overlap(game_root, data_dir)
+        except _PATH_ERRORS:
+            overlap = False
+            diagnostics.append(
+                Diagnostic(
+                    "PATH_INVALID",
+                    "error",
+                    "Configured game/data paths cannot be resolved safely.",
+                )
             )
-        )
+        if overlap:
+            diagnostics.append(
+                Diagnostic(
+                    "PATH_REJECTED",
+                    "error",
+                    "game_root and data_dir must be disjoint; parent/child overlap is unsafe.",
+                    "Choose a data directory outside the game installation tree.",
+                )
+            )
 
     if game_root is not None:
-        if not game_root.exists():
-            diagnostics.append(Diagnostic("GAME_ROOT_MISSING", "error", "Configured game_root does not exist."))
-        elif not game_root.is_dir():
+        exists = _safe_exists(
+            game_root,
+            diagnostics,
+            code="GAME_ROOT_INACCESSIBLE",
+            label="Configured game_root",
+        )
+        if exists is False:
             diagnostics.append(
-                Diagnostic("GAME_ROOT_NOT_DIRECTORY", "error", "Configured game_root is not a directory.")
+                Diagnostic("GAME_ROOT_MISSING", "error", "Configured game_root does not exist.")
             )
-        elif not access_checker(game_root, os.R_OK):
-            diagnostics.append(Diagnostic("GAME_ROOT_UNREADABLE", "error", "Configured game_root is not readable."))
+        elif exists is True:
+            try:
+                is_dir = game_root.is_dir()
+            except _PATH_ERRORS:
+                is_dir = False
+                diagnostics.append(
+                    Diagnostic("GAME_ROOT_INACCESSIBLE", "error", "Configured game_root cannot be inspected.")
+                )
+            if not is_dir:
+                diagnostics.append(
+                    Diagnostic("GAME_ROOT_NOT_DIRECTORY", "error", "Configured game_root is not a directory.")
+                )
+            else:
+                mode = os.R_OK | (os.X_OK if os.name == "posix" else 0)
+                try:
+                    accessible = access_checker(game_root, mode)
+                except _PATH_ERRORS:
+                    accessible = False
+                if not accessible:
+                    diagnostics.append(
+                        Diagnostic(
+                            "GAME_ROOT_UNREADABLE",
+                            "error",
+                            "Configured game_root is not readable/traversable.",
+                        )
+                    )
 
-    if not data_dir.exists():
+    data_exists = _safe_exists(
+        data_dir,
+        diagnostics,
+        code="DATA_DIR_INACCESSIBLE",
+        label="Configured data_dir",
+    )
+    if data_exists is False:
         diagnostics.append(
             Diagnostic(
                 "DATA_DIR_MISSING",
@@ -401,12 +520,30 @@ def validate_paths(
                 "Create the private data directory outside the game tree.",
             )
         )
-    elif not data_dir.is_dir():
-        diagnostics.append(
-            Diagnostic("DATA_DIR_NOT_DIRECTORY", "error", "Configured data_dir is not a directory.")
-        )
-    elif not access_checker(data_dir, os.R_OK | os.W_OK):
-        diagnostics.append(
-            Diagnostic("DATA_DIR_NOT_WRITABLE", "error", "Configured data_dir is not readable and writable.")
-        )
+    elif data_exists is True:
+        try:
+            is_dir = data_dir.is_dir()
+        except _PATH_ERRORS:
+            is_dir = False
+            diagnostics.append(
+                Diagnostic("DATA_DIR_INACCESSIBLE", "error", "Configured data_dir cannot be inspected.")
+            )
+        if not is_dir:
+            diagnostics.append(
+                Diagnostic("DATA_DIR_NOT_DIRECTORY", "error", "Configured data_dir is not a directory.")
+            )
+        else:
+            mode = os.R_OK | os.W_OK | (os.X_OK if os.name == "posix" else 0)
+            try:
+                accessible = access_checker(data_dir, mode)
+            except _PATH_ERRORS:
+                accessible = False
+            if not accessible:
+                diagnostics.append(
+                    Diagnostic(
+                        "DATA_DIR_NOT_WRITABLE",
+                        "error",
+                        "Configured data_dir is not readable/writable/traversable.",
+                    )
+                )
     return tuple(diagnostics)

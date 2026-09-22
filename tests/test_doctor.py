@@ -83,3 +83,30 @@ def test_doctor_missing_config_is_exit_three(tmp_path: Path) -> None:
     assert result.returncode == 3
     codes = {item["code"] for item in payload["diagnostics"]}
     assert {"CONFIG_MISSING", "GAME_ROOT_REQUIRED"} <= codes
+
+
+def test_public_report_redacts_paths_from_entire_payload(tmp_path: Path) -> None:
+    secret = str((tmp_path / "secret").resolve())
+    config = tmp_path / "settings.toml"
+    config.write_text(
+        "schema_version = 1\n"
+        f'"{secret}" = 1\n'
+        'game_root = "game"\n'
+        'data_dir = "data"\n',
+        encoding="utf-8",
+    )
+    report = run_doctor(load_settings(config))
+    encoded = json.dumps(report.to_dict(public=True), ensure_ascii=False)
+    assert secret not in encoded
+
+
+def test_doctor_invalid_nul_config_path_returns_json_not_traceback(tmp_path: Path) -> None:
+    result = run_module("--format", "json", "--config", "bad\x00path", "doctor")
+    payload = json.loads(result.stdout)
+    assert result.returncode == 3
+    assert payload["status"] == "error"
+    assert result.stderr == ""
+    assert any(
+        item["code"] in {"CONFIG_PATH_INVALID", "CONFIG_PATH_INACCESSIBLE"}
+        for item in payload["diagnostics"]
+    )

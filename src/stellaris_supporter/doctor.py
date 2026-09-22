@@ -52,7 +52,19 @@ class DoctorReport:
             "status": self.status,
             "settings": settings,
             "runtime": self.runtime.to_dict(),
-            "diagnostics": [d.to_dict() for d in self.diagnostics],
+            "diagnostics": [
+                (
+                    {
+                        "code": d.code,
+                        "severity": d.severity,
+                        "message": f"Diagnostic {d.code}.",
+                        "remediation": None,
+                    }
+                    if public
+                    else d.to_dict()
+                )
+                for d in self.diagnostics
+            ],
         }
 
 
