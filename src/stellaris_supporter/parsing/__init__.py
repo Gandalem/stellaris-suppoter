@@ -1,8 +1,8 @@
 """Static parsing primitives."""
 
 from stellaris_supporter.parsing.lexer import (
-    LexResult,
     LexerDiagnostic,
+    LexResult,
     SourceSpan,
     Token,
     lex_bytes,

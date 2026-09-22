@@ -134,14 +134,14 @@ def test_unclosed_string_is_error_but_remaining_raw_bytes_are_preserved() -> Non
 
 
 def test_multibyte_characters_advance_columns_by_codepoint_not_byte() -> None:
-    source = 'name = "한글"\n'.encode("utf-8")
+    source = 'name = "한글"\n'.encode()
 
     result = lex_bytes(source)
 
     string = next(token for token in result.tokens if token.kind == "string")
     assert string.text == '"한글"'
     assert (string.span.column_start, string.span.column_end) == (8, 12)
-    assert string.span.byte_end - string.span.byte_start == len('"한글"'.encode("utf-8"))
+    assert string.span.byte_end - string.span.byte_start == len('"한글"'.encode())
 
 
 def test_long_operators_win_before_single_character_operators() -> None:
