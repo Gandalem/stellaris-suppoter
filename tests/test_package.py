@@ -19,13 +19,13 @@ def test_package_import_exposes_installed_version() -> None:
     assert stellaris_supporter.__version__ == "0.0.1"
 
 
-def test_module_help_succeeds_without_advertising_future_commands() -> None:
+def test_module_help_succeeds_without_advertising_future_subcommands() -> None:
     result = run_module("--help")
 
     assert result.returncode == 0
+    assert result.stdout.startswith("usage: stellaris-supporter [-h] [--version]")
     assert "project scaffold" in result.stdout
-    for future_command in ("index", "search", "show", "refs", "snapshots", "diff"):
-        assert future_command not in result.stdout
+    assert "positional arguments:" not in result.stdout
 
 
 def test_module_version_succeeds() -> None:
