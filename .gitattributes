@@ -1,0 +1,2 @@
+# Synthetic fixtures are byte-level test inputs; never normalize their line endings.
+tests/fixtures/synthetic/corpus/** -text

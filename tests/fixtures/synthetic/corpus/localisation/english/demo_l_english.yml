@@ -1,0 +1,10 @@
+# origin: synthetic
+l_english:
+ demo_echo_theory:0 "Echo Weaving"
+ demo_prism_lattice:0 "Prismatic Lattice"
+ demo_english_only:0 "English Only Signal"
+ demo_cycle_a:0 "$demo_cycle_b$"
+ demo_cycle_b:0 "$demo_cycle_a$"
+ demo_dynamic:0 "Pilot [Root.GetName] sees $demo_prism_lattice$"
+ demo_duplicate_loc:0 "English First"
+ demo_duplicate_loc:0 "English Second"

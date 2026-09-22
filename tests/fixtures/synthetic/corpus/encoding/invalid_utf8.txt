@@ -1,0 +1,2 @@
+# origin: synthetic
+invalid_bytes = ÿþ€

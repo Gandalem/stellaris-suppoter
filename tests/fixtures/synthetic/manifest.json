@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "origin": "synthetic",
+  "generator": "scripts/generate_synthetic_corpus.py",
+  "provenance": "All fixture names, values, strings, and expected scenario labels were authored for this project. No Stellaris game, DLC, mod, localisation, or save-file content was copied.",
+  "deterministic": true,
+  "required_scenarios": [
+    "normal",
+    "error",
+    "localisation",
+    "collision"
+  ],
+  "files": [
+    {
+      "path": "corpus/common/technology/00_demo_normal.txt",
+      "scenario": "normal",
+      "encoding": "utf-8",
+      "description": "Fictional technology-like definitions with prerequisites, variables, conditions, and weights.",
+      "size": 686,
+      "sha256": "7c3c2754c11cd5912105e0ab3dc6df737a0107d0b79e3d7a20dc271ad8507323"
+    },
+    {
+      "path": "corpus/common/technology/01_demo_collision.txt",
+      "scenario": "collision",
+      "encoding": "utf-8",
+      "description": "Duplicate entity IDs, duplicate keys, and a mixed scalar/assignment block.",
+      "size": 277,
+      "sha256": "cdaccbb7f30b8711bb0a9d9b914baa978d31b3ff1595d61515bcc5e54d79a737"
+    },
+    {
+      "path": "corpus/common/technology/02_demo_lexical_edges.txt",
+      "scenario": "lexical-edge",
+      "encoding": "utf-8",
+      "description": "Strings containing comment/brace characters, escaped quotes, comparisons, and a variable token.",
+      "size": 239,
+      "sha256": "85bb81c2a0c908ccf910e6aa1bc67b8239b2bec75c9d129e00dcca6d869f73ae"
+    },
+    {
+      "path": "corpus/encoding/bom_crlf.txt",
+      "scenario": "encoding",
+      "encoding": "utf-8-bom-crlf",
+      "description": "UTF-8 BOM and CRLF line endings with a quoted hash/brace payload.",
+      "size": 77,
+      "sha256": "8ce34e6ead5a93a48da0a65500a74628e80dba1df1fbfdb45153fda681883b9c"
+    },
+    {
+      "path": "corpus/encoding/invalid_utf8.txt",
+      "scenario": "error",
+      "encoding": "invalid-utf8",
+      "description": "Deliberately invalid UTF-8 bytes after an ASCII synthetic-origin marker.",
+      "size": 40,
+      "sha256": "b4250f0eab555e8b3ce9167f550d457660e3c9f22754af6d2bbe8401cc57ef31"
+    },
+    {
+      "path": "corpus/limits/depth_130.txt",
+      "scenario": "error",
+      "encoding": "utf-8",
+      "description": "130 nested blocks for a future default depth limit of 128.",
+      "size": 1597,
+      "sha256": "6acfa723826422480def4bdc6adf87c47b0170ebd6f46d76a484702d21b97a74"
+    },
+    {
+      "path": "corpus/localisation/english/demo_l_english.yml",
+      "scenario": "localisation",
+      "encoding": "utf-8",
+      "description": "English names, English-only fallback, duplicate key, reference cycle, and dynamic text.",
+      "size": 359,
+      "sha256": "8fa333eb41af6b269989372489800b419dca45c037219454a9b1b9928613484d"
+    },
+    {
+      "path": "corpus/localisation/korean/demo_l_korean.yml",
+      "scenario": "localisation",
+      "encoding": "utf-8",
+      "description": "Korean names plus a Korean-only key and dynamic/reference text.",
+      "size": 230,
+      "sha256": "4e56cc84a73f75cac1deff81b04192deef3d6904bac679a9e2a5b0c4f7bf2fca"
+    },
+    {
+      "path": "corpus/localisation/korean/demo_l_korean_collision.yml",
+      "scenario": "collision",
+      "encoding": "utf-8",
+      "description": "A second Korean definition for the same localisation key.",
+      "size": 81,
+      "sha256": "37a8b5ddd4bc5ae618a2fb98448ae4cc8253047216d1041679cdb5b50aaeb1cd"
+    },
+    {
+      "path": "corpus/malformed/unclosed_block.txt",
+      "scenario": "error",
+      "encoding": "utf-8",
+      "description": "Block deliberately reaches EOF before a closing brace.",
+      "size": 102,
+      "sha256": "4a9cb36809a6d449d650df65caabfd04d7386767ae7675279dfb540c6549b530"
+    },
+    {
+      "path": "corpus/malformed/unclosed_string.txt",
+      "scenario": "error",
+      "encoding": "utf-8",
+      "description": "Quoted value deliberately reaches EOF without a closing quote.",
+      "size": 84,
+      "sha256": "32b96b916b7d3fef0c0fe8a72967be6b83a5cdb652d0ae023e0287be62e60b45"
+    },
+    {
+      "path": "corpus/malformed/unsupported_operator.txt",
+      "scenario": "error",
+      "encoding": "utf-8",
+      "description": "Deliberately unsupported operator that must not receive invented semantics.",
+      "size": 70,
+      "sha256": "5810897eddccac4451a9b0959769fc7231752e1c8beae6421756a88afbb514bf"
+    },
+    {
+      "path": "corpus/snapshots/alpha/common/technology/00_demo_snapshot.txt",
+      "scenario": "collision",
+      "encoding": "utf-8",
+      "description": "Synthetic snapshot alpha defines demo_snapshot_probe differently from beta.",
+      "size": 79,
+      "sha256": "a4ff98b81fc756ff12b878809c2b90d97d0a68e5dd6cef95cd3a79bc203dabb9"
+    },
+    {
+      "path": "corpus/snapshots/beta/common/technology/00_demo_snapshot.txt",
+      "scenario": "collision",
+      "encoding": "utf-8",
+      "description": "Synthetic snapshot beta defines demo_snapshot_probe differently from alpha.",
+      "size": 78,
+      "sha256": "d3579d03a2ef5f06b11613a0b728a39aeac193f47f2d29b61894304e32873982"
+    }
+  ]
+}

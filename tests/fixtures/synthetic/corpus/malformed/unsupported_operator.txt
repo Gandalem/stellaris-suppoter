@@ -1,0 +1,4 @@
+# origin: synthetic
+demo_unsupported_operator = {
+    mystery ^= 42
+}
