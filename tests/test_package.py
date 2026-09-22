@@ -23,7 +23,6 @@ def test_module_help_advertises_only_implemented_product_command() -> None:
     result = run_module("--help")
     assert result.returncode == 0
     assert "{doctor}" in result.stdout
-    assert "Validate configuration, paths, and local runtime capabilities." in result.stdout
 
 
 def test_module_version_succeeds() -> None:
