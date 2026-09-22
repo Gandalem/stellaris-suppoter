@@ -34,7 +34,7 @@ python -m unittest discover -s tests_harness -v
 
 ## 구현된 개발 환경
 
-TASK-001에서 아래 흐름을 실제 CI로 검증했습니다. 현재 CLI는 패키지 골격의 help/version만 제공하며 게임 기능은 아직 없습니다.
+TASK-001에서 아래 흐름을 실제 CI로 검증했습니다. 현재 CLI는 help/version과 TASK-003의 `doctor`만 제공합니다. 게임 inventory/parser/search 기능은 아직 없습니다.
 
 ```sh
 python -m venv .venv
@@ -47,8 +47,12 @@ stellaris-supporter --help
 
 가상환경 활성화를 위해 시스템 실행 정책이나 보안을 전역으로 낮추도록 요구하지 않습니다. 개발 의존성 설치에는 인터넷이 필요할 수 있습니다. TASK-001 검증은 GitHub Actions의 Ubuntu/Python 3.11.16과 Windows/Python 3.13.15에서 성공했습니다. 향후 제품의 정적 검색·회귀는 의존성을 설치한 뒤 네트워크 없이 동작해야 하며, '오프라인 런타임'과 '최초 도구 다운로드 불필요'를 혼동하지 않습니다.
 
-## 예정 설정 계약
+## 구현된 설정 계약
 
-사용자 로컬 TOML에는 `game_root`, `data_dir`, `language`, `limits`를 둡니다. 명시 CLI 옵션 → 지정한 TOML → 안전한 기본값 순서이며 환경변수로 게임 경로를 몰래 선택하지 않습니다. `network.enabled=false`, 모델 provider는 `none`이 기본입니다. 비밀 키는 TOML 예시에 넣지 않고 후속 provider에서 환경변수 이름만 참조합니다. 실제 기본 경로와 예제 설정 파일은 TASK-003에서 Windows/Linux 테스트와 함께 확정합니다.
+TASK-003에서 stdlib `tomllib` 기반 설정과 `doctor`를 구현했습니다. 우선순위는 명시 CLI override → TOML → 안전한 기본값입니다. `game_root`는 환경변수나 홈 디렉터리 검색으로 자동 탐색하지 않으며 반드시 명시해야 합니다. TOML의 상대 경로는 설정 파일 디렉터리 기준, CLI override의 상대 경로는 현재 작업 디렉터리 기준으로 해석합니다.
 
-설치 폴더 안이나 그 상위 경로를 출력·캐시 경로로 지정하면 거부합니다. 설정 파일 위치와 데이터 폴더는 진단에서 로컬에만 표시하고 공개 보고서에서는 `<GAME_ROOT>`, `<DATA_DIR>`로 치환합니다.
+기본 설정 위치는 Windows에서 `%LOCALAPPDATA%/StellarisSupporter/config.toml`, Linux에서 `$XDG_CONFIG_HOME/stellaris-supporter/config.toml` 또는 `~/.config/stellaris-supporter/config.toml`입니다. 기본 data_dir는 Windows `%LOCALAPPDATA%/StellarisSupporter/data`, Linux `$XDG_DATA_HOME/stellaris-supporter` 또는 `~/.local/share/stellaris-supporter`입니다. macOS는 `~/Library/Application Support/StellarisSupporter/`를 best-effort 기본으로 둡니다.
+
+`network.enabled=false`만 허용합니다. `game_root`와 `data_dir`가 같거나 어느 한쪽이 다른 쪽의 부모/자식이면 거부합니다. 실제 게임 폴더는 읽기 권한만 확인하고 쓰기 권한은 요구하지 않습니다. `data_dir`는 읽기·쓰기 가능해야 합니다.
+
+예시는 [config.example.toml](../config.example.toml)에 있습니다. 로컬 doctor 출력은 사용자가 요청한 절대 경로를 보여줄 수 있지만, 공개 evidence 직렬화는 `<CONFIG_PATH>`, `<GAME_ROOT>`, `<DATA_DIR>`로 치환할 수 있습니다.

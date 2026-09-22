@@ -1,17 +1,17 @@
 # CLI 계약 v0.1
 
-아래 제품 명령은 아직 구현되지 않았습니다. TASK-013은 기본 CLI, TASK-015는 refs, TASK-016은 diff를 구현합니다. 이 문서는 세 작업을 합친 v0.1 계약이며 TASK-013 완료에 아직 구현되지 않은 refs/diff를 요구하지 않습니다. 현재 실행 가능한 것은 README의 문서 검사 명령뿐입니다.
+`doctor`는 TASK-003에서 구현됐습니다. 나머지 제품 명령은 아직 구현되지 않았고 TASK-013이 기본 CLI 흐름, TASK-015가 refs, TASK-016이 diff를 확장합니다. 현재 help에는 구현된 `doctor`만 제품 subcommand로 표시합니다.
 
 ## 공통
 
-실행 이름은 stellaris-supporter입니다. 전역 옵션은 subcommand 앞에 둡니다: --config PATH, --format text|json, --verbose. 기본은 text입니다. JSON stdout에는 객체 하나만, 로그·진행률은 stderr에 출력합니다. JSON 모드에서는 색상/진행률을 끕니다. 개인 경로·키·원문 전체는 공개 로그에서 제외합니다.
+실행 이름은 stellaris-supporter입니다. 현재 전역 옵션은 subcommand 앞에 둡니다: `--config PATH`, `--format text|json`, `--game-root PATH`, `--data-dir PATH`, `--language CODE`. 기본 출력은 text입니다. `--verbose`는 후속 CLI 작업에서 추가합니다. JSON stdout에는 객체 하나만, 로그·진행률은 stderr에 출력합니다. JSON 모드에서는 색상/진행률을 끕니다. 개인 경로·키·원문 전체는 공개 로그에서 제외합니다.
 
-설정 파일을 명시할 수 있고 기본 위치는 TASK-003에서 OS 테스트와 함께 확정합니다. 아래 경로는 placeholder입니다.
+설정 파일을 명시할 수 있으며 기본 위치와 경로 해석 규칙은 [환경 문서](ENVIRONMENT.md)에 확정했습니다. `doctor`는 source 파일을 스캔하지 않고 설정·경로·Python/SQLite/FTS5·네트워크 비활성 상태만 검사합니다. `--check-sources`는 inventory 구현 후 추가합니다.
 
 | 명령 | 핵심 인자 | 동작 |
 |---|---|---|
 | init | --game-root PATH --data-dir PATH | 안전한 설정 작성; 기존 파일은 확인 없이 덮지 않음 |
-| doctor | --check-sources 선택 | 설정·경로·Python/SQLite/FTS·버전 증거 확인; 선택 시 파일 재검사 |
+| doctor | 현재 추가 인자 없음 | 설정·경로·application/Python/SQLite/FTS5·network off 확인; source 재검사는 아직 하지 않음 |
 | index | --allow-partial 선택 | 수집·parse·번역·DB 생성, 검증 후 활성화 |
 | search TEXT | --kind KIND --snapshot ID --limit N 선택 | 이름·ID·별칭 검색 |
 | show GAME_ID | --kind KIND --snapshot ID 선택 | 모든 일치 정의·근거·충돌 반환 |

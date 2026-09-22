@@ -2,7 +2,7 @@
 
 사용자가 설치한 Stellaris 데이터에 근거하여 한국어로 검색하고 설명하는 로컬 우선 도우미.
 
-> **상태: TASK-001 개발 환경과 TASK-002 합성 테스트 corpus까지 구현됨. 실제 게임 데이터 parser/search 기능은 아직 구현되지 않았습니다.**
+> **상태: TASK-001 개발 환경, TASK-002 합성 corpus, TASK-003 설정/doctor까지 구현됨. 실제 게임 inventory/parser/search 기능은 아직 구현되지 않았습니다.**
 > 기준일: 2026-09-22 (Asia/Seoul). 이 날짜는 문서 작성일이며 게임 데이터 검증일이 아닙니다.
 > 저장소 이름 `stellaris-suppoter`는 기존 이름을 유지합니다. Python 패키지명은 `stellaris_supporter`, 예정 CLI는 `stellaris-supporter`입니다.
 
@@ -38,13 +38,14 @@ python -m venv .venv
 python -m pip install -e ".[dev]"
 stellaris-supporter --help
 stellaris-supporter --version
+stellaris-supporter --config ./stellaris-supporter.local.toml doctor
 python -m pytest
 python -m ruff check .
 python scripts/check_harness.py
 python scripts/generate_synthetic_corpus.py --output ./tmp-synthetic
 ```
 
-현재 `stellaris-supporter`는 help/version만 제공하는 골격입니다. [합성 corpus](tests/fixtures/synthetic/README.md)는 parser/localisation 개발을 위한 테스트 입력이며 실제 게임 데이터가 아닙니다. 게임 파서, 설정/doctor, 검색, 실제 게임 데이터 접근, 모델 연결은 아직 없습니다.
+현재 `stellaris-supporter`는 help/version과 `doctor`를 제공합니다. `doctor`는 설정, game/data 경로 경계, Python/SQLite/FTS5, network off 상태만 확인하며 게임 파일을 스캔하지 않습니다. [합성 corpus](tests/fixtures/synthetic/README.md)는 parser/localisation 개발용 테스트 입력이며 실제 게임 데이터가 아닙니다. inventory, parser, 검색, 실제 게임 데이터 분석, 모델 연결은 아직 없습니다.
 
 ## 프로젝트 상태 관리
 
