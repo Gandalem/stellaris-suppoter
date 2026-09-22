@@ -13,8 +13,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="stellaris-supporter",
         description=(
-            "Stellaris Supporter project scaffold. "
-            "Game indexing, search, and analysis commands are not implemented yet."
+            "Stellaris Supporter project scaffold only. "
+            "Product commands are not implemented yet."
         ),
     )
     parser.add_argument(
