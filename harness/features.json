@@ -33,12 +33,15 @@
       "id": "F-003",
       "title": "Inventory and version evidence",
       "milestone": "v0.1",
-      "status": "planned",
+      "status": "in_progress",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/UPDATES.md"
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-004-safe-inventory.md",
+        "harness/evidence/TASK-004-review-followup.md"
+      ]
     },
     {
       "id": "F-004",
@@ -153,7 +156,9 @@
         "SECURITY.md"
       ],
       "evidence": [
-        "harness/evidence/TASK-031-safety-hardening-main-integration.md"
+        "harness/evidence/TASK-031-safety-hardening-main-integration.md",
+        "harness/evidence/TASK-004-safe-inventory.md",
+        "harness/evidence/TASK-004-review-followup.md"
       ]
     },
     {

@@ -17,6 +17,7 @@ DEFAULT_FILE_BYTES = 16 * 1024 * 1024
 DEFAULT_TOTAL_BYTES = 512 * 1024 * 1024
 DEFAULT_MAX_DEPTH = 128
 DEFAULT_MAX_FILES = 50_000
+DEFAULT_MAX_ENTRIES = 100_000
 DEFAULT_QUERY_CHARS = 512
 DEFAULT_MAX_RESULTS = 100
 
@@ -27,6 +28,7 @@ _ALLOWED_LIMITS = {
     "total_bytes",
     "max_depth",
     "max_files",
+    "max_entries",
     "query_chars",
     "max_results",
 }
@@ -40,6 +42,7 @@ class Limits:
     total_bytes: int = DEFAULT_TOTAL_BYTES
     max_depth: int = DEFAULT_MAX_DEPTH
     max_files: int = DEFAULT_MAX_FILES
+    max_entries: int = DEFAULT_MAX_ENTRIES
     query_chars: int = DEFAULT_QUERY_CHARS
     max_results: int = DEFAULT_MAX_RESULTS
 
@@ -418,6 +421,7 @@ def load_settings(
         total_bytes=_read_positive_int(limits_raw, "total_bytes", DEFAULT_TOTAL_BYTES, diagnostics),
         max_depth=_read_positive_int(limits_raw, "max_depth", DEFAULT_MAX_DEPTH, diagnostics),
         max_files=_read_positive_int(limits_raw, "max_files", DEFAULT_MAX_FILES, diagnostics),
+        max_entries=_read_positive_int(limits_raw, "max_entries", DEFAULT_MAX_ENTRIES, diagnostics),
         query_chars=_read_positive_int(limits_raw, "query_chars", DEFAULT_QUERY_CHARS, diagnostics),
         max_results=_read_positive_int(limits_raw, "max_results", DEFAULT_MAX_RESULTS, diagnostics),
     )
