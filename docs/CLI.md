@@ -1,6 +1,6 @@
 # CLI 계약 v0.1
 
-아래 제품 명령은 아직 구현되지 않았습니다. TASK-013의 구현·테스트 기준입니다. 현재 실행 가능한 것은 README의 문서 검사 명령뿐입니다.
+아래 제품 명령은 아직 구현되지 않았습니다. TASK-013은 기본 CLI, TASK-015는 refs, TASK-016은 diff를 구현합니다. 이 문서는 세 작업을 합친 v0.1 계약이며 TASK-013 완료에 아직 구현되지 않은 refs/diff를 요구하지 않습니다. 현재 실행 가능한 것은 README의 문서 검사 명령뿐입니다.
 
 ## 공통
 
@@ -15,7 +15,7 @@
 | index | --allow-partial 선택 | 수집·parse·번역·DB 생성, 검증 후 활성화 |
 | search TEXT | --kind KIND --snapshot ID --limit N 선택 | 이름·ID·별칭 검색 |
 | show GAME_ID | --kind KIND --snapshot ID 선택 | 모든 일치 정의·근거·충돌 반환 |
-| refs GAME_ID | --direction in|out --depth N --snapshot ID 선택 | 정적 참조; 기본 out/depth 1, 최대 8 |
+| refs GAME_ID | --direction in\|out --depth N --snapshot ID 선택 | 정적 참조; 기본 out/depth 1, 최대 8 |
 | snapshots | 없음 | snapshot 상태·버전·생성/검사 시각 |
 | diff OLD NEW | snapshot ID 두 개 | 파일·엔티티 변화; 엔진 의미 변화로 과장하지 않음 |
 
