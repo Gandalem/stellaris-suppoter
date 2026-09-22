@@ -9,12 +9,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-
-OWNER_FILE = ".stellaris-supporter-synthetic-owner.json"
-OWNER_ID = "stellaris-supporter-synthetic-corpus-v1"
-REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 @dataclass(frozen=True)
@@ -275,79 +274,91 @@ def manifest(fixtures_to_write: tuple[Fixture, ...]) -> dict[str, object]:
     }
 
 
+OWNER_FILE = ".stellaris-supporter-synthetic-owner.json"
+OWNER_ID = "stellaris-supporter-synthetic-corpus-v1"
+OWNER_ORIGIN = "synthetic"
+OWNER_GENERATOR = "scripts/generate_synthetic_corpus.py"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
 def _owner_bytes() -> bytes:
     return (json.dumps({"owner": OWNER_ID}, sort_keys=True) + "\n").encode("utf-8")
 
 
-def _validate_output_path(output: Path) -> Path:
-    if output.is_symlink():
-        raise ValueError("refusing symlink output directory")
-    resolved = output.resolve(strict=False)
-    if resolved == resolved.parent:
-        raise ValueError("refusing filesystem root as output directory")
-    if resolved == REPO_ROOT or REPO_ROOT.is_relative_to(resolved):
-        raise ValueError("refusing repository root or its parent as output directory")
+def _safe_relative_path(value: str) -> Path:
+    relative = Path(value)
+    if relative.is_absolute() or ".." in relative.parts or not relative.parts:
+        raise ValueError("manifest contains an unsafe managed path")
+    if relative.parts[0] != "corpus":
+        raise ValueError("managed fixture paths must remain under corpus/")
+    return relative
+
+
+def _validate_output_path(raw_output: Path) -> Path:
+    if raw_output.is_symlink():
+        raise ValueError("output path must not be a symbolic link")
+    try:
+        expanded = raw_output.expanduser()
+        absolute = expanded if expanded.is_absolute() else Path.cwd() / expanded
+        resolved = absolute.resolve(strict=False)
+        repository_root = REPO_ROOT
+        home = Path.home().resolve(strict=False)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise ValueError("output path cannot be resolved safely") from exc
+
+    filesystem_root = Path(resolved.anchor)
+    if (
+        resolved in {filesystem_root, repository_root, home}
+        or repository_root.is_relative_to(resolved)
+    ):
+        raise ValueError("refusing a dangerous output root")
     return resolved
 
 
-def _read_owned_paths(output: Path) -> set[Path]:
+def _managed_target(output: Path, relative: Path) -> Path:
+    current = output
+    for part in relative.parts:
+        current = current / part
+        if current.is_symlink():
+            raise ValueError("managed paths must not traverse symbolic links")
+    return current
+
+
+def _load_owned_paths(output: Path) -> set[str]:
+    manifest_path = output / "manifest.json"
+    owner_path = output / OWNER_FILE
+    if manifest_path.is_symlink() or owner_path.is_symlink():
+        raise ValueError("synthetic ownership metadata must not be a symbolic link")
     try:
-        owner_data = json.loads((output / OWNER_FILE).read_text(encoding="utf-8"))
-        old_manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        owner_data = json.loads(owner_path.read_text(encoding="utf-8"))
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
         raise FileExistsError(
-            "refusing --force because output is not a recognized generator-owned directory"
+            "non-empty output is not generator-owned: ownership metadata is missing"
         ) from exc
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError("existing synthetic manifest cannot prove ownership") from exc
+
     if owner_data != {"owner": OWNER_ID}:
-        raise FileExistsError("refusing --force because ownership marker does not match")
-    managed = {output / "manifest.json", output / OWNER_FILE}
-    for entry in old_manifest.get("files", []):
-        raw = entry.get("path")
-        if not isinstance(raw, str):
-            raise FileExistsError("refusing --force because prior manifest is invalid")
-        relative = Path(raw)
-        if relative.is_absolute() or ".." in relative.parts:
-            raise FileExistsError("refusing --force because prior manifest path is unsafe")
-        managed.add(output / relative)
-    return managed
+        raise ValueError("existing ownership marker does not match this generator")
+    if data.get("origin") != OWNER_ORIGIN or data.get("generator") != OWNER_GENERATOR:
+        raise ValueError("existing manifest is not owned by this synthetic generator")
+    entries = data.get("files")
+    if not isinstance(entries, list):
+        raise ValueError("existing synthetic manifest has no valid files list")
+
+    owned: set[str] = set()
+    for entry in entries:
+        if not isinstance(entry, dict) or not isinstance(entry.get("path"), str):
+            raise ValueError("existing synthetic manifest contains an invalid file entry")
+        relative = _safe_relative_path(entry["path"])
+        owned.add(relative.as_posix())
+    return owned
 
 
-def _remove_managed_paths(output: Path, managed: set[Path]) -> None:
-    for path in managed:
-        if path.exists() or path.is_symlink():
-            if path.is_dir():
-                raise FileExistsError("refusing to remove managed path that became a directory")
-            path.unlink()
-    corpus = output / "corpus"
-    if corpus.exists():
-        for directory in sorted(
-            (p for p in corpus.rglob("*") if p.is_dir()),
-            key=lambda p: len(p.parts),
-            reverse=True,
-        ):
-            try:
-                directory.rmdir()
-            except OSError:
-                pass
-        try:
-            corpus.rmdir()
-        except OSError:
-            pass
-
-
-def write_corpus(output: Path, *, force: bool = False) -> None:
-    output = _validate_output_path(output)
-    if output.exists() and any(output.iterdir()):
-        if not force:
-            raise FileExistsError(
-                f"output directory is not empty: {output}; pass --force only for generator-owned output"
-            )
-        _remove_managed_paths(output, _read_owned_paths(output))
-    output.mkdir(parents=True, exist_ok=True)
-
-    all_fixtures = fixtures()
+def _write_payload(output: Path, all_fixtures: tuple[Fixture, ...]) -> None:
     for fixture in all_fixtures:
-        target = output / fixture.path
+        target = output / _safe_relative_path(fixture.path)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(fixture.content)
 
@@ -358,12 +369,79 @@ def write_corpus(output: Path, *, force: bool = False) -> None:
     (output / OWNER_FILE).write_bytes(_owner_bytes())
 
 
+def write_corpus(output: Path, *, force: bool = False) -> None:
+    output = _validate_output_path(output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    if output.exists() and not output.is_dir():
+        raise NotADirectoryError("output exists but is not a directory")
+
+    existing_entries = list(output.iterdir()) if output.exists() else []
+    owned: set[str] = set()
+    if existing_entries:
+        if not force:
+            raise FileExistsError(
+                f"output directory is not empty: {output}; pass --force to refresh owned files"
+            )
+        owned = _load_owned_paths(output)
+
+    all_fixtures = fixtures()
+    new_paths = {fixture.path for fixture in all_fixtures}
+
+    for relative_text in sorted(owned | new_paths):
+        relative = _safe_relative_path(relative_text)
+        target = _managed_target(output, relative)
+        if relative_text in new_paths and target.exists() and relative_text not in owned:
+            raise FileExistsError(
+                "refusing to overwrite an unmanaged file that collides with a generated path"
+            )
+        if target.exists() and target.is_dir():
+            raise IsADirectoryError("managed fixture path unexpectedly became a directory")
+
+    output.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(
+        prefix=".stellaris-supporter-synthetic-", dir=output.parent
+    ) as temp_dir:
+        staging = Path(temp_dir) / "payload"
+        staging.mkdir()
+        _write_payload(staging, all_fixtures)
+
+        for relative_text in sorted(owned - new_paths):
+            target = _managed_target(output, _safe_relative_path(relative_text))
+            if target.exists():
+                target.unlink()
+
+        for fixture in all_fixtures:
+            relative = _safe_relative_path(fixture.path)
+            target = _managed_target(output, relative)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            os.replace(staging / relative, target)
+
+        manifest_target = output / "manifest.json"
+        owner_target = output / OWNER_FILE
+        if manifest_target.is_symlink() or owner_target.is_symlink():
+            raise ValueError("synthetic ownership metadata must not be symbolic links")
+        os.replace(staging / "manifest.json", manifest_target)
+        os.replace(staging / OWNER_FILE, owner_target)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
-    write_corpus(args.output, force=args.force)
+    try:
+        write_corpus(args.output, force=args.force)
+    except (
+        FileExistsError,
+        IsADirectoryError,
+        NotADirectoryError,
+        OSError,
+        RuntimeError,
+        ValueError,
+    ) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
     return 0
 
 
