@@ -192,6 +192,10 @@ def _resolve_path(
     field: str,
 ) -> Path | None:
     try:
+        if "\x00" in value:
+            raise ValueError("embedded NUL")
+        if value.startswith("~") and value != "~" and not value.startswith(("~/", "~\\")):
+            raise ValueError("named-user expansion is not supported")
         path = Path(value).expanduser()
         if not path.is_absolute():
             path = base / path
@@ -261,9 +265,11 @@ def load_settings(
 
     explicit_config = config_path is not None
     selected_config = config_path or default_config_path(system=system, env=environment, home=home)
-    if not selected_config.is_absolute():
-        selected_config = current_dir / selected_config
     try:
+        if "\x00" in str(selected_config):
+            raise ValueError("embedded NUL")
+        if not selected_config.is_absolute():
+            selected_config = current_dir / selected_config
         selected_config = selected_config.resolve(strict=False)
         config_exists = _safe_exists(
             selected_config,
