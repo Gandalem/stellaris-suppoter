@@ -1,25 +1,11 @@
 # TASK-031 Safety hardening and main integration
 
-## Trigger
+상태: done  
+평가: E-047 pass  
+근거: [TASK-031 evidence](../evidence/TASK-031-safety-hardening-main-integration.md)
 
-Post-TASK-003 review reproduced filesystem and integration defects that were outside the original CI cases. Existing successful evidence remains historical evidence, but F-002 is temporarily returned to `in_progress` until the new regressions pass.
+Post-TASK-003 review에서 재현된 filesystem/integration 반례를 수정했다. Generator managed-only replacement, path exception diagnostics, POSIX traversal access, public-report redaction, XDG validation, strict schema version을 Linux/Windows에서 재검증했다.
 
-## Scope
+통합 브랜치는 main에서 직접 분기했으며 PR #6이 main을 대상으로 한다. 실제 merge commit은 PR 병합 후 이 문서/후속 세션에서 추적한다.
 
-- Bound synthetic corpus `--force` to generator-owned files only.
-- Reject symlink, filesystem-root, repository-root, and repository-parent output targets.
-- Convert user-controlled path resolution/status failures into structured diagnostics.
-- Require directory traversal capability on POSIX while keeping game input read-only.
-- Redact public report diagnostics as well as settings.
-- Ignore empty/relative XDG base-directory values.
-- Require integer `schema_version = 1`.
-- Revalidate on Linux and Windows.
-- Integrate TASK-001~003 on a branch based directly on `main` and open a main-targeting PR.
-
-## Non-goals
-
-TASK-004 inventory behavior, actual game files, game version/DLC/mod detection, parser/search.
-
-## Completion
-
-TASK-031 becomes done only after E-047 passes with CI evidence. F-002 may return to verified; F-013/F-014 remain in_progress because broader safety/release tasks are still outstanding. TASK-004 remains blocked by dependency until then.
+TASK-004는 TASK-031에 의존하며 현재 dependency가 충족됐다.

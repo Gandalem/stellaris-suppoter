@@ -2,15 +2,16 @@
   "schema_version": 1,
   "phase": "implementation",
   "product_implemented": false,
-  "active_task": "TASK-031",
-  "next_task": "TASK-031",
-  "last_session": "harness/sessions/2026-09-22-task-003.md",
+  "active_task": null,
+  "next_task": "TASK-004",
+  "last_session": "harness/sessions/2026-09-22-task-031.md",
   "latest_game_version": null,
   "updated_on": "2026-09-22",
   "notes": [
-    "Post-review hardening is in progress before TASK-004.",
-    "F-002 was downgraded from verified to in_progress pending review-regression revalidation; prior E-003/E-004 evidence is preserved.",
-    "Integration branch fix/safety-hardening-main-integration is based directly on main and carries TASK-001 through TASK-003 plus hardening changes.",
-    "TASK-004 now depends on TASK-031."
+    "TASK-031 completed after post-review regression hardening on Linux and Windows.",
+    "F-002 is verified again with both original TASK-003 evidence and post-review E-047 evidence.",
+    "TASK-004 dependency on TASK-031 is satisfied; Safe inventory may start after main integration is merged.",
+    "F-013 and F-014 remain in_progress because broader safety/release work is still outstanding.",
+    "Game data, version, DLC, mods, parser/search and user-local acceptance remain unverified."
   ]
 }

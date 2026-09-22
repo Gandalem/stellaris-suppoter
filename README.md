@@ -2,7 +2,7 @@
 
 사용자가 설치한 Stellaris 데이터에 근거하여 한국어로 검색하고 설명하는 로컬 우선 도우미.
 
-> **상태: TASK-001 개발 환경, TASK-002 합성 corpus, TASK-003 설정/doctor까지 구현됨. 실제 게임 inventory/parser/search 기능은 아직 구현되지 않았습니다.**
+> **상태: TASK-001~003과 post-review 안전성 보완(TASK-031)까지 구현·재검증됨. 실제 게임 inventory/parser/search 기능은 아직 구현되지 않았습니다.**
 > 기준일: 2026-09-22 (Asia/Seoul). 이 날짜는 문서 작성일이며 게임 데이터 검증일이 아닙니다.
 > 저장소 이름 `stellaris-suppoter`는 기존 이름을 유지합니다. Python 패키지명은 `stellaris_supporter`, 예정 CLI는 `stellaris-supporter`입니다.
 
@@ -49,7 +49,7 @@ python scripts/generate_synthetic_corpus.py --output ./tmp-synthetic
 
 ## 프로젝트 상태 관리
 
-제품 기능 상태의 단일 원장은 [features.json](harness/features.json), 작업 상태는 [tasks.json](harness/tasks.json), 다음 작업은 [state.json](harness/state.json)입니다. TASK-001~003은 완료됐고 E-001~004는 실행 근거와 함께 통과했습니다. F-002 설정·진단은 `verified`, F-004/F-006은 합성 corpus만 준비된 상태라 `in_progress`입니다. 실제 inventory/parser/search와 게임 호환성은 아직 검증되지 않았습니다.
+제품 기능 상태의 단일 원장은 [features.json](harness/features.json), 작업 상태는 [tasks.json](harness/tasks.json), 다음 작업은 [state.json](harness/state.json)입니다. TASK-001~003과 TASK-031이 완료됐고 E-001~004 및 E-047이 실행 근거와 함께 통과했습니다. F-002 설정·진단은 리뷰 반례 보완 후 다시 `verified`, F-013/F-014는 후속 안전·릴리스 작업 때문에 `in_progress`, F-004/F-006은 parser/localisation 구현 전이라 `in_progress`입니다.
 
 ## 데이터와 공개 저장소
 
