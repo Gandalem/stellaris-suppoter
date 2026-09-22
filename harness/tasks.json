@@ -4,7 +4,7 @@
     {
       "id": "TASK-001",
       "title": "Package and tooling",
-      "status": "doing",
+      "status": "done",
       "feature_ids": [
         "F-001"
       ],
@@ -19,7 +19,9 @@
       "acceptance": [
         "Clean installation, import, help and test commands are reproducible."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-001-clean-setup.md"
+      ]
     },
     {
       "id": "TASK-002",

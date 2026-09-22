@@ -2,7 +2,7 @@
 
 사용자가 설치한 Stellaris 데이터에 근거하여 한국어로 검색하고 설명하는 로컬 우선 도우미.
 
-> **상태: 설계·하네스 문서만 준비됨. 게임 분석 프로그램은 아직 구현되지 않았습니다.**
+> **상태: Python 패키지/개발 도구 골격(TASK-001)까지 구현됨. 게임 데이터 분석 기능은 아직 구현되지 않았습니다.**
 > 기준일: 2026-09-22 (Asia/Seoul). 이 날짜는 문서 작성일이며 게임 데이터 검증일이 아닙니다.
 > 저장소 이름 `stellaris-suppoter`는 기존 이름을 유지합니다. Python 패키지명은 `stellaris_supporter`, 예정 CLI는 `stellaris-supporter`입니다.
 
@@ -31,17 +31,23 @@ v0.1은 인터넷·API 키·Codex·GPU 없이 **개발자가 만든 합성 fixtu
 
 ## 지금 실행할 수 있는 것
 
-Python 3.11 이상에서 다음 명령은 **문서 하네스 정합성**만 검사합니다.
+Python 3.11 이상에서 개발 환경을 설치하고 현재 패키지 골격을 확인할 수 있습니다.
 
 ```sh
+python -m venv .venv
+python -m pip install -e ".[dev]"
+stellaris-supporter --help
+stellaris-supporter --version
+python -m pytest
+python -m ruff check .
 python scripts/check_harness.py
 ```
 
-제품 CLI, 게임 파서, 검색기, 테스트 fixture, 모델 연결은 아직 없습니다. 다른 문서에 나오는 `stellaris-supporter ...`는 구현할 명령 계약이며 현재 실행 안내가 아닙니다.
+현재 `stellaris-supporter`는 help/version만 제공하는 골격입니다. 게임 파서, 설정/doctor, 검색, 실제 게임 데이터 접근, 모델 연결은 아직 없습니다.
 
 ## 프로젝트 상태 관리
 
-제품 기능 상태의 단일 원장은 [features.json](harness/features.json), 작업 상태는 [tasks.json](harness/tasks.json), 다음 작업은 [state.json](harness/state.json)입니다. 초기 제품 기능은 모두 `planned`; 평가 사례는 설계되어 있지만 아직 실행되지 않았습니다. 문서 검사가 통과해도 제품 기능이나 게임 호환성이 검증된 것은 아닙니다.
+제품 기능 상태의 단일 원장은 [features.json](harness/features.json), 작업 상태는 [tasks.json](harness/tasks.json), 다음 작업은 [state.json](harness/state.json)입니다. E-001 개발 환경 평가는 통과했고 TASK-001은 완료됐지만, F-001은 후속 패키징 작업(TASK-020)까지 남아 `in_progress`입니다. 게임 기능과 실제 게임 호환성은 아직 검증되지 않았습니다.
 
 ## 데이터와 공개 저장소
 

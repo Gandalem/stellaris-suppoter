@@ -7,10 +7,10 @@
 | 저장소 | 이 GitHub 저장소 읽기·작업 브랜치 쓰기 권한 | 문서·구현 변경 |
 | 실행 환경 | Python 3.11 이상, Git, 터미널, 편집기 | 로컬 개발·하네스 검사 |
 | 개발 데이터 | 직접 만든 합성 스크립트·번역 fixture | TASK-002; 실제 게임 불필요 |
-| 개발 도구 | pytest, Ruff, 패키지 빌드 도구 | TASK-001에서 버전 범위·잠금 정책 확정 |
+| 개발 도구 | Hatchling 1.x, pytest 9.x, Ruff 0.16.x 범위 | TASK-001에서 `pyproject.toml`로 확정 |
 | 개인 저장 공간 | 게임 폴더·저장소와 분리된 캐시 경로 | 로컬 색인 시작 |
 
-Python 최소 버전 선택은 표준 `tomllib`을 쓰기 위한 설계 결정입니다. 해당 모듈은 Python 3.11에 추가되었습니다([S-01](SOURCES.md)). 현재 하네스 검사기와 자체 테스트는 표준 라이브러리만 사용합니다.
+Python 최소 버전 선택은 표준 `tomllib`을 쓰기 위한 설계 결정입니다. 해당 모듈은 Python 3.11에 추가되었습니다([S-01](SOURCES.md)). 제품 패키지는 현재 런타임 외부 의존성이 없고, 빌드·개발 도구 범위는 `pyproject.toml`에 기록합니다.
 
 ## 실제 게임 검증 때 필요한 것
 
@@ -32,20 +32,20 @@ python scripts/check_harness.py
 python -m unittest discover -s tests_harness -v
 ```
 
-## TASK-001 이후 제공할 설치 흐름
+## 구현된 개발 환경
 
-아래는 **아직 구현되지 않은 제품 개발 환경의 목표**입니다.
+TASK-001에서 아래 흐름을 실제 CI로 검증했습니다. 현재 CLI는 패키지 골격의 help/version만 제공하며 게임 기능은 아직 없습니다.
 
 ```sh
 python -m venv .venv
 # 활성화 방식은 OS에 맞게 선택
-python -m pip install -e '.[dev]'
+python -m pip install -e ".[dev]"
 python -m pytest
 python -m ruff check .
 stellaris-supporter --help
 ```
 
-가상환경 활성화를 위해 시스템 실행 정책이나 보안을 전역으로 낮추도록 요구하지 않습니다. 패키지 설치에 인터넷이 필요할 수 있지만, 이미 설치한 뒤 제품의 정적 검색·회귀는 네트워크 없이 동작해야 합니다. '오프라인 런타임'과 '최초 도구 다운로드 불필요'를 혼동하지 않습니다.
+가상환경 활성화를 위해 시스템 실행 정책이나 보안을 전역으로 낮추도록 요구하지 않습니다. 개발 의존성 설치에는 인터넷이 필요할 수 있습니다. TASK-001 검증은 GitHub Actions의 Ubuntu/Python 3.11.16과 Windows/Python 3.13.15에서 성공했습니다. 향후 제품의 정적 검색·회귀는 의존성을 설치한 뒤 네트워크 없이 동작해야 하며, '오프라인 런타임'과 '최초 도구 다운로드 불필요'를 혼동하지 않습니다.
 
 ## 예정 설정 계약
 
