@@ -47,6 +47,14 @@ def test_doctor_reports_runtime_and_fts_fallback(tmp_path: Path) -> None:
     assert {"SQLITE_FTS5_UNAVAILABLE", "NETWORK_DISABLED"} <= codes
 
 
+def test_public_report_redacts_absolute_paths(tmp_path: Path) -> None:
+    report = run_doctor(load_settings(make_config(tmp_path)))
+    payload = report.to_dict(public=True)
+    assert payload["settings"]["config_path"] == "<CONFIG_PATH>"
+    assert payload["settings"]["game_root"] == "<GAME_ROOT>"
+    assert payload["settings"]["data_dir"] == "<DATA_DIR>"
+
+
 def test_doctor_overlap_is_safety_exit_four(tmp_path: Path) -> None:
     config = make_config(tmp_path, data_inside_game=True)
     result = run_module("--format", "json", "--config", str(config), "doctor")

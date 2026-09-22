@@ -41,11 +41,16 @@ class DoctorReport:
             return 3
         return 0
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self, *, public: bool = False) -> dict[str, object]:
+        settings = dict(self.settings)
+        if public:
+            settings["config_path"] = "<CONFIG_PATH>"
+            settings["game_root"] = "<GAME_ROOT>" if settings.get("game_root") is not None else None
+            settings["data_dir"] = "<DATA_DIR>"
         return {
             "schema_version": 1,
             "status": self.status,
-            "settings": self.settings,
+            "settings": settings,
             "runtime": self.runtime.to_dict(),
             "diagnostics": [d.to_dict() for d in self.diagnostics],
         }
