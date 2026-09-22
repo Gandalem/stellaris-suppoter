@@ -44,3 +44,15 @@ python -m pytest
 python -m ruff check .
 python scripts/check_harness.py
 ```
+
+
+## 완료 검증
+
+기능 검증 commit `e4f760f567c0d76b5af28d9737c413c2a2e83526`에서 Ubuntu/Python 3.11과 Windows/Python 3.13 모두 전체 70 tests, inventory 14 tests, Ruff, harness가 통과했다.
+
+상태: done  
+E-005: pass  
+E-006: pass  
+F-003: in_progress (TASK-005 version/DLC evidence 남음)  
+F-013: in_progress (후속 safety suite 남음)  
+근거: [TASK-004 evidence](../evidence/TASK-004-safe-inventory.md)

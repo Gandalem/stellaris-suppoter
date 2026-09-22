@@ -76,7 +76,7 @@
     {
       "id": "TASK-004",
       "title": "Safe inventory",
-      "status": "doing",
+      "status": "done",
       "feature_ids": [
         "F-003",
         "F-013"
@@ -97,7 +97,9 @@
       "acceptance": [
         "Inventory is deterministic, bounded, read-only and contained within allowed roots."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-004-safe-inventory.md"
+      ]
     },
     {
       "id": "TASK-005",
