@@ -1,0 +1,43 @@
+# Python and build artifacts
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Private configuration and credentials (never commit real values)
+.env
+.env.*
+!.env.example
+*.local.toml
+*.pem
+*.key
+
+# Private game inputs and extracted data; fixtures must be synthetic
+/private/
+/game-data/
+/save-data/
+/local-data/
+/cache/
+*.sav
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+
+# Local editor/OS output
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+
+# Gitignore is not a security boundary. Review every staged change.
