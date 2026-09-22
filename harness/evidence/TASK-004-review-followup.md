@@ -69,7 +69,7 @@ Package and tooling PR run: https://github.com/Gandalem/stellaris-suppoter/actio
 | 환경 | job | 전체 pytest | inventory | Ruff | harness |
 |---|---:|---:|---:|---|---|
 | Ubuntu / Python 3.11 | 106814936925 | 81 passed | 25 passed | success | success |
-| Windows / Python 3.13 | 106814936643 | 81 passed | 24 passed + 1 POSIX-only skip | success | success |
+| Windows / Python 3.13 | 106814936643 | 80 passed + 1 POSIX-only skip (81 collected) | 24 passed + 1 POSIX-only skip | success | success |
 
 Windows skip:
 `test_inventory_rejects_non_utf8_filename_as_structured_diagnostic`은 surrogateescape filename을 직접 만드는 POSIX 전용 regression이다. Windows에서 같은 filename representation을 지원한다고 주장하지 않는다.
@@ -79,3 +79,14 @@ Documentation harness run 35748136285도 Ubuntu/Windows 모두 success.
 ## 상태
 
 E-005/E-006은 follow-up candidate에서 pass. TASK-004는 기술 검증만으로 완료 처리하지 않고 reviewer 재검토 및 실제 main 병합 전까지 `doing`으로 유지한다. TASK-005는 아직 시작하지 않는다.
+
+
+## 실제 main 통합
+
+PR #10 merge commit: `472aad700e24e03b20081f13b653502b673c7d00`
+
+Main push run 35749603679:
+- Ubuntu/Python 3.11.16: 81 passed; inventory 25 passed; Ruff/harness success.
+- Windows/Python 3.13.15: 81 collected, 80 passed + POSIX-only 1 skipped; inventory 24 passed + 1 skipped; Ruff/harness success.
+
+Documentation harness run 35749603578도 Ubuntu/Windows 모두 success였다. 이 실제 main evidence로 TASK-004 종료 조건이 충족됐다.
