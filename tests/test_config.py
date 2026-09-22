@@ -142,8 +142,14 @@ def test_game_root_access_check_never_requests_write(tmp_path: Path) -> None:
         seen.append((path, mode))
         return True
     validate_paths(load_settings(config).settings, access_checker=record)
-    assert (game.resolve(), os.R_OK) in seen
-    assert (data.resolve(), os.R_OK | os.W_OK) in seen
+    game_modes = [mode for path, mode in seen if path == game.resolve()]
+    data_modes = [mode for path, mode in seen if path == data.resolve()]
+    assert len(game_modes) == 1
+    assert game_modes[0] & os.R_OK
+    assert not game_modes[0] & os.W_OK
+    assert len(data_modes) == 1
+    assert data_modes[0] & os.R_OK
+    assert data_modes[0] & os.W_OK
 
 
 def test_xdg_empty_and_relative_values_are_ignored(tmp_path: Path) -> None:
