@@ -56,7 +56,8 @@
         "docs/PARSING.md"
       ],
       "evidence": [
-        "harness/evidence/TASK-002-synthetic-corpus.md"
+        "harness/evidence/TASK-002-synthetic-corpus.md",
+        "harness/evidence/TASK-006-lexer-source-spans.md"
       ]
     },
     {

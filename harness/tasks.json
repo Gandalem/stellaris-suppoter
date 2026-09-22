@@ -149,7 +149,9 @@
       "acceptance": [
         "Token boundaries remain correct for strings, comments, BOM and CRLF."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-006-lexer-source-spans.md"
+      ]
     },
     {
       "id": "TASK-007",

@@ -4,13 +4,14 @@
   "product_implemented": false,
   "active_task": "TASK-006",
   "next_task": "TASK-006",
-  "last_session": "harness/sessions/2026-09-23-task-006-start.md",
+  "last_session": "harness/sessions/2026-09-23-task-006.md",
   "latest_game_version": null,
   "updated_on": "2026-09-23",
   "notes": [
-    "TASK-005 merged as main commit 1e0a8fcfbb9661362c85aa24bd54b4e134901107 and actual main push CI succeeded.",
-    "F-003 is verified: TASK-004/TASK-005 are done and E-005/E-007/E-008 are pass.",
-    "latest_game_version remains null because TASK-005 validated the evidence model, not an actual Stellaris installation.",
-    "TASK-006 Lexer and source spans is active; E-009/E-010 remain not_run until lexer verification."
+    "TASK-005 is done and F-003 verified on main commit 1e0a8fcfbb9661362c85aa24bd54b4e134901107.",
+    "TASK-006 lexer candidate 2912d1c192e5f0033a82da5845841c43e8a0ee5b passed E-009/E-010 on Ubuntu and Windows.",
+    "TASK-006 remains doing until review/merge and actual main CI complete.",
+    "F-004 remains in_progress because TASK-007 ordered AST parser and E-011/E-012/E-013 are still outstanding.",
+    "latest_game_version remains null."
   ]
 }
