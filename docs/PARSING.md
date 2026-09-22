@@ -23,7 +23,7 @@ inventory에서 실재 경로를 먼저 확인합니다. 경로가 없으면 게
 
 블록의 assignment와 bare scalar 혼합, 중복 키, namespace, 파일 변수는 순서 있는 노드로 보존합니다. typed block·매크로형 표현식·새 연산자 등 미지원 구조는 unknown 노드와 진단으로 남깁니다. 입력을 코드로 실행하지 않습니다.
 
-UTF-8/BOM을 우선 지원합니다. decoding 실패를 replacement 문자나 임의 인코딩 추측으로 숨기지 않습니다. 원본 BOM·CRLF에 맞는 byte/line span을 유지합니다. 문자열 미종결·brace 누락·예상 밖 EOF는 오류이며 조용한 성공이 아닙니다. 깊이·토큰·파일 크기를 제한합니다.
+UTF-8/BOM을 우선 지원합니다. decoding 실패를 replacement 문자나 임의 인코딩 추측으로 숨기지 않습니다. lexer byte span은 0-based half-open, line/column은 1-based이며 end는 exclusive입니다. CRLF는 한 번의 줄바꿈으로 계산합니다. 선두 UTF-8 BOM은 별도 token으로 보존하되 다음 실제 문자는 line 1/column 1에서 시작합니다. 문자열 미종결·brace 누락·예상 밖 EOF는 오류이며 조용한 성공이 아닙니다. 깊이·토큰·파일 크기를 제한합니다.
 
 ## 도메인 adapter
 
