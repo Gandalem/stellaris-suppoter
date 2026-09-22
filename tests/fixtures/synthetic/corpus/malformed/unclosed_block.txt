@@ -1,0 +1,6 @@
+# origin: synthetic
+demo_unclosed_block = {
+    value = 10
+    nested = {
+        enabled = yes
+    }

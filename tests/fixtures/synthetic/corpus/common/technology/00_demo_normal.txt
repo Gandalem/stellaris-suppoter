@@ -1,0 +1,40 @@
+# origin: synthetic
+# Fictional test data authored for stellaris-suppoter; not copied from Stellaris.
+
+@demo_cost = 321
+
+demo_echo_theory = {
+    area = society
+    tier = 1
+    cost = 111
+    weight = 3
+}
+
+demo_prism_lattice = {
+    area = physics
+    tier = 2
+    cost = @demo_cost
+    prerequisites = { "demo_echo_theory" }
+    potential = {
+        has_country_flag = demo_prism_ready
+    }
+    weight = {
+        base = 7
+        modifier = {
+            factor = 2
+            has_country_flag = demo_double_weight
+        }
+    }
+}
+
+demo_english_only = {
+    area = engineering
+    tier = 1
+    cost = 222
+}
+
+demo_missing_loc = {
+    area = society
+    tier = 3
+    cost = 333
+}
