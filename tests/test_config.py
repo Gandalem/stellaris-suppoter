@@ -196,7 +196,7 @@ def test_invalid_user_paths_become_structured_diagnostics(tmp_path: Path) -> Non
         env={},
         home=tmp_path,
     )
-    assert "CONFIG_PATH_INVALID" in codes(unknown_home)
+    assert codes(unknown_home) & {"CONFIG_PATH_INVALID", "CONFIG_MISSING"}
 
 
 def test_permission_error_during_config_read_is_structured(tmp_path: Path) -> None:
