@@ -23,9 +23,26 @@ exit code: 0
 
 회귀 범위: 정상 planned 원장, 중복 ID, 의존성 순환, 잘못된 참조, 근거 없는 완료/검증/pass, 깨진 문서 링크, 외부 링크 미접속, Unicode 상대 경로, unsafe evidence 경로, blocked 이유, active 상태 불일치, 잘못된 상태/JSON, 완료 후 next_task=null, CLI의 product_tests_executed=false, malformed 입력의 통제된 실패.
 
-## 원격 전체 검사
+## 원격 전체 검사: 확인 완료
 
-이 기록을 처음 작성한 시점에는 GitHub 전체 문서 링크 검사와 CI matrix 실행 결과가 아직 확인되지 않았다. 워크플로 등록만으로 통과로 기록하지 않는다. 실제 run 결과가 확인되면 commit·run URL·job별 결론을 아래에 추가한다.
+검증한 제품 문서 commit: b919888c54472a7a5bc37222468f75ea160240b7.
+[GitHub Actions 실행 35726240940](https://github.com/Gandalem/stellaris-suppoter/actions/runs/35726240940)의 job·step 결론을 실제 조회했다.
+
+| 환경 | 원장·상대 Markdown 파일 링크 | 검사기 자체 회귀 | job 결론 |
+|---|---|---|---|
+| ubuntu-latest / Python 3.11 | success | success | success |
+| windows-latest / Python 3.13 | success | success | success |
+
+실행 명령:
+
+```sh
+python scripts/check_harness.py
+python -m unittest discover -s tests_harness -v
+```
+
+Linux job 106740458010은 2026-09-22 12:17:01 UTC에, Windows job 106740457849는 12:17:14 UTC에 success로 완료되었다. 두 job 모두 실제 검증 step과 자체 테스트 step이 success였다. 이는 전체 원격 문서 묶음을 checkout한 환경의 결과이다.
+
+이 기록 추가 commit 자체는 위 검증 commit 뒤에 만들어진다. 결과는 명시된 commit에 대한 근거이며 이후 변경의 검사 결과는 PR 체크에서 별도로 확인한다. 외부 웹 URL·Markdown heading anchor·evidence 내용의 진실성·게임 의미까지 자동 검사한 것은 아니다.
 
 ## 제품 상태
 
