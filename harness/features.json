@@ -1,22 +1,227 @@
-{"schema_version":1,"features":[
-{"id":"F-001","title":"Development environment","milestone":"v0.1","status":"planned","docs":["docs/REQUIREMENTS.md","docs/ENVIRONMENT.md"],"evidence":[]},
-{"id":"F-002","title":"Configuration and diagnostics","milestone":"v0.1","status":"planned","docs":["docs/REQUIREMENTS.md","docs/ENVIRONMENT.md"],"evidence":[]},
-{"id":"F-003","title":"Inventory and version evidence","milestone":"v0.1","status":"planned","docs":["docs/REQUIREMENTS.md","docs/UPDATES.md"],"evidence":[]},
-{"id":"F-004","title":"Lossless script parsing","milestone":"v0.1","status":"planned","docs":["docs/REQUIREMENTS.md","docs/PARSING.md"],"evidence":[]},
-{"id":"F-005","title":"Domain adapters","milestone":"v0.1","status":"planned","docs":["docs/REQUIREMENTS.md","docs/PARSING.md"],"evidence":[]},
-{"id":"F-006","title":"Localisation resolution","milestone":"v0.1","status":"planned","docs":["docs/REQUIREMENTS.md","docs/PARSING.md"],"evidence":[]},
-{"id":"F-007","title":"Snapshot database","milestone":"v0.1","status":"planned","docs":["docs/REQUIREMENTS.md","docs/DATA_CONTRACTS.md"],"evidence":[]},
-{"id":"F-008","title":"Korean and ID retrieval","milestone":"v0.1","status":"planned","docs":["docs/REQUIREMENTS.md","docs/SEARCH_AND_ANSWERS.md"],"evidence":[]},
-{"id":"F-009","title":"Grounded static answers","milestone":"v0.1","status":"planned","docs":["docs/REQUIREMENTS.md","docs/SEARCH_AND_ANSWERS.md"],"evidence":[]},
-{"id":"F-010","title":"Static reference graph","milestone":"v0.1","status":"planned","docs":["docs/REQUIREMENTS.md","docs/DATA_CONTRACTS.md"],"evidence":[]},
-{"id":"F-011","title":"CLI workflow","milestone":"v0.1","status":"planned","docs":["docs/REQUIREMENTS.md","docs/CLI.md"],"evidence":[]},
-{"id":"F-012","title":"Incremental indexing","milestone":"v0.1","status":"planned","docs":["docs/REQUIREMENTS.md","docs/UPDATES.md"],"evidence":[]},
-{"id":"F-013","title":"Safety and privacy","milestone":"v0.1","status":"planned","docs":["docs/REQUIREMENTS.md","SECURITY.md"],"evidence":[]},
-{"id":"F-014","title":"Evaluation and release quality","milestone":"v0.1","status":"planned","docs":["docs/REQUIREMENTS.md","docs/EVALUATION.md"],"evidence":[]},
-{"id":"F-015","title":"Official update ingestion","milestone":"later","status":"planned","docs":["docs/REQUIREMENTS.md","docs/UPDATES.md"],"evidence":[]},
-{"id":"F-016","title":"Optional grounded LLM","milestone":"later","status":"planned","docs":["docs/REQUIREMENTS.md","docs/SEARCH_AND_ANSWERS.md"],"evidence":[]},
-{"id":"F-017","title":"Mod context resolution","milestone":"later","status":"planned","docs":["docs/REQUIREMENTS.md","docs/PARSING.md"],"evidence":[]},
-{"id":"F-018","title":"Read-only save analysis","milestone":"later","status":"planned","docs":["docs/REQUIREMENTS.md","docs/PRODUCT.md"],"evidence":[]},
-{"id":"F-019","title":"Validated calculators","milestone":"later","status":"planned","docs":["docs/REQUIREMENTS.md","docs/PRODUCT.md"],"evidence":[]},
-{"id":"F-020","title":"Local user interface","milestone":"later","status":"planned","docs":["docs/REQUIREMENTS.md","docs/PRODUCT.md"],"evidence":[]}
-]}
+{
+  "schema_version": 1,
+  "features": [
+    {
+      "id": "F-001",
+      "title": "Development environment",
+      "milestone": "v0.1",
+      "status": "in_progress",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/ENVIRONMENT.md"
+      ],
+      "evidence": [
+        "harness/evidence/TASK-001-clean-setup.md"
+      ]
+    },
+    {
+      "id": "F-002",
+      "title": "Configuration and diagnostics",
+      "milestone": "v0.1",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/ENVIRONMENT.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-003",
+      "title": "Inventory and version evidence",
+      "milestone": "v0.1",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/UPDATES.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-004",
+      "title": "Lossless script parsing",
+      "milestone": "v0.1",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/PARSING.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-005",
+      "title": "Domain adapters",
+      "milestone": "v0.1",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/PARSING.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-006",
+      "title": "Localisation resolution",
+      "milestone": "v0.1",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/PARSING.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-007",
+      "title": "Snapshot database",
+      "milestone": "v0.1",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/DATA_CONTRACTS.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-008",
+      "title": "Korean and ID retrieval",
+      "milestone": "v0.1",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/SEARCH_AND_ANSWERS.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-009",
+      "title": "Grounded static answers",
+      "milestone": "v0.1",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/SEARCH_AND_ANSWERS.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-010",
+      "title": "Static reference graph",
+      "milestone": "v0.1",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/DATA_CONTRACTS.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-011",
+      "title": "CLI workflow",
+      "milestone": "v0.1",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/CLI.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-012",
+      "title": "Incremental indexing",
+      "milestone": "v0.1",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/UPDATES.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-013",
+      "title": "Safety and privacy",
+      "milestone": "v0.1",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "SECURITY.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-014",
+      "title": "Evaluation and release quality",
+      "milestone": "v0.1",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/EVALUATION.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-015",
+      "title": "Official update ingestion",
+      "milestone": "later",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/UPDATES.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-016",
+      "title": "Optional grounded LLM",
+      "milestone": "later",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/SEARCH_AND_ANSWERS.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-017",
+      "title": "Mod context resolution",
+      "milestone": "later",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/PARSING.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-018",
+      "title": "Read-only save analysis",
+      "milestone": "later",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/PRODUCT.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-019",
+      "title": "Validated calculators",
+      "milestone": "later",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/PRODUCT.md"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "F-020",
+      "title": "Local user interface",
+      "milestone": "later",
+      "status": "planned",
+      "docs": [
+        "docs/REQUIREMENTS.md",
+        "docs/PRODUCT.md"
+      ],
+      "evidence": []
+    }
+  ]
+}

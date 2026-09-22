@@ -1,14 +1,15 @@
 {
   "schema_version": 1,
-  "phase": "documentation_ready",
+  "phase": "implementation",
   "product_implemented": false,
   "active_task": null,
-  "next_task": "TASK-001",
-  "last_session": "harness/sessions/2026-09-22-bootstrap.md",
+  "next_task": "TASK-002",
+  "last_session": "harness/sessions/2026-09-22-task-001.md",
   "latest_game_version": null,
   "updated_on": "2026-09-22",
   "notes": [
-    "Product features are planned and product evaluations have not run.",
+    "TASK-001 completed: package/tooling scaffold validated on clean Linux/Python 3.11 and Windows/Python 3.13 GitHub runners.",
+    "No Stellaris parser, configuration, search, save, mod, or LLM product feature is implemented yet.",
     "Game data and user environment remain unverified."
   ]
 }

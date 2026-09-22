@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import importlib.util
 import json
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'scripts' / 'check_harness.py'
 spec = importlib.util.spec_from_file_location('check_harness', SCRIPT)
