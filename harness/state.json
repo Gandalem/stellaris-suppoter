@@ -4,14 +4,14 @@
   "product_implemented": false,
   "active_task": "TASK-005",
   "next_task": "TASK-005",
-  "last_session": "harness/sessions/2026-09-23-task-005-start.md",
+  "last_session": "harness/sessions/2026-09-23-task-005.md",
   "latest_game_version": null,
   "updated_on": "2026-09-23",
   "notes": [
-    "TASK-004 completed after PR #10 merge commit 472aad700e24e03b20081f13b653502b673c7d00 passed actual main push CI.",
-    "Main run 35749603679: Ubuntu 81 passed; Windows 80 passed and 1 POSIX-only test skipped; Ruff/harness succeeded on both.",
-    "TASK-005 Version and DLC evidence is active.",
-    "latest_game_version remains null: TASK-005 models evidence and does not invent or fetch a current Stellaris version.",
-    "F-003 remains in_progress until E-007/E-008 pass; F-013 remains in_progress for later safety work."
+    "TASK-004 is done on actual main merge commit 472aad700e24e03b20081f13b653502b673c7d00 with successful main push CI.",
+    "TASK-005 candidate 44ff8d3e7aa0b9de03888a38cb19e65a483a916e passed E-007/E-008 synthetic evidence tests on Ubuntu and Windows.",
+    "E-007 and E-008 are pass; TASK-005 remains doing until review/merge and actual main CI are complete.",
+    "F-003 remains in_progress until TASK-005 is merged; latest_game_version remains null because no actual installation metadata has been verified.",
+    "TASK-006 must not start before TASK-005 leaves doing."
   ]
 }

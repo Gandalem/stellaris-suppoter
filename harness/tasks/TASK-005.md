@@ -52,3 +52,26 @@ python scripts/check_harness.py
 ```
 
 실제 게임 설치 acceptance는 TASK-021에 남는다.
+
+
+## Candidate 검증
+
+기능 candidate `44ff8d3e7aa0b9de03888a38cb19e65a483a916e`에서 다음을 검증했다.
+
+- E-007: version 없음 → null/unknown + VERSION_UNKNOWN.
+- build_id만 존재 → build_id는 보존하지만 game_version으로 변환하지 않음.
+- user-reported version/branch는 user_reported provenance 유지.
+- metadata와 user report 충돌 시 metadata를 유지하고 conflict diagnostic.
+- unsupported branch label은 unknown + diagnostic.
+- E-008: installed=true만으로 owned/enabled를 추론하지 않음.
+- installed/owned/enabled 각각 독립 source/evidence 유지.
+- enabled=true / installed=false 같은 상충 signal도 덮어쓰지 않고 diagnostic.
+- 알려진 true/false 상태에 source=unknown 사용을 거부.
+
+CI run 35750105437:
+- Ubuntu/Python 3.11: 전체 94 passed; versioning 13 passed; Ruff/harness success.
+- Windows/Python 3.13: 94 collected, 93 passed + 기존 POSIX-only inventory 1 skipped; versioning 13 passed; Ruff/harness success.
+
+E-007/E-008은 pass지만 TASK-005는 reviewer 재검토와 main 병합 전까지 `doing`으로 유지한다. 실제 게임 설치 버전은 여전히 검증하지 않았고 `latest_game_version=null`을 유지한다.
+
+근거: [TASK-005 evidence](../evidence/TASK-005-version-dlc-evidence.md)

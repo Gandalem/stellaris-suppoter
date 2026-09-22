@@ -500,7 +500,7 @@ def scan_inventory(
     limits: Limits,
     allowed_root: Path | None = None,
 ) -> InventoryResult:
-    """Scan regular files without following links or writing to the source tree."""
+    """Scan regular files without following links or writing to the source tree.\n\n    When ``allowed_root`` is explicit, its resolved directory is the trust boundary and\n    every lexical component from that boundary to ``root`` is checked before resolve.\n    When omitted, the resolved ``root`` itself becomes the trust boundary; parent\n    components above that caller-selected root are not inspected.\n    """
 
     try:
         allowed_input = allowed_root if allowed_root is not None else root

@@ -40,7 +40,8 @@
       ],
       "evidence": [
         "harness/evidence/TASK-004-safe-inventory.md",
-        "harness/evidence/TASK-004-review-followup.md"
+        "harness/evidence/TASK-004-review-followup.md",
+        "harness/evidence/TASK-005-version-dlc-evidence.md"
       ]
     },
     {
