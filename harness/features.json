@@ -18,7 +18,7 @@
       "id": "F-002",
       "title": "Configuration and diagnostics",
       "milestone": "v0.1",
-      "status": "verified",
+      "status": "in_progress",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/ENVIRONMENT.md"
@@ -145,7 +145,7 @@
       "id": "F-013",
       "title": "Safety and privacy",
       "milestone": "v0.1",
-      "status": "planned",
+      "status": "in_progress",
       "docs": [
         "docs/REQUIREMENTS.md",
         "SECURITY.md"
@@ -156,7 +156,7 @@
       "id": "F-014",
       "title": "Evaluation and release quality",
       "milestone": "v0.1",
-      "status": "planned",
+      "status": "in_progress",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/EVALUATION.md"

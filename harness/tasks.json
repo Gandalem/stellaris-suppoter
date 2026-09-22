@@ -83,7 +83,8 @@
       ],
       "depends_on": [
         "TASK-002",
-        "TASK-003"
+        "TASK-003",
+        "TASK-031"
       ],
       "eval_ids": [
         "E-005",
@@ -699,6 +700,34 @@
       ],
       "acceptance": [
         "The service layer is reused with loopback binding, escaping and path protection."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "TASK-031",
+      "title": "Safety hardening and main integration",
+      "status": "doing",
+      "feature_ids": [
+        "F-002",
+        "F-013",
+        "F-014"
+      ],
+      "depends_on": [
+        "TASK-001",
+        "TASK-002",
+        "TASK-003"
+      ],
+      "eval_ids": [
+        "E-047"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/ENVIRONMENT.md",
+        "SECURITY.md"
+      ],
+      "acceptance": [
+        "Review regressions for generator deletion, path exceptions, directory traversal permissions, public redaction, XDG handling and strict schema types pass on Linux and Windows.",
+        "TASK-001 through TASK-003 are represented on a branch based directly on main and are ready for a main-targeting integration PR."
       ],
       "evidence": []
     }

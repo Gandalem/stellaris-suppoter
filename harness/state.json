@@ -2,16 +2,15 @@
   "schema_version": 1,
   "phase": "implementation",
   "product_implemented": false,
-  "active_task": null,
-  "next_task": "TASK-004",
+  "active_task": "TASK-031",
+  "next_task": "TASK-031",
   "last_session": "harness/sessions/2026-09-22-task-003.md",
   "latest_game_version": null,
   "updated_on": "2026-09-22",
   "notes": [
-    "TASK-001 completed: package/tooling scaffold validated on clean Linux/Python 3.11 and Windows/Python 3.13 GitHub runners.",
-    "TASK-002 completed: original deterministic synthetic parser/localisation corpus validated byte-for-byte on Linux and Windows.",
-    "TASK-003 completed: configuration/path policy and doctor diagnostics validated on Linux and Windows; F-002 verified.",
-    "F-004 and F-006 remain in progress; lexer/parser/localisation resolver implementations are not built yet.",
-    "Game data, game version, DLC state, and user environment remain unverified."
+    "Post-review hardening is in progress before TASK-004.",
+    "F-002 was downgraded from verified to in_progress pending review-regression revalidation; prior E-003/E-004 evidence is preserved.",
+    "Integration branch fix/safety-hardening-main-integration is based directly on main and carries TASK-001 through TASK-003 plus hardening changes.",
+    "TASK-004 now depends on TASK-031."
   ]
 }
