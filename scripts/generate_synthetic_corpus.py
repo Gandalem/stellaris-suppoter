@@ -9,9 +9,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
+
+OWNER_FILE = ".stellaris-supporter-synthetic-owner.json"
+OWNER_ID = "stellaris-supporter-synthetic-corpus-v1"
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 @dataclass(frozen=True)
@@ -272,15 +275,74 @@ def manifest(fixtures_to_write: tuple[Fixture, ...]) -> dict[str, object]:
     }
 
 
+def _owner_bytes() -> bytes:
+    return (json.dumps({"owner": OWNER_ID}, sort_keys=True) + "\n").encode("utf-8")
+
+
+def _validate_output_path(output: Path) -> Path:
+    if output.is_symlink():
+        raise ValueError("refusing symlink output directory")
+    resolved = output.resolve(strict=False)
+    if resolved == resolved.parent:
+        raise ValueError("refusing filesystem root as output directory")
+    if resolved == REPO_ROOT or REPO_ROOT.is_relative_to(resolved):
+        raise ValueError("refusing repository root or its parent as output directory")
+    return resolved
+
+
+def _read_owned_paths(output: Path) -> set[Path]:
+    try:
+        owner_data = json.loads((output / OWNER_FILE).read_text(encoding="utf-8"))
+        old_manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise FileExistsError(
+            "refusing --force because output is not a recognized generator-owned directory"
+        ) from exc
+    if owner_data != {"owner": OWNER_ID}:
+        raise FileExistsError("refusing --force because ownership marker does not match")
+    managed = {output / "manifest.json", output / OWNER_FILE}
+    for entry in old_manifest.get("files", []):
+        raw = entry.get("path")
+        if not isinstance(raw, str):
+            raise FileExistsError("refusing --force because prior manifest is invalid")
+        relative = Path(raw)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise FileExistsError("refusing --force because prior manifest path is unsafe")
+        managed.add(output / relative)
+    return managed
+
+
+def _remove_managed_paths(output: Path, managed: set[Path]) -> None:
+    for path in managed:
+        if path.exists() or path.is_symlink():
+            if path.is_dir():
+                raise FileExistsError("refusing to remove managed path that became a directory")
+            path.unlink()
+    corpus = output / "corpus"
+    if corpus.exists():
+        for directory in sorted(
+            (p for p in corpus.rglob("*") if p.is_dir()),
+            key=lambda p: len(p.parts),
+            reverse=True,
+        ):
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
+        try:
+            corpus.rmdir()
+        except OSError:
+            pass
+
+
 def write_corpus(output: Path, *, force: bool = False) -> None:
-    output = output.resolve()
-    if output.exists():
-        if any(output.iterdir()):
-            if not force:
-                raise FileExistsError(
-                    f"output directory is not empty: {output}; pass --force to replace it"
-                )
-            shutil.rmtree(output)
+    output = _validate_output_path(output)
+    if output.exists() and any(output.iterdir()):
+        if not force:
+            raise FileExistsError(
+                f"output directory is not empty: {output}; pass --force only for generator-owned output"
+            )
+        _remove_managed_paths(output, _read_owned_paths(output))
     output.mkdir(parents=True, exist_ok=True)
 
     all_fixtures = fixtures()
@@ -293,6 +355,7 @@ def write_corpus(output: Path, *, force: bool = False) -> None:
         json.dumps(manifest(all_fixtures), ensure_ascii=False, indent=2) + "\n"
     ).encode("utf-8")
     (output / "manifest.json").write_bytes(manifest_bytes)
+    (output / OWNER_FILE).write_bytes(_owner_bytes())
 
 
 def main() -> int:

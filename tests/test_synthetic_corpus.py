@@ -121,3 +121,65 @@ def test_collision_and_localisation_fixture_invariants() -> None:
     assert b"demo_missing_loc:0" not in english + korean
     assert b'demo_cycle_a:0 "$demo_cycle_b$"' in english
     assert b'demo_cycle_b:0 "$demo_cycle_a$"' in english
+
+
+def test_force_refuses_unowned_nonempty_directory(tmp_path: Path) -> None:
+    output = tmp_path / "unowned"
+    output.mkdir()
+    sentinel = output / "README.md"
+    sentinel.write_text("preserve me", encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, str(GENERATOR), "--output", str(output), "--force"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert sentinel.read_text(encoding="utf-8") == "preserve me"
+
+
+def test_force_preserves_unmanaged_files_in_owned_directory(tmp_path: Path) -> None:
+    output = tmp_path / "owned"
+    first = subprocess.run(
+        [sys.executable, str(GENERATOR), "--output", str(output)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert first.returncode == 0, first.stderr
+    sentinel = output / "README.md"
+    sentinel.write_text("preserve me", encoding="utf-8")
+
+    second = subprocess.run(
+        [sys.executable, str(GENERATOR), "--output", str(output), "--force"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert second.returncode == 0, second.stderr
+    assert sentinel.read_text(encoding="utf-8") == "preserve me"
+
+
+def test_generator_refuses_symlink_output(tmp_path: Path) -> None:
+    target = tmp_path / "target"
+    target.mkdir()
+    sentinel = target / "keep.txt"
+    sentinel.write_text("preserve me", encoding="utf-8")
+    link = tmp_path / "link"
+    try:
+        link.symlink_to(target, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlink creation unavailable on this platform")
+
+    result = subprocess.run(
+        [sys.executable, str(GENERATOR), "--output", str(link), "--force"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert sentinel.read_text(encoding="utf-8") == "preserve me"
