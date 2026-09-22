@@ -69,7 +69,6 @@ class InventoryResult:
 class _FileIdentity:
     size: int
     mtime_ns: int
-    ctime_ns: int
     inode: int
     device: int
 
@@ -101,7 +100,6 @@ def _identity(stat_result: os.stat_result | object) -> _FileIdentity:
     return _FileIdentity(
         size=int(getattr(stat_result, "st_size", 0)),
         mtime_ns=int(getattr(stat_result, "st_mtime_ns", 0)),
-        ctime_ns=int(getattr(stat_result, "st_ctime_ns", 0)),
         inode=int(getattr(stat_result, "st_ino", 0)),
         device=int(getattr(stat_result, "st_dev", 0)),
     )
@@ -110,7 +108,7 @@ def _identity(stat_result: os.stat_result | object) -> _FileIdentity:
 def _same_identity(first: os.stat_result | object, second: os.stat_result | object) -> bool:
     left = _identity(first)
     right = _identity(second)
-    if left.size != right.size or left.mtime_ns != right.mtime_ns or left.ctime_ns != right.ctime_ns:
+    if left.size != right.size or left.mtime_ns != right.mtime_ns:
         return False
     if left.inode and right.inode and (left.inode != right.inode or left.device != right.device):
         return False
@@ -119,7 +117,7 @@ def _same_identity(first: os.stat_result | object, second: os.stat_result | obje
 
 def _same_snapshot(snapshot: _FileIdentity, current: os.stat_result | object) -> bool:
     now = _identity(current)
-    if snapshot.size != now.size or snapshot.mtime_ns != now.mtime_ns or snapshot.ctime_ns != now.ctime_ns:
+    if snapshot.size != now.size or snapshot.mtime_ns != now.mtime_ns:
         return False
     if snapshot.inode and now.inode and (snapshot.inode != now.inode or snapshot.device != now.device):
         return False

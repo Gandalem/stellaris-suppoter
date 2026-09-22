@@ -480,7 +480,6 @@ def test_path_replacement_after_read_is_detected(
                 st_mode=current.st_mode,
                 st_size=current.st_size + 10,
                 st_mtime_ns=current.st_mtime_ns + 1,
-                st_ctime_ns=current.st_ctime_ns + 1,
                 st_ino=getattr(current, "st_ino", 0) + 1,
                 st_dev=getattr(current, "st_dev", 0),
                 st_file_attributes=getattr(current, "st_file_attributes", 0),
