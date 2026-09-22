@@ -2,7 +2,7 @@
   "schema_version": 1,
   "phase": "implementation",
   "product_implemented": false,
-  "active_task": null,
+  "active_task": "TASK-003",
   "next_task": "TASK-003",
   "last_session": "harness/sessions/2026-09-22-task-002.md",
   "latest_game_version": null,

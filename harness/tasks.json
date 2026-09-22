@@ -51,7 +51,7 @@
     {
       "id": "TASK-003",
       "title": "Configuration and doctor",
-      "status": "todo",
+      "status": "doing",
       "feature_ids": [
         "F-002"
       ],
