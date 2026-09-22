@@ -231,3 +231,40 @@ def test_empty_inventory_has_stable_content_hash(tmp_path: Path) -> None:
     assert second.inventory is not None
     assert first.inventory.content_hash == second.inventory.content_hash
     assert first.inventory.files == ()
+
+
+def test_inventory_content_hash_includes_relative_path(tmp_path: Path) -> None:
+    left = tmp_path / "left"
+    right = tmp_path / "right"
+    left.mkdir()
+    right.mkdir()
+    (left / "a.txt").write_bytes(b"same bytes")
+    (right / "b.txt").write_bytes(b"same bytes")
+
+    first = scan_inventory(left, limits=limits())
+    second = scan_inventory(right, limits=limits())
+
+    assert first.ok and second.ok
+    assert first.inventory is not None
+    assert second.inventory is not None
+    assert first.inventory.content_hash != second.inventory.content_hash
+
+
+def test_inventory_rejects_leaf_file_symlink_escape(tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    outside = tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+    sentinel = outside / "sentinel.txt"
+    sentinel.write_text("preserve", encoding="utf-8")
+    link = root / "linked.txt"
+    try:
+        link.symlink_to(sentinel)
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip(f"symlink creation unavailable on this runner: {exc}")
+
+    result = scan_inventory(root, limits=limits())
+
+    assert result.inventory is None
+    assert "PATH_REJECTED" in codes(result)
+    assert sentinel.read_text(encoding="utf-8") == "preserve"

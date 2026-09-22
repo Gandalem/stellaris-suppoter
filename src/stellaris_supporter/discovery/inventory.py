@@ -243,6 +243,8 @@ def _collect_candidates(
 def _same_identity(first: os.stat_result, second: os.stat_result) -> bool:
     if first.st_size != second.st_size:
         return False
+    if int(getattr(first, "st_mtime_ns", 0)) != int(getattr(second, "st_mtime_ns", 0)):
+        return False
     first_inode = int(getattr(first, "st_ino", 0))
     second_inode = int(getattr(second, "st_ino", 0))
     first_device = int(getattr(first, "st_dev", 0))
