@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import platform
 import sqlite3
-from dataclasses import asdict, dataclass
 from collections.abc import Callable
+from dataclasses import asdict, dataclass
 
 from stellaris_supporter import __version__
 from stellaris_supporter.config import ConfigResult, validate_paths
