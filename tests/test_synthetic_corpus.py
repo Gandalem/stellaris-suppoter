@@ -183,3 +183,95 @@ def test_generator_refuses_symlink_output(tmp_path: Path) -> None:
 
     assert result.returncode != 0
     assert sentinel.read_text(encoding="utf-8") == "preserve me"
+
+
+def run_generator(output: Path, *extra: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(GENERATOR), "--output", str(output), *extra],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_force_rejects_internal_symlink_escape_without_touching_external_file(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "owned"
+    assert run_generator(output).returncode == 0
+
+    technology = output / "corpus/common/technology"
+    external = tmp_path / "external-technology"
+    technology.rename(external)
+    sentinel = external / "00_demo_normal.txt"
+    sentinel.write_text("external sentinel", encoding="utf-8")
+    try:
+        technology.symlink_to(external, target_is_directory=True)
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip(f"symlink creation unavailable on this runner: {exc}")
+
+    result = run_generator(output, "--force")
+
+    assert result.returncode != 0
+    assert sentinel.read_text(encoding="utf-8") == "external sentinel"
+
+
+def test_force_rejects_manifest_path_outside_corpus_without_deleting_file(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "owned"
+    assert run_generator(output).returncode == 0
+    sentinel = output / "README.md"
+    sentinel.write_text("user-owned", encoding="utf-8")
+
+    manifest_path = output / "manifest.json"
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    data["files"].append(
+        {
+            "path": "README.md",
+            "scenario": "tampered",
+            "encoding": "utf-8",
+            "description": "must never become managed",
+            "size": 10,
+            "sha256": "0" * 64,
+        }
+    )
+    manifest_path.write_text(json.dumps(data), encoding="utf-8")
+
+    result = run_generator(output, "--force")
+
+    assert result.returncode != 0
+    assert sentinel.read_text(encoding="utf-8") == "user-owned"
+
+
+def test_force_refuses_unmanaged_file_collision_with_new_generated_path(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "owned"
+    assert run_generator(output).returncode == 0
+
+    relative = "corpus/common/technology/00_demo_normal.txt"
+    manifest_path = output / "manifest.json"
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    data["files"] = [entry for entry in data["files"] if entry["path"] != relative]
+    manifest_path.write_text(json.dumps(data), encoding="utf-8")
+
+    sentinel = output / relative
+    sentinel.write_text("unmanaged sentinel", encoding="utf-8")
+
+    result = run_generator(output, "--force")
+
+    assert result.returncode != 0
+    assert sentinel.read_text(encoding="utf-8") == "unmanaged sentinel"
+
+
+def test_force_preserves_unmanaged_empty_directory(tmp_path: Path) -> None:
+    output = tmp_path / "owned"
+    assert run_generator(output).returncode == 0
+    unmanaged = output / "corpus/user-empty-directory"
+    unmanaged.mkdir(parents=True)
+
+    result = run_generator(output, "--force")
+
+    assert result.returncode == 0, result.stderr
+    assert unmanaged.is_dir()

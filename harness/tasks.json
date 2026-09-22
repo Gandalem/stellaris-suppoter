@@ -706,7 +706,7 @@
     {
       "id": "TASK-031",
       "title": "Safety hardening and main integration",
-      "status": "done",
+      "status": "doing",
       "feature_ids": [
         "F-002",
         "F-013",
@@ -730,7 +730,8 @@
         "TASK-001 through TASK-003 are represented on a branch based directly on main and are ready for a main-targeting integration PR."
       ],
       "evidence": [
-        "harness/evidence/TASK-031-safety-hardening-main-integration.md"
+        "harness/evidence/TASK-031-safety-hardening-main-integration.md",
+        "harness/evidence/TASK-031-generator-containment-followup.md"
       ]
     }
   ]
