@@ -706,7 +706,7 @@
     {
       "id": "TASK-031",
       "title": "Safety hardening and main integration",
-      "status": "blocked",
+      "status": "doing",
       "feature_ids": [
         "F-002",
         "F-013",
@@ -732,8 +732,7 @@
       "evidence": [
         "harness/evidence/TASK-031-safety-hardening-main-integration.md",
         "harness/evidence/TASK-031-generator-containment-followup.md"
-      ],
-      "blocker": "PR #7 is validated and awaiting explicit merge approval; main has not received the containment follow-up yet."
+      ]
     }
   ]
 }

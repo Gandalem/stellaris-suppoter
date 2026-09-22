@@ -9,9 +9,9 @@
   "updated_on": "2026-09-22",
   "notes": [
     "PR #7 candidate fixes the four post-merge generator containment regressions and is based on current main.",
-    "E-047 passed on PR #7 candidate a5f3ca88c6b6b94e975a881e58bdfacac4db3883 with Ubuntu/Windows package CI and documentation harness.",
-    "TASK-031 remains blocked rather than done because merge approval was explicitly withheld and main has not received PR #7.",
+    "E-047 passed on PR #7 candidate with Ubuntu/Windows package CI and documentation harness.",
+    "TASK-031 remains doing because explicit merge approval is still pending; main has not received PR #7.",
     "F-002 remains in_progress until the approved fix is merged to main and main push CI is verified.",
-    "TASK-004 remains blocked by TASK-031."
+    "TASK-004 remains blocked by unfinished TASK-031."
   ]
 }
