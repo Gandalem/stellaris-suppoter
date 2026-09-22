@@ -83,3 +83,45 @@ def test_doctor_missing_config_is_exit_three(tmp_path: Path) -> None:
     assert result.returncode == 3
     codes = {item["code"] for item in payload["diagnostics"]}
     assert {"CONFIG_MISSING", "GAME_ROOT_REQUIRED"} <= codes
+
+
+def test_doctor_json_handles_invalid_toml_path_value_without_traceback(tmp_path: Path) -> None:
+    config = tmp_path / "invalid-path.toml"
+    config.write_text(
+        "schema_version = 1\n"
+        'game_root = "bad\\u0000path"\n'
+        f'data_dir = "{(tmp_path / "data").as_posix()}"\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "data").mkdir()
+
+    result = run_module("--format", "json", "--config", str(config), "doctor")
+
+    payload = json.loads(result.stdout)
+    assert result.returncode == 3
+    assert result.stderr == ""
+    assert payload["status"] == "error"
+
+
+def test_public_report_redacts_entire_serialized_payload(tmp_path: Path) -> None:
+    game = tmp_path / "game"
+    data = tmp_path / "data"
+    game.mkdir()
+    data.mkdir()
+    secret = (tmp_path / "PRIVATE-PATH-MARKER").as_posix()
+    config = tmp_path / "settings.toml"
+    config.write_text(
+        "schema_version = 1\n"
+        f'game_root = "{game.as_posix()}"\n'
+        f'data_dir = "{data.as_posix()}"\n'
+        f'"{secret}" = 1\n',
+        encoding="utf-8",
+    )
+
+    report = run_doctor(load_settings(config))
+    serialized = json.dumps(report.to_dict(public=True), ensure_ascii=False)
+
+    assert secret not in serialized
+    assert str(tmp_path) not in serialized
+    assert "<GAME_ROOT>" in serialized
+    assert "<DATA_DIR>" in serialized

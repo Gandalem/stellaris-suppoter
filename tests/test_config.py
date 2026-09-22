@@ -144,3 +144,103 @@ def test_game_root_access_check_never_requests_write(tmp_path: Path) -> None:
     validate_paths(load_settings(config).settings, access_checker=record)
     assert (game.resolve(), os.R_OK) in seen
     assert (data.resolve(), os.R_OK | os.W_OK) in seen
+
+
+def test_xdg_empty_and_relative_values_are_ignored(tmp_path: Path) -> None:
+    for invalid in ("", "relative/path"):
+        env = {"XDG_CONFIG_HOME": invalid, "XDG_DATA_HOME": invalid}
+        assert default_config_path(system="Linux", env=env, home=tmp_path) == (
+            tmp_path / ".config" / "stellaris-supporter" / "config.toml"
+        )
+        assert default_data_dir(system="Linux", env=env, home=tmp_path) == (
+            tmp_path / ".local" / "share" / "stellaris-supporter"
+        )
+
+
+def test_schema_version_requires_integer_not_float(tmp_path: Path) -> None:
+    game = tmp_path / "game"
+    data = tmp_path / "data"
+    game.mkdir()
+    data.mkdir()
+    config = tmp_path / "settings.toml"
+    config.write_text(
+        "schema_version = 1.0\n"
+        f'game_root = "{game.as_posix()}"\n'
+        f'data_dir = "{data.as_posix()}"\n',
+        encoding="utf-8",
+    )
+
+    assert "CONFIG_SCHEMA_UNSUPPORTED" in codes(load_settings(config))
+
+
+def test_invalid_user_paths_become_structured_diagnostics(tmp_path: Path) -> None:
+    nul = load_settings(
+        None,
+        overrides={"game_root": "bad\x00path", "data_dir": str(tmp_path / "data")},
+        system="Linux",
+        env={},
+        home=tmp_path,
+    )
+    assert "GAME_ROOT_INVALID_PATH" in codes(nul)
+
+    unknown_home = load_settings(
+        Path("~stellaris_supporter_missing_user_9f43c8/config.toml"),
+        cwd=tmp_path,
+        system="Linux",
+        env={},
+        home=tmp_path,
+    )
+    assert "CONFIG_PATH_INVALID" in codes(unknown_home)
+
+
+def test_permission_error_during_config_read_is_structured(tmp_path: Path) -> None:
+    config = tmp_path / "settings.toml"
+
+    def denied(_: Path) -> bytes:
+        raise PermissionError("synthetic permission denial")
+
+    result = load_settings(config, reader=denied)
+    assert "CONFIG_UNREADABLE" in codes(result)
+
+
+def test_posix_directory_checks_require_traversal_permission(tmp_path: Path) -> None:
+    game = tmp_path / "game"
+    data = tmp_path / "data"
+    game.mkdir()
+    data.mkdir()
+    config = tmp_path / "settings.toml"
+    write_config(config)
+    seen: list[tuple[Path, int]] = []
+
+    def record(path: Path, mode: int) -> bool:
+        seen.append((path, mode))
+        return True
+
+    validate_paths(
+        load_settings(config).settings,
+        access_checker=record,
+        platform_name="posix",
+    )
+
+    assert (game.resolve(), os.R_OK | os.X_OK) in seen
+    assert (data.resolve(), os.R_OK | os.W_OK | os.X_OK) in seen
+
+
+def test_stat_permission_error_is_structured(tmp_path: Path) -> None:
+    game = tmp_path / "game"
+    data = tmp_path / "data"
+    game.mkdir()
+    data.mkdir()
+    config = tmp_path / "settings.toml"
+    write_config(config)
+
+    def denied(_: Path):
+        raise PermissionError("synthetic stat denial")
+
+    diagnostics = validate_paths(
+        load_settings(config).settings,
+        stat_reader=denied,
+        platform_name="posix",
+    )
+    found = {item.code for item in diagnostics}
+    assert {"GAME_ROOT_UNREADABLE", "DATA_DIR_NOT_WRITABLE"} <= found
