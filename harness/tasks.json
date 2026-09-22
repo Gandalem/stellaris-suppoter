@@ -706,7 +706,7 @@
     {
       "id": "TASK-031",
       "title": "Safety hardening and main integration",
-      "status": "done",
+      "status": "doing",
       "feature_ids": [
         "F-002",
         "F-013",
