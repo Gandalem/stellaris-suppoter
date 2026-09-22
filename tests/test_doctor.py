@@ -5,6 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from stellaris_supporter.cli import main
 from stellaris_supporter.config import load_settings
 from stellaris_supporter.doctor import run_doctor
 
@@ -100,12 +101,13 @@ def test_public_report_redacts_paths_from_entire_payload(tmp_path: Path) -> None
     assert secret not in encoded
 
 
-def test_doctor_invalid_nul_config_path_returns_json_not_traceback(tmp_path: Path) -> None:
-    result = run_module("--format", "json", "--config", "bad\x00path", "doctor")
-    payload = json.loads(result.stdout)
-    assert result.returncode == 3
+def test_doctor_invalid_nul_config_path_returns_json_not_traceback(capsys) -> None:
+    exit_code = main(["--format", "json", "--config", "bad\x00path", "doctor"])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert exit_code == 3
     assert payload["status"] == "error"
-    assert result.stderr == ""
+    assert captured.err == ""
     assert any(
         item["code"] in {"CONFIG_PATH_INVALID", "CONFIG_PATH_INACCESSIBLE"}
         for item in payload["diagnostics"]
