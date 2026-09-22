@@ -76,7 +76,7 @@
     {
       "id": "TASK-004",
       "title": "Safe inventory",
-      "status": "done",
+      "status": "doing",
       "feature_ids": [
         "F-003",
         "F-013"

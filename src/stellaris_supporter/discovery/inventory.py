@@ -2,8 +2,8 @@
 
 The scanner never writes source data. It rejects links/reparse points and security-limit
 violations instead of returning a partial inventory. It revalidates paths immediately
-before file opens and uses O_NOFOLLOW where the platform exposes it. This narrows, but
-cannot eliminate, filesystem TOCTOU races.
+before and after file opens and uses O_NOFOLLOW where the platform exposes it. This
+narrows, but cannot eliminate, filesystem TOCTOU races.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from stellaris_supporter.diagnostics import Diagnostic
 
 _CHUNK_BYTES = 1024 * 1024
 _REPARSE_POINT = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+_PATH_ERRORS = (OSError, RuntimeError, ValueError)
 
 
 @dataclass(frozen=True)
@@ -65,10 +66,19 @@ class InventoryResult:
 
 
 @dataclass(frozen=True)
+class _FileIdentity:
+    size: int
+    mtime_ns: int
+    ctime_ns: int
+    inode: int
+    device: int
+
+
+@dataclass(frozen=True)
 class _Candidate:
     path: Path
     relative_path: str
-    size: int
+    identity: _FileIdentity
 
 
 class _InventoryFailure(Exception):
@@ -87,14 +97,43 @@ def _is_link_or_reparse(stat_result: os.stat_result | object) -> bool:
     return stat.S_ISLNK(mode) or bool(attributes & _REPARSE_POINT)
 
 
+def _identity(stat_result: os.stat_result | object) -> _FileIdentity:
+    return _FileIdentity(
+        size=int(getattr(stat_result, "st_size", 0)),
+        mtime_ns=int(getattr(stat_result, "st_mtime_ns", 0)),
+        ctime_ns=int(getattr(stat_result, "st_ctime_ns", 0)),
+        inode=int(getattr(stat_result, "st_ino", 0)),
+        device=int(getattr(stat_result, "st_dev", 0)),
+    )
+
+
+def _same_identity(first: os.stat_result | object, second: os.stat_result | object) -> bool:
+    left = _identity(first)
+    right = _identity(second)
+    if left.size != right.size or left.mtime_ns != right.mtime_ns or left.ctime_ns != right.ctime_ns:
+        return False
+    if left.inode and right.inode and (left.inode != right.inode or left.device != right.device):
+        return False
+    return True
+
+
+def _same_snapshot(snapshot: _FileIdentity, current: os.stat_result | object) -> bool:
+    now = _identity(current)
+    if snapshot.size != now.size or snapshot.mtime_ns != now.mtime_ns or snapshot.ctime_ns != now.ctime_ns:
+        return False
+    if snapshot.inode and now.inode and (snapshot.inode != now.inode or snapshot.device != now.device):
+        return False
+    return True
+
+
 def _resolve_existing_directory(path: Path, *, label: str) -> Path:
     try:
         raw_stat = os.lstat(path)
-    except OSError as exc:
+    except _PATH_ERRORS as exc:
         raise _fail(
             "FILESYSTEM_ERROR",
             f"{label} cannot be inspected.",
-            "Check that the directory exists and is readable.",
+            "Check that the directory path is valid, exists, and is readable.",
         ) from exc
 
     if _is_link_or_reparse(raw_stat):
@@ -106,19 +145,71 @@ def _resolve_existing_directory(path: Path, *, label: str) -> Path:
         raise _fail("PATH_REJECTED", f"{label} must be a directory.")
 
     try:
-        resolved = path.resolve(strict=True)
-    except (OSError, RuntimeError, ValueError) as exc:
+        return path.resolve(strict=True)
+    except _PATH_ERRORS as exc:
         raise _fail(
             "PATH_REJECTED",
             f"{label} cannot be resolved safely.",
         ) from exc
+
+
+def _lexical_absolute(path: Path, *, label: str) -> Path:
+    try:
+        raw = os.fspath(path)
+        if "\x00" in raw:
+            raise ValueError("embedded NUL")
+        return Path(os.path.abspath(raw))
+    except _PATH_ERRORS as exc:
+        raise _fail("PATH_REJECTED", f"{label} contains an invalid path.") from exc
+
+
+def _resolve_scan_root_without_links(
+    root: Path,
+    *,
+    allowed_input: Path,
+    allowed_resolved: Path,
+) -> Path:
+    root_lexical = _lexical_absolute(root, label="Inventory root")
+    allowed_lexical = _lexical_absolute(allowed_input, label="Allowed root")
+    try:
+        relative = root_lexical.relative_to(allowed_lexical)
+    except ValueError as exc:
+        raise _fail("PATH_REJECTED", "Inventory root is outside the allowed root.") from exc
+
+    current = allowed_lexical
+    for part in relative.parts:
+        current = current / part
+        try:
+            component_stat = os.lstat(current)
+        except _PATH_ERRORS as exc:
+            raise _fail(
+                "FILESYSTEM_ERROR",
+                "An inventory-root path component cannot be inspected.",
+            ) from exc
+        if _is_link_or_reparse(component_stat):
+            raise _fail(
+                "PATH_REJECTED",
+                "Inventory root must not traverse a symbolic link or reparse point.",
+            )
+        if not stat.S_ISDIR(component_stat.st_mode):
+            raise _fail(
+                "PATH_REJECTED",
+                "Inventory root path contains a non-directory component.",
+            )
+
+    try:
+        resolved = root_lexical.resolve(strict=True)
+    except _PATH_ERRORS as exc:
+        raise _fail("PATH_REJECTED", "Inventory root cannot be resolved safely.") from exc
+    if not resolved.is_relative_to(allowed_resolved):
+        raise _fail("PATH_REJECTED", "Inventory root escaped the allowed root.")
     return resolved
 
 
 def _ensure_contained(path: Path, *, allowed_root: Path, expect_directory: bool) -> os.stat_result:
     try:
         raw_stat = os.lstat(path)
-    except OSError as exc:
+    except _PATH_ERRORS as exc:
         raise _fail(
             "FILESYSTEM_ERROR",
             "A source path became unavailable during inventory.",
@@ -139,7 +230,7 @@ def _ensure_contained(path: Path, *, allowed_root: Path, expect_directory: bool)
 
     try:
         resolved = path.resolve(strict=True)
-    except (OSError, RuntimeError, ValueError) as exc:
+    except _PATH_ERRORS as exc:
         raise _fail(
             "PATH_REJECTED",
             "A source path cannot be resolved safely.",
@@ -152,6 +243,18 @@ def _ensure_contained(path: Path, *, allowed_root: Path, expect_directory: bool)
     return raw_stat
 
 
+def _relative_path_text(path: Path, *, scan_root: Path) -> str:
+    try:
+        relative = path.relative_to(scan_root).as_posix()
+        relative.encode("utf-8", errors="strict")
+    except (UnicodeEncodeError, ValueError) as exc:
+        raise _fail(
+            "PATH_REJECTED",
+            "Inventory encountered a filename that cannot be represented safely as UTF-8.",
+        ) from exc
+    return relative
+
+
 def _collect_candidates(
     scan_root: Path,
     *,
@@ -160,98 +263,102 @@ def _collect_candidates(
 ) -> tuple[list[_Candidate], int]:
     candidates: list[_Candidate] = []
     declared_total = 0
+    visited_entries = 0
     stack: list[tuple[Path, int]] = [(scan_root, 0)]
 
     while stack:
         directory, directory_depth = stack.pop()
         _ensure_contained(directory, allowed_root=allowed_root, expect_directory=True)
+        child_directories: list[tuple[Path, int]] = []
         try:
             with os.scandir(directory) as iterator:
-                entries = sorted(list(iterator), key=lambda entry: entry.name)
-        except OSError as exc:
+                for entry in iterator:
+                    visited_entries += 1
+                    if visited_entries > limits.max_entries:
+                        raise _fail(
+                            "LIMIT_EXCEEDED",
+                            "Inventory visited-entry limit was exceeded.",
+                        )
+
+                    entry_depth = directory_depth + 1
+                    if entry_depth > limits.max_depth:
+                        raise _fail(
+                            "LIMIT_EXCEEDED",
+                            "Inventory directory depth limit was exceeded.",
+                        )
+
+                    path = Path(entry.path)
+                    try:
+                        entry_stat = entry.stat(follow_symlinks=False)
+                    except _PATH_ERRORS as exc:
+                        raise _fail(
+                            "FILESYSTEM_ERROR",
+                            "A source entry cannot be inspected.",
+                        ) from exc
+
+                    if _is_link_or_reparse(entry_stat):
+                        raise _fail(
+                            "PATH_REJECTED",
+                            "Inventory encountered a symbolic link or reparse point.",
+                        )
+
+                    relative_path = _relative_path_text(path, scan_root=scan_root)
+                    if stat.S_ISDIR(entry_stat.st_mode):
+                        child_directories.append((path, entry_depth))
+                        continue
+                    if not stat.S_ISREG(entry_stat.st_mode):
+                        raise _fail(
+                            "PATH_REJECTED",
+                            "Inventory encountered an unsupported filesystem object.",
+                        )
+
+                    if entry_stat.st_size > limits.file_bytes:
+                        raise _fail(
+                            "LIMIT_EXCEEDED",
+                            "Inventory file-size limit was exceeded.",
+                        )
+                    if len(candidates) + 1 > limits.max_files:
+                        raise _fail(
+                            "LIMIT_EXCEEDED",
+                            "Inventory file-count limit was exceeded.",
+                        )
+
+                    declared_total += entry_stat.st_size
+                    if declared_total > limits.total_bytes:
+                        raise _fail(
+                            "LIMIT_EXCEEDED",
+                            "Inventory total-byte limit was exceeded.",
+                        )
+                    candidates.append(
+                        _Candidate(
+                            path=path,
+                            relative_path=relative_path,
+                            identity=_identity(entry_stat),
+                        )
+                    )
+        except _InventoryFailure:
+            raise
+        except _PATH_ERRORS as exc:
             raise _fail(
                 "FILESYSTEM_ERROR",
                 "A source directory cannot be read.",
             ) from exc
 
-        child_directories: list[tuple[Path, int]] = []
-        for entry in entries:
-            entry_depth = directory_depth + 1
-            if entry_depth > limits.max_depth:
-                raise _fail(
-                    "LIMIT_EXCEEDED",
-                    "Inventory directory depth limit was exceeded.",
-                )
-
-            path = Path(entry.path)
-            try:
-                entry_stat = entry.stat(follow_symlinks=False)
-            except OSError as exc:
-                raise _fail(
-                    "FILESYSTEM_ERROR",
-                    "A source entry cannot be inspected.",
-                ) from exc
-
-            if _is_link_or_reparse(entry_stat):
-                raise _fail(
-                    "PATH_REJECTED",
-                    "Inventory encountered a symbolic link or reparse point.",
-                )
-
-            relative_path = path.relative_to(scan_root).as_posix()
-            if stat.S_ISDIR(entry_stat.st_mode):
-                child_directories.append((path, entry_depth))
-                continue
-            if not stat.S_ISREG(entry_stat.st_mode):
-                raise _fail(
-                    "PATH_REJECTED",
-                    "Inventory encountered an unsupported filesystem object.",
-                )
-
-            if entry_stat.st_size > limits.file_bytes:
-                raise _fail(
-                    "LIMIT_EXCEEDED",
-                    "Inventory file-size limit was exceeded.",
-                )
-            if len(candidates) + 1 > limits.max_files:
-                raise _fail(
-                    "LIMIT_EXCEEDED",
-                    "Inventory file-count limit was exceeded.",
-                )
-
-            declared_total += entry_stat.st_size
-            if declared_total > limits.total_bytes:
-                raise _fail(
-                    "LIMIT_EXCEEDED",
-                    "Inventory total-byte limit was exceeded.",
-                )
-            candidates.append(
-                _Candidate(
-                    path=path,
-                    relative_path=relative_path,
-                    size=entry_stat.st_size,
-                )
-            )
-
-        for child in reversed(child_directories):
-            stack.append(child)
+        child_directories.sort(key=lambda item: item[0].name, reverse=True)
+        stack.extend(child_directories)
 
     candidates.sort(key=lambda item: item.relative_path)
     return candidates, declared_total
 
 
-def _same_identity(first: os.stat_result, second: os.stat_result) -> bool:
-    if first.st_size != second.st_size:
-        return False
-    if int(getattr(first, "st_mtime_ns", 0)) != int(getattr(second, "st_mtime_ns", 0)):
-        return False
-    first_inode = int(getattr(first, "st_ino", 0))
-    second_inode = int(getattr(second, "st_ino", 0))
-    first_device = int(getattr(first, "st_dev", 0))
-    second_device = int(getattr(second, "st_dev", 0))
-    if first_inode and second_inode and (first_inode != second_inode or first_device != second_device):
-        return False
-    return True
+def _safe_fstat(descriptor: int) -> os.stat_result:
+    try:
+        return os.fstat(descriptor)
+    except OSError as exc:
+        raise _fail(
+            "FILESYSTEM_ERROR",
+            "A source file state cannot be inspected.",
+        ) from exc
 
 
 def _hash_candidate(
@@ -259,16 +366,17 @@ def _hash_candidate(
     *,
     allowed_root: Path,
     limits: Limits,
+    total_remaining: int,
 ) -> InventoryFile:
     before = _ensure_contained(
         candidate.path,
         allowed_root=allowed_root,
         expect_directory=False,
     )
-    if before.st_size != candidate.size:
+    if not _same_snapshot(candidate.identity, before):
         raise _fail(
             "SOURCE_CHANGED",
-            "A source file changed during inventory.",
+            "A source file changed after inventory enumeration.",
         )
 
     flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_CLOEXEC", 0)
@@ -283,8 +391,10 @@ def _hash_candidate(
 
     digest = hashlib.sha256()
     bytes_read = 0
+    read_limit = min(limits.file_bytes, total_remaining)
+    primary_error: BaseException | None = None
     try:
-        opened = os.fstat(descriptor)
+        opened = _safe_fstat(descriptor)
         if not stat.S_ISREG(opened.st_mode) or not _same_identity(before, opened):
             raise _fail(
                 "SOURCE_CHANGED",
@@ -293,7 +403,7 @@ def _hash_candidate(
 
         try:
             resolved_after_open = candidate.path.resolve(strict=True)
-        except (OSError, RuntimeError, ValueError) as exc:
+        except _PATH_ERRORS as exc:
             raise _fail(
                 "PATH_REJECTED",
                 "A source file cannot be resolved safely after opening.",
@@ -305,8 +415,15 @@ def _hash_candidate(
             )
 
         while True:
+            remaining = read_limit - bytes_read
+            request_bytes = min(_CHUNK_BYTES, remaining + 1)
+            if request_bytes <= 0:
+                raise _fail(
+                    "LIMIT_EXCEEDED",
+                    "Inventory byte limit was exceeded while reading.",
+                )
             try:
-                chunk = os.read(descriptor, _CHUNK_BYTES)
+                chunk = os.read(descriptor, request_bytes)
             except OSError as exc:
                 raise _fail(
                     "FILESYSTEM_ERROR",
@@ -315,21 +432,42 @@ def _hash_candidate(
             if not chunk:
                 break
             bytes_read += len(chunk)
-            if bytes_read > limits.file_bytes:
+            if bytes_read > read_limit:
                 raise _fail(
                     "LIMIT_EXCEEDED",
-                    "Inventory file-size limit was exceeded while reading.",
+                    "Inventory byte limit was exceeded while reading.",
                 )
             digest.update(chunk)
 
-        finished = os.fstat(descriptor)
+        finished = _safe_fstat(descriptor)
         if not _same_identity(opened, finished) or bytes_read != finished.st_size:
             raise _fail(
                 "SOURCE_CHANGED",
                 "A source file changed during inventory.",
             )
+
+        path_after_read = _ensure_contained(
+            candidate.path,
+            allowed_root=allowed_root,
+            expect_directory=False,
+        )
+        if not _same_identity(finished, path_after_read):
+            raise _fail(
+                "SOURCE_CHANGED",
+                "A source path was replaced during inventory.",
+            )
+    except BaseException as exc:
+        primary_error = exc
+        raise
     finally:
-        os.close(descriptor)
+        try:
+            os.close(descriptor)
+        except OSError as exc:
+            if primary_error is None:
+                raise _fail(
+                    "FILESYSTEM_ERROR",
+                    "A source file could not be closed cleanly.",
+                ) from exc
 
     return InventoryFile(
         relative_path=candidate.relative_path,
@@ -343,12 +481,18 @@ def _content_hash(files: tuple[InventoryFile, ...]) -> str:
         {"relative_path": item.relative_path, "sha256": item.sha256}
         for item in files
     ]
-    canonical = json.dumps(
-        payload,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
+    try:
+        canonical = json.dumps(
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise _fail(
+            "PATH_REJECTED",
+            "Inventory contains a path that cannot be encoded safely.",
+        ) from exc
     return hashlib.sha256(canonical).hexdigest()
 
 
@@ -361,15 +505,15 @@ def scan_inventory(
     """Scan regular files without following links or writing to the source tree."""
 
     try:
-        allowed = _resolve_existing_directory(
-            allowed_root if allowed_root is not None else root,
-            label="Allowed root",
-        )
-        scan_root = _resolve_existing_directory(root, label="Inventory root")
-        if not scan_root.is_relative_to(allowed):
-            raise _fail(
-                "PATH_REJECTED",
-                "Inventory root is outside the allowed root.",
+        allowed_input = allowed_root if allowed_root is not None else root
+        allowed = _resolve_existing_directory(allowed_input, label="Allowed root")
+        if allowed_root is None:
+            scan_root = allowed
+        else:
+            scan_root = _resolve_scan_root_without_links(
+                root,
+                allowed_input=allowed_input,
+                allowed_resolved=allowed,
             )
 
         candidates, declared_total = _collect_candidates(
@@ -377,11 +521,18 @@ def scan_inventory(
             allowed_root=allowed,
             limits=limits,
         )
-        files = tuple(
-            _hash_candidate(candidate, allowed_root=allowed, limits=limits)
-            for candidate in candidates
-        )
-        actual_total = sum(item.size for item in files)
+        files_list: list[InventoryFile] = []
+        actual_total = 0
+        for candidate in candidates:
+            item = _hash_candidate(
+                candidate,
+                allowed_root=allowed,
+                limits=limits,
+                total_remaining=limits.total_bytes - actual_total,
+            )
+            files_list.append(item)
+            actual_total += item.size
+
         if actual_total != declared_total:
             raise _fail(
                 "SOURCE_CHANGED",
@@ -393,6 +544,7 @@ def scan_inventory(
                 "Inventory total-byte limit was exceeded.",
             )
 
+        files = tuple(files_list)
         inventory = Inventory(
             content_hash=_content_hash(files),
             total_bytes=actual_total,

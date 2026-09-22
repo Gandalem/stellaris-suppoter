@@ -20,6 +20,7 @@ def limits(**overrides: int) -> Limits:
         "total_bytes": 4096,
         "max_depth": 8,
         "max_files": 20,
+        "max_entries": 40,
         "query_chars": 512,
         "max_results": 100,
     }
@@ -268,3 +269,245 @@ def test_inventory_rejects_leaf_file_symlink_escape(tmp_path: Path) -> None:
     assert result.inventory is None
     assert "PATH_REJECTED" in codes(result)
     assert sentinel.read_text(encoding="utf-8") == "preserve"
+
+
+@pytest.mark.parametrize("fail_on_call", [1, 2])
+def test_inventory_converts_fstat_errors_to_diagnostic(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    fail_on_call: int,
+) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "one.txt").write_bytes(b"one")
+    real_fstat = os.fstat
+    calls = 0
+
+    def failing_fstat(descriptor: int):
+        nonlocal calls
+        calls += 1
+        if calls == fail_on_call:
+            raise OSError("synthetic fstat failure")
+        return real_fstat(descriptor)
+
+    monkeypatch.setattr("stellaris_supporter.discovery.inventory.os.fstat", failing_fstat)
+    result = scan_inventory(root, limits=limits())
+
+    assert result.inventory is None
+    assert "FILESYSTEM_ERROR" in codes(result)
+
+
+def test_inventory_converts_close_error_without_masking_result(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "one.txt").write_bytes(b"one")
+    real_close = os.close
+
+    def failing_close(descriptor: int) -> None:
+        real_close(descriptor)
+        raise OSError("synthetic close failure")
+
+    monkeypatch.setattr("stellaris_supporter.discovery.inventory.os.close", failing_close)
+    result = scan_inventory(root, limits=limits())
+
+    assert result.inventory is None
+    assert "FILESYSTEM_ERROR" in codes(result)
+
+
+def test_inventory_rejects_nul_root_as_structured_diagnostic() -> None:
+    result = scan_inventory(Path("bad\x00root"), limits=limits())
+
+    assert result.inventory is None
+    assert {"FILESYSTEM_ERROR", "PATH_REJECTED"} & codes(result)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="surrogateescape filename is POSIX-specific")
+def test_inventory_rejects_non_utf8_filename_as_structured_diagnostic(tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    raw = os.fsencode(root) + b"/bad_\xff.txt"
+    descriptor = os.open(raw, os.O_WRONLY | os.O_CREAT, 0o600)
+    os.close(descriptor)
+
+    result = scan_inventory(root, limits=limits())
+
+    assert result.inventory is None
+    assert "PATH_REJECTED" in codes(result)
+
+
+def test_file_count_limit_stops_directory_enumeration_early(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    for index in range(2000):
+        (root / f"{index:04d}.txt").write_bytes(b"x")
+
+    real_scandir = os.scandir
+    yielded = 0
+
+    class CountingScandir:
+        def __init__(self, path: Path) -> None:
+            self._inner = real_scandir(path)
+            self._iterator = None
+
+        def __enter__(self):
+            self._iterator = self._inner.__enter__()
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return self._inner.__exit__(exc_type, exc, tb)
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            nonlocal yielded
+            assert self._iterator is not None
+            item = next(self._iterator)
+            yielded += 1
+            return item
+
+    monkeypatch.setattr(
+        "stellaris_supporter.discovery.inventory.os.scandir",
+        lambda path: CountingScandir(path),
+    )
+    result = scan_inventory(root, limits=limits(max_files=1, max_entries=10))
+
+    assert result.inventory is None
+    assert "LIMIT_EXCEEDED" in codes(result)
+    assert yielded <= 2
+
+
+def test_directory_visit_limit_bounds_empty_directory_fanout(tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    for index in range(2000):
+        (root / f"dir-{index:04d}").mkdir()
+
+    result = scan_inventory(root, limits=limits(max_entries=25, max_files=1))
+
+    assert result.inventory is None
+    assert "LIMIT_EXCEEDED" in codes(result)
+
+
+def test_growth_during_read_is_bounded_by_remaining_total_limit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    target = root / "grow.txt"
+    target.write_bytes(b"1234")
+    real_read = os.read
+    read_sizes: list[int] = []
+    grown = False
+
+    def growing_read(descriptor: int, size: int) -> bytes:
+        nonlocal grown
+        read_sizes.append(size)
+        if not grown:
+            grown = True
+            with target.open("ab") as handle:
+                handle.write(b"x" * 10_000)
+        return real_read(descriptor, size)
+
+    monkeypatch.setattr("stellaris_supporter.discovery.inventory.os.read", growing_read)
+    result = scan_inventory(root, limits=limits(file_bytes=20_000, total_bytes=4))
+
+    assert result.inventory is None
+    assert {"LIMIT_EXCEEDED", "SOURCE_CHANGED"} & codes(result)
+    assert read_sizes
+    assert max(read_sizes) <= 5
+
+
+def test_same_size_change_after_enumeration_is_detected(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import stellaris_supporter.discovery.inventory as inventory_module
+
+    root = tmp_path / "root"
+    root.mkdir()
+    target = root / "one.txt"
+    target.write_bytes(b"AAAA")
+    real_collect = inventory_module._collect_candidates
+
+    def mutate_after_collect(*args, **kwargs):
+        candidates, total = real_collect(*args, **kwargs)
+        target.write_bytes(b"BBBB")
+        stat_result = target.stat()
+        os.utime(
+            target,
+            ns=(stat_result.st_atime_ns, stat_result.st_mtime_ns + 1_000_000),
+        )
+        return candidates, total
+
+    monkeypatch.setattr(inventory_module, "_collect_candidates", mutate_after_collect)
+    result = scan_inventory(root, limits=limits())
+
+    assert result.inventory is None
+    assert "SOURCE_CHANGED" in codes(result)
+
+
+def test_path_replacement_after_read_is_detected(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import stellaris_supporter.discovery.inventory as inventory_module
+
+    root = tmp_path / "root"
+    root.mkdir()
+    target = root / "one.txt"
+    target.write_bytes(b"old!")
+    real_lstat = os.lstat
+    real_read = os.read
+    read_started = False
+
+    def marked_read(descriptor: int, size: int) -> bytes:
+        nonlocal read_started
+        read_started = True
+        return real_read(descriptor, size)
+
+    def replaced_lstat(path):
+        current = real_lstat(path)
+        if read_started and Path(path) == target:
+            return SimpleNamespace(
+                st_mode=current.st_mode,
+                st_size=current.st_size + 10,
+                st_mtime_ns=current.st_mtime_ns + 1,
+                st_ctime_ns=current.st_ctime_ns + 1,
+                st_ino=getattr(current, "st_ino", 0) + 1,
+                st_dev=getattr(current, "st_dev", 0),
+                st_file_attributes=getattr(current, "st_file_attributes", 0),
+            )
+        return current
+
+    monkeypatch.setattr(inventory_module.os, "read", marked_read)
+    monkeypatch.setattr(inventory_module.os, "lstat", replaced_lstat)
+    result = scan_inventory(root, limits=limits())
+
+    assert result.inventory is None
+    assert "SOURCE_CHANGED" in codes(result)
+
+
+def test_scan_root_rejects_intermediate_symlink_inside_allowed_root(tmp_path: Path) -> None:
+    allowed = tmp_path / "allowed"
+    real = allowed / "real"
+    sub = real / "sub"
+    sub.mkdir(parents=True)
+    (sub / "one.txt").write_bytes(b"one")
+    alias = allowed / "alias"
+    try:
+        alias.symlink_to(real, target_is_directory=True)
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip(f"symlink creation unavailable on this runner: {exc}")
+
+    result = scan_inventory(alias / "sub", allowed_root=allowed, limits=limits())
+
+    assert result.inventory is None
+    assert "PATH_REJECTED" in codes(result)

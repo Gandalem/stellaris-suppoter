@@ -14,5 +14,6 @@ file_bytes = 16777216
 total_bytes = 536870912
 max_depth = 128
 max_files = 50000
+max_entries = 100000
 query_chars = 512
 max_results = 100
