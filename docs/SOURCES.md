@@ -15,6 +15,8 @@
 | S-09 | [Python zipfile](https://docs.python.org/3/library/zipfile.html) | 후속 세이브/압축 입력의 API·제약·주의사항 참고 |
 | S-10 | [actions/checkout](https://github.com/actions/checkout) | 공식 v5 ref 조회: fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 |
 | S-11 | [actions/setup-python](https://github.com/actions/setup-python) | 공식 v6 ref 조회: ece7cb06caefa5fff74198d8649806c4678c61a1 |
+| S-12 | [XDG Base Directory Specification 0.8](https://specifications.freedesktop.org/basedir/0.8/) | XDG_CONFIG_HOME/XDG_DATA_HOME는 절대 경로만 유효하며 unset/empty는 정의된 기본값 사용 |
+| S-13 | [Python 3.13 os.access](https://docs.python.org/3.13/library/os.html#os.access) | R_OK/W_OK/X_OK 의미, access 선검사보다 EAFP 권장, access 성공이어도 실제 I/O가 실패할 수 있음 |
 
 S-10/11은 확인한 commit에 고정하기 위한 기록이며 최신 릴리스라는 주장이 아닙니다. CI의 action 교체는 동작·권한을 재검증합니다.
 

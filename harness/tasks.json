@@ -84,7 +84,8 @@
       "depends_on": [
         "TASK-002",
         "TASK-003",
-        "TASK-031"
+        "TASK-031",
+        "TASK-032"
       ],
       "eval_ids": [
         "E-005",
@@ -705,8 +706,8 @@
     },
     {
       "id": "TASK-031",
-      "title": "Safety remediation and main integration",
-      "status": "doing",
+      "title": "Safety remediation",
+      "status": "done",
       "feature_ids": [
         "F-002",
         "F-004",
@@ -727,8 +728,34 @@
       ],
       "acceptance": [
         "Synthetic corpus refresh never recursively deletes an arbitrary output directory and preserves unmanaged files.",
-        "Adversarial configuration paths return bounded diagnostics, public reports do not leak protected path input, and directory access checks include traversal requirements on POSIX.",
-        "TASK-001 through TASK-003 plus remediation are validated together before a main integration PR is opened."
+        "Adversarial configuration paths return bounded diagnostics, public reports do not leak protected path input, and POSIX directory checks include traversal access.",
+        "Linux and Windows regression, Ruff, and harness validation pass after remediation."
+      ],
+      "evidence": [
+        "harness/evidence/TASK-031-safety-remediation.md"
+      ]
+    },
+    {
+      "id": "TASK-032",
+      "title": "Main integration gate",
+      "status": "doing",
+      "feature_ids": [
+        "F-014"
+      ],
+      "depends_on": [
+        "TASK-031"
+      ],
+      "eval_ids": [
+        "E-049"
+      ],
+      "docs": [
+        "docs/BACKLOG.md",
+        "docs/RELEASE.md"
+      ],
+      "acceptance": [
+        "A main-targeted integration PR contains TASK-001 through TASK-003 plus TASK-031 remediation.",
+        "The integration head passes Linux and Windows CI.",
+        "The actual main merge commit is recorded before TASK-004 becomes actionable."
       ],
       "evidence": []
     }

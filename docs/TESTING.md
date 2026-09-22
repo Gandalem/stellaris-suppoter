@@ -18,7 +18,7 @@
 
 모든 커밋 가능한 fixture는 직접 만든 합성 데이터입니다. 실제 게임·모드·번역·세이브를 복사하지 않습니다. 이름은 demo_/synthetic_ 계열이고 origin: synthetic을 명시합니다. TASK-002 corpus는 [tests/fixtures/synthetic](../tests/fixtures/synthetic/README.md)에 있으며 manifest가 상대 경로·scenario·encoding·byte size·SHA-256을 고정합니다. generator 출력과 committed bytes를 Linux/Windows에서 비교합니다. TASK-018이 이후 평가 runner를 연결합니다.
 
-필수 시나리오: 정상·중복·혼합 블록, 문자열 속 brace/#, escaped quote, BOM/CRLF, 미종결 문자열/brace, 비UTF-8, 깊이·파일 한도, 미지원 표현식, 한국어/영어/ID fallback, 번역 순환·중복, 같은 ID의 다른 snapshot, 빈/짧은/특수 질의, 누락 참조·그래프 순환, 파일 추가/삭제/변경, 색인 중 파일 변경, 취소·DB 실패, 입력 지시문·개인 경로 노출.
+필수 시나리오: 정상·중복·혼합 블록, 문자열 속 brace/#, escaped quote, BOM/CRLF, 미종결 문자열/brace, 비UTF-8, 깊이·파일 한도, 미지원 표현식, 한국어/영어/ID fallback, 번역 순환·중복, 같은 ID의 다른 snapshot, 빈/짧은/특수 질의, 누락 참조·그래프 순환, 파일 추가/삭제/변경, 색인 중 파일 변경, 취소·DB 실패, 입력 지시문·개인 경로 노출. 파일시스템 경계에는 unowned 파일이 있는 force refresh, symlink output, 위험 root, NUL/미해석 home 경로, stat/read permission 오류, XDG empty/relative, POSIX traversal 권한, 공개 report 전체 문자열 누출도 포함합니다.
 
 ## 실행 규칙
 
@@ -35,7 +35,7 @@ python scripts/check_harness.py
 python scripts/generate_synthetic_corpus.py --output ./tmp-synthetic
 ```
 
-마지막 명령은 검사용 임시 출력 생성이며 기존 비어 있지 않은 디렉터리는 기본적으로 덮어쓰지 않습니다. TASK-018 이후 평가 runner의 정확한 명령을 추가합니다. 아직 없는 parser/index/search 명령은 성공 로그에 넣지 않습니다.
+마지막 명령은 검사용 임시 출력 생성입니다. `--force`를 쓰더라도 유효한 synthetic manifest가 증명한 관리 파일만 교체하며 임의 디렉터리 전체를 삭제하지 않습니다. TASK-018 이후 평가 runner의 정확한 명령을 추가합니다. 아직 없는 parser/index/search 명령은 성공 로그에 넣지 않습니다.
 
 ## 품질 게이트
 

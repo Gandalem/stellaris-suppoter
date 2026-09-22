@@ -49,7 +49,7 @@ python scripts/generate_synthetic_corpus.py --output ./tmp-synthetic
 
 ## 프로젝트 상태 관리
 
-제품 기능 상태의 단일 원장은 [features.json](harness/features.json), 작업 상태는 [tasks.json](harness/tasks.json), 다음 작업은 [state.json](harness/state.json)입니다. TASK-001~003은 완료됐고 E-001~004는 실행 근거와 함께 통과했습니다. F-002 설정·진단은 `verified`, F-004/F-006은 합성 corpus만 준비된 상태라 `in_progress`입니다. 실제 inventory/parser/search와 게임 호환성은 아직 검증되지 않았습니다.
+제품 기능 상태의 단일 원장은 [features.json](harness/features.json), 작업 상태는 [tasks.json](harness/tasks.json), 다음 작업은 [state.json](harness/state.json)입니다. 기존 TASK-001~003과 리뷰 보완 TASK-031은 검증됐고 F-002 설정·진단은 추가 경계 회귀까지 포함해 다시 `verified`입니다. 다만 구현 브랜치와 main 반영은 별개이며 현재 TASK-032 main 통합 게이트가 진행 중입니다. F-004/F-006은 여전히 `in_progress`이고 실제 inventory/parser/search와 게임 호환성은 아직 검증되지 않았습니다.
 
 ## 데이터와 공개 저장소
 

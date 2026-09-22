@@ -12,7 +12,9 @@
 
 ## 파일·파서 경계
 
-루트와 상대 경로를 정규화하고 루트 밖으로 나가는 경로, symlink/reparse-point 탈출, game_root와 출력 경로의 위험한 겹침을 거부합니다. 열기 직전에도 실제 대상을 확인하고 해당 OS에서 가능한 no-follow 보호를 테스트합니다. TOCTOU 위험을 숨기지 않습니다.
+루트와 상대 경로를 정규화하고 루트 밖으로 나가는 경로, symlink/reparse-point 탈출, game_root와 출력 경로의 위험한 겹침을 거부합니다. 생성·갱신 도구는 임의 디렉터리 전체를 재귀 삭제하지 않고, 명시적인 소유권 manifest가 증명한 관리 파일만 교체합니다. 관리되지 않은 파일과 위험한 output root는 보존·거부가 기본입니다. 열기 직전에도 실제 대상을 확인하고 해당 OS에서 가능한 no-follow 보호를 테스트합니다. TOCTOU 위험을 숨기지 않습니다.
+
+`os.access()` 같은 사전 권한 검사는 진단 힌트일 뿐 실제 I/O 성공의 보장이 아닙니다([S-13](docs/SOURCES.md)). POSIX 디렉터리는 필요한 읽기/쓰기뿐 아니라 traversal(`X_OK`)도 진단하지만, 후속 inventory/index는 실제 open/stat/write 시점의 예외를 EAFP 방식으로 처리해야 합니다.
 
 파일당/전체 크기·개수·깊이·토큰·처리 시간을 제한합니다. decoding·파싱 실패를 숨기지 않습니다. SQL은 parameter를 사용하고 FTS literal 처리도 별도로 합니다. 게임 입력을 Python 코드나 셸로 실행하지 않습니다. DB 외부 확장 자동 로드는 사용하지 않습니다.
 

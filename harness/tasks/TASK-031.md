@@ -1,22 +1,34 @@
-# TASK-031 Safety remediation and main integration
+# TASK-031 Safety remediation
 
 ## 배경
 
-2026-09-22 review에서 TASK-002 generator와 TASK-003 configuration/doctor에 기존 CI가 다루지 못한 파일시스템 경계 반례가 재현됐다. 기존 성공 evidence는 당시 실행 사실로 보존하지만, F-002의 verified 판정은 보완 검증 전까지 in_progress로 되돌린다.
+2026-09-22 review에서 TASK-002 generator와 TASK-003 configuration/doctor에 기존 CI가 다루지 못한 파일시스템 경계 반례가 재현됐다. 기존 성공 evidence는 당시 실행 사실로 보존했고, F-002를 일시적으로 in_progress로 되돌린 뒤 추가 회귀를 만들었다.
 
-## 범위
+## 구현
 
-- generator --force의 arbitrary recursive deletion 제거.
-- unmanaged output 파일 보존, managed-file ownership 검증.
-- symlink output 및 위험한 output root 거부.
-- config path expand/resolve/read/stat 계층의 사용자 입력 오류를 structured diagnostic으로 변환.
-- POSIX directory traversal(X_OK) 검사.
-- public doctor payload 전체에서 보호 경로·사용자 입력 유출 방지.
+- generator `--force` arbitrary recursive deletion 제거.
+- manifest ownership 기반 managed-file-only refresh와 unmanaged file 보존.
+- symlink output 및 repository/home/filesystem 위험 root 거부.
+- config path expand/resolve/read/stat 계층 사용자 오류의 structured diagnostics.
+- NUL path 명시 거부.
+- POSIX directory traversal(`X_OK`) 진단.
+- public doctor payload 전체의 code-based safe diagnostic serialization.
 - XDG empty/relative 값 무시.
 - schema_version strict integer 검증.
-- Linux/Windows regression.
-- main 대비 전체 TASK-001~003+remediation 통합 PR 준비.
+- remediation branch CI 활성화와 Linux/Windows regression.
 
-## 완료 조건
+## 검증
 
-E-047과 E-048이 실제 CI에서 pass이고, 기존 전체 pytest/Ruff/harness 회귀도 성공해야 한다. TASK-004는 TASK-031 done 전에는 시작하지 않는다. main 병합 자체는 사용자 승인 대상이므로 이 작업은 통합 PR 생성까지를 완료 조건으로 하며 실제 merge commit은 병합 후 별도 기록한다.
+GitHub Actions run 35734466487:
+- Ubuntu / Python 3.11.16 / job 106768029365: 55 passed, Ruff success, harness success.
+- Windows / Python 3.13.15 / job 106768028931: 55 passed, Ruff success, harness success.
+
+## 종료
+
+상태: done  
+E-047: pass  
+E-048: pass  
+F-002: verified 재확정  
+근거: [TASK-031 evidence](../evidence/TASK-031-safety-remediation.md)
+
+main 통합 자체는 별도 TASK-032에서 추적하며 실제 merge commit 기록 전 TASK-004를 시작하지 않는다.

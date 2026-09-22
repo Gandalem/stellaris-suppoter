@@ -18,13 +18,14 @@
       "id": "F-002",
       "title": "Configuration and diagnostics",
       "milestone": "v0.1",
-      "status": "in_progress",
+      "status": "verified",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/ENVIRONMENT.md"
       ],
       "evidence": [
-        "harness/evidence/TASK-003-configuration-doctor.md"
+        "harness/evidence/TASK-003-configuration-doctor.md",
+        "harness/evidence/TASK-031-safety-remediation.md"
       ]
     },
     {
@@ -48,7 +49,8 @@
         "docs/PARSING.md"
       ],
       "evidence": [
-        "harness/evidence/TASK-002-synthetic-corpus.md"
+        "harness/evidence/TASK-002-synthetic-corpus.md",
+        "harness/evidence/TASK-031-safety-remediation.md"
       ]
     },
     {
@@ -72,7 +74,8 @@
         "docs/PARSING.md"
       ],
       "evidence": [
-        "harness/evidence/TASK-002-synthetic-corpus.md"
+        "harness/evidence/TASK-002-synthetic-corpus.md",
+        "harness/evidence/TASK-031-safety-remediation.md"
       ]
     },
     {

@@ -2,21 +2,23 @@
   "schema_version": 1,
   "phase": "implementation",
   "product_implemented": false,
-  "active_task": "TASK-031",
-  "next_task": "TASK-031",
-  "last_session": "harness/sessions/2026-09-22-task-003.md",
+  "active_task": "TASK-032",
+  "next_task": "TASK-032",
+  "last_session": "harness/sessions/2026-09-22-task-031.md",
   "latest_game_version": null,
   "updated_on": "2026-09-22",
   "notes": [
-    "Existing TASK-001 through TASK-003 execution evidence is preserved.",
-    "Review-discovered filesystem and configuration boundary regressions require TASK-031 remediation before TASK-004.",
-    "F-002 is temporarily in_progress until E-048 passes on Linux and Windows.",
-    "main currently contains the bootstrap harness only; implementation integration is not yet complete."
+    "TASK-031 safety remediation passed adversarial and full regression tests on Linux and Windows.",
+    "F-002 is verified again using the original TASK-003 evidence plus remediation evidence.",
+    "Integration PR #5 targets main, but main is not considered integrated until the actual merge commit is recorded.",
+    "TASK-004 depends on TASK-032 and must not start while integration is pending.",
+    "Game data, game version, DLC state, and user environment remain unverified."
   ],
   "integration": {
     "target_branch": "main",
     "observed_main_sha": "1259304ff471c11bf4b8c7e151154a114db223bb",
-    "status": "remediation_in_progress",
+    "status": "pr_open",
+    "pull_request": 5,
     "remediation_branch": "remediation/task-003-safety-integration",
     "merge_commit": null
   }

@@ -9,6 +9,8 @@
 | TASK-001 | pyproject, src 패키지, dev 도구·초기 CI | 깨끗한 환경에서 설치·import·help·테스트; 구현 전 스텁을 기능 완료로 오해하지 않음 |
 | TASK-002 | 합성 corpus와 생성/정답 문서 | 실제 게임 원문 없음; 정상·오류·번역·충돌 시나리오 재현 가능 |
 | TASK-003 | TOML 설정, 경로 정책, doctor 서비스 | 오류 경로와 data/game 겹침 거부; network off; runtime 기능 진단 |
+| TASK-031 | 리뷰 안전성 보완 | generator 삭제 경계, adversarial path/permission, public redaction, XDG/schema 회귀 검증 |
+| TASK-032 | main 통합 게이트 | main 대상 PR·양 플랫폼 CI·실제 merge commit 기록 전 TASK-004 차단 |
 | TASK-004 | 안전한 inventory와 content hash | 상대 경로·해시 안정성, root 탈출·한도 방어, 원본 무변경 |
 | TASK-005 | 버전·분기·DLC 증거 모델 | metadata/user_reported/unknown 구별; 설치·소유·활성을 혼동하지 않음 |
 | TASK-006 | lexer와 source span | 문자열·주석·escape·BOM/CRLF·연산자의 원문 위치 일치 |

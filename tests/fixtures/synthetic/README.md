@@ -33,7 +33,7 @@
 python scripts/generate_synthetic_corpus.py --output ./tmp-synthetic
 ```
 
-생성기는 기존 비어 있지 않은 출력 디렉터리를 기본적으로 덮어쓰지 않습니다. 의도적으로 교체할 때만 `--force`를 사용합니다. 테스트는 생성 결과와 이 디렉터리의 committed byte를 정확히 비교합니다.
+`--force`도 출력 디렉터리 전체를 삭제하지 않습니다. 기존 `manifest.json`의 `origin`/`generator`와 관리 파일 목록이 소유권을 증명할 때만 그 관리 파일을 교체하며, 사용자가 추가한 비관리 파일은 보존합니다. manifest가 없는 비어 있지 않은 폴더, 출력 자체가 symlink인 경우, 저장소 루트·홈·파일시스템 루트 같은 위험 위치는 거부합니다. 테스트는 이 삭제 경계와 생성 결과의 committed byte 일치를 함께 확인합니다.
 
 ## 변경 규칙
 

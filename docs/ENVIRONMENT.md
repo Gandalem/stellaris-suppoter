@@ -51,8 +51,8 @@ stellaris-supporter --help
 
 TASK-003에서 stdlib `tomllib` 기반 설정과 `doctor`를 구현했습니다. 우선순위는 명시 CLI override → TOML → 안전한 기본값입니다. `game_root`는 환경변수나 홈 디렉터리 검색으로 자동 탐색하지 않으며 반드시 명시해야 합니다. TOML의 상대 경로는 설정 파일 디렉터리 기준, CLI override의 상대 경로는 현재 작업 디렉터리 기준으로 해석합니다.
 
-기본 설정 위치는 Windows에서 `%LOCALAPPDATA%/StellarisSupporter/config.toml`, Linux에서 `$XDG_CONFIG_HOME/stellaris-supporter/config.toml` 또는 `~/.config/stellaris-supporter/config.toml`입니다. 기본 data_dir는 Windows `%LOCALAPPDATA%/StellarisSupporter/data`, Linux `$XDG_DATA_HOME/stellaris-supporter` 또는 `~/.local/share/stellaris-supporter`입니다. macOS는 `~/Library/Application Support/StellarisSupporter/`를 best-effort 기본으로 둡니다.
+기본 설정 위치는 Windows에서 `%LOCALAPPDATA%/StellarisSupporter/config.toml`, Linux에서 `$XDG_CONFIG_HOME/stellaris-supporter/config.toml` 또는 `~/.config/stellaris-supporter/config.toml`입니다. 기본 data_dir는 Windows `%LOCALAPPDATA%/StellarisSupporter/data`, Linux `$XDG_DATA_HOME/stellaris-supporter` 또는 `~/.local/share/stellaris-supporter`입니다. XDG 변수는 절대 경로일 때만 사용하며 빈 문자열이나 상대 경로는 무효로 보고 기본값으로 돌아갑니다([S-12](SOURCES.md)). macOS는 `~/Library/Application Support/StellarisSupporter/`를 best-effort 기본으로 둡니다.
 
-`network.enabled=false`만 허용합니다. `game_root`와 `data_dir`가 같거나 어느 한쪽이 다른 쪽의 부모/자식이면 거부합니다. 실제 게임 폴더는 읽기 권한만 확인하고 쓰기 권한은 요구하지 않습니다. `data_dir`는 읽기·쓰기 가능해야 합니다.
+`network.enabled=false`만 허용합니다. `game_root`와 `data_dir`가 같거나 어느 한쪽이 다른 쪽의 부모/자식이면 거부합니다. POSIX에서 game_root는 읽기+traversal, data_dir는 읽기+쓰기+traversal 가능성을 진단합니다. 게임 폴더에는 쓰기 권한을 요구하지 않습니다. 이 사전 검사는 실제 I/O 성공 보장이 아니므로 후속 파일 작업도 자체 예외 처리가 필요합니다([S-13](SOURCES.md)).
 
 예시는 [config.example.toml](../config.example.toml)에 있습니다. 로컬 doctor 출력은 사용자가 요청한 절대 경로를 보여줄 수 있지만, 공개 evidence 직렬화는 `<CONFIG_PATH>`, `<GAME_ROOT>`, `<DATA_DIR>`로 치환할 수 있습니다.
