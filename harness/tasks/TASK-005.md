@@ -87,3 +87,25 @@ E-007/E-008은 pass지만 TASK-005는 reviewer 재검토와 main 병합 전까�
 보완 모델은 `VersionObservation`을 추가하고 field/source/raw_value/normalized_value/disposition을 persistence representation에 포함한다. 공개 `to_public_dict()`는 raw observations를 제외하며 diagnostics도 정적 메시지를 유지한다.
 
 기존 E-007/E-008 성공 evidence는 삭제하지 않는다. E-007만 follow-up CI 전까지 재검증 상태로 두고 E-008은 기존 pass를 유지한다.
+
+
+## PR #11 review follow-up 검증
+
+후속 기능 candidate `49352f945e889c6759337a48ecb15d4718742751`에서 리뷰 blocker를 회귀 테스트로 고정했다.
+
+- metadata_branch가 존재하지만 unsupported일 때 valid user-reported stable/beta를 선택하지 않고 branch=unknown/source=unknown 유지.
+- unsupported metadata raw label은 `VersionObservation(disposition=unrecognized)`으로 보존.
+- 이 상황의 user report는 `suppressed_by_metadata` observation으로 보존.
+- version conflict의 metadata/user raw 값 둘 다 private `to_dict()`에서 보존.
+- build conflict의 metadata/user raw 값 둘 다 보존.
+- public `to_public_dict()`는 raw observations를 제외하고 diagnostic은 정적 문구만 유지.
+
+CI run 35751962279:
+- Ubuntu/Python 3.11: 100 passed; versioning 19 passed; Ruff/harness success.
+- Windows/Python 3.13: 100 collected, 99 passed + 기존 POSIX-only inventory 1 skipped; versioning 19 passed; Ruff/harness success.
+
+Documentation harness run 35751962314: Ubuntu/Windows success.
+
+E-007을 새 follow-up 근거로 다시 pass 처리한다. TASK-005는 reviewer 재검토와 main 병합 전까지 `doing` 유지.
+
+근거: [TASK-005 review follow-up](../evidence/TASK-005-review-followup.md)

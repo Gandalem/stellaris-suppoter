@@ -4,14 +4,14 @@
   "product_implemented": false,
   "active_task": "TASK-005",
   "next_task": "TASK-005",
-  "last_session": "harness/sessions/2026-09-23-task-005.md",
+  "last_session": "harness/sessions/2026-09-23-task-005-review-followup.md",
   "latest_game_version": null,
   "updated_on": "2026-09-23",
   "notes": [
-    "TASK-004 remains done on main merge commit 472aad700e24e03b20081f13b653502b673c7d00.",
-    "PR #11 review reopened E-007 for two version-evidence contract regressions: unsupported metadata fallback and raw conflict evidence loss.",
-    "E-008 remains pass because DLC state separation was independently confirmed and is unchanged.",
-    "TASK-005 remains doing; F-003 remains in_progress; latest_game_version remains null.",
-    "TASK-006 must not start before TASK-005 review/merge and actual main CI complete."
+    "PR #11 follow-up candidate 49352f945e889c6759337a48ecb15d4718742751 resolves the unsupported-metadata fallback and raw-evidence preservation review blockers.",
+    "E-007 passed again on the expanded version-evidence regression suite; E-008 remains pass.",
+    "TASK-005 remains doing and F-003 remains in_progress until reviewer re-check, merge, and actual main push CI complete.",
+    "latest_game_version remains null because no actual Stellaris installation metadata has been verified.",
+    "TASK-006 must not start before TASK-005 leaves doing."
   ]
 }

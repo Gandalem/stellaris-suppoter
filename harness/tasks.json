@@ -124,7 +124,8 @@
         "Unknown and user-reported versions and separate DLC states are preserved."
       ],
       "evidence": [
-        "harness/evidence/TASK-005-version-dlc-evidence.md"
+        "harness/evidence/TASK-005-version-dlc-evidence.md",
+        "harness/evidence/TASK-005-review-followup.md"
       ]
     },
     {
