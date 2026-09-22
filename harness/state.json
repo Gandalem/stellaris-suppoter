@@ -2,17 +2,16 @@
   "schema_version": 1,
   "phase": "implementation",
   "product_implemented": false,
-  "active_task": null,
+  "active_task": "TASK-004",
   "next_task": "TASK-004",
   "last_session": "harness/sessions/2026-09-22-task-031-containment-followup.md",
   "latest_game_version": null,
   "updated_on": "2026-09-22",
   "notes": [
-    "PR #7 was merged to main as b583f89de389ce838987b8c3e5b6a2fd0e7c58b9 after technical review of head 9f61a0a727c4c47d507b84600b18b5611e59b277.",
-    "Main push Package and tooling run 35742263578 passed on Ubuntu/Python 3.11 and Windows/Python 3.13 with 56 tests, including 15 synthetic corpus tests, plus Ruff and harness checks.",
-    "Main push Documentation harness run 35742263716 passed on Ubuntu and Windows.",
-    "TASK-031 is done and F-002 is verified again; TASK-004 Safe inventory is the next task.",
-    "Non-blocking follow-up: malformed manifest JSON that is not an object should be converted to an explicit generator error without traceback.",
-    "Game data, version, DLC, mods, parser/search and user-local acceptance remain unverified."
+    "TASK-004 Safe inventory is active after TASK-031 completion.",
+    "Implementation must remain read-only on source roots and use only synthetic/temp fixtures in CI.",
+    "E-005 and E-006 remain not_run until deterministic inventory and filesystem containment tests execute.",
+    "The malformed synthetic-manifest top-level type follow-up is tracked separately as GitHub issue #9 and does not block TASK-004.",
+    "Actual Stellaris installation compatibility remains unverified."
   ]
 }

@@ -33,7 +33,7 @@
       "id": "F-003",
       "title": "Inventory and version evidence",
       "milestone": "v0.1",
-      "status": "planned",
+      "status": "in_progress",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/UPDATES.md"

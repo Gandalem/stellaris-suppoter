@@ -1,0 +1,46 @@
+# TASK-004 Safe inventory
+
+## 식별·범위
+
+작업 ID: TASK-004  
+제목: Safe inventory  
+관련 기능 / 평가 ID: F-003, F-013 / E-005, E-006  
+기준 branch: task/TASK-004-safe-inventory  
+시작 main commit: 540acda774f6c2e3b29da06aff57a63ba6652719
+
+## 구현 범위
+
+- 허용 root 안의 regular file만 read-only inventory.
+- 상대 경로, byte size, raw-byte SHA-256 기록.
+- 절대 root와 시간에 독립적인 deterministic inventory content hash.
+- root 자체 및 내부 symlink/reparse-point 거부.
+- 허용 root 밖 scan root / traversal 거부.
+- file size, total bytes, file count, directory depth limit.
+- 읽기 직전 containment/link 상태 재검사와 가능한 플랫폼의 no-follow open.
+- 실제 파일 작업 오류를 structured diagnostics로 반환.
+- network/write/cache/DB 작업 없음.
+
+## 수용 조건
+
+- 동일한 파일 tree를 서로 다른 절대 root에 두어도 상대 경로와 content hash가 동일하다.
+- source bytes는 scan 전후 동일하다.
+- traversal 또는 symlink/reparse escape는 fail closed.
+- file/total/count/depth limit 초과는 LIMIT_EXCEEDED로 실패하며 조용히 생략하지 않는다.
+- inventory 결과는 deterministic path order를 사용한다.
+- Ubuntu/Windows CI에서 E-005/E-006 관련 tests와 전체 회귀/Ruff/harness가 통과한다.
+
+## 비범위
+
+- 실제 게임 version/DLC detection(TASK-005).
+- parser/index/cache/database.
+- 실제 game installation local acceptance.
+- archive/save/mod semantics.
+
+## 검증 계획
+
+```sh
+python -m pytest tests/test_inventory.py -v
+python -m pytest
+python -m ruff check .
+python scripts/check_harness.py
+```
