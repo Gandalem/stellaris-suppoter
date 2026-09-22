@@ -1,0 +1,15 @@
+# origin: synthetic
+# Deliberate collisions for preservation tests.
+
+demo_prism_lattice = {
+    area = physics
+    tier = 9
+    cost = 999
+    marker = collision_variant
+}
+
+demo_duplicate_fields = {
+    value = first
+    value = second
+    mixed = { alpha beta key = gamma }
+}

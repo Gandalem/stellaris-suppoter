@@ -26,7 +26,7 @@
     {
       "id": "TASK-002",
       "title": "Synthetic corpus",
-      "status": "todo",
+      "status": "done",
       "feature_ids": [
         "F-004",
         "F-006"
@@ -44,7 +44,9 @@
       "acceptance": [
         "Original synthetic normal, error, localisation and collision scenarios are documented."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-002-synthetic-corpus.md"
+      ]
     },
     {
       "id": "TASK-003",

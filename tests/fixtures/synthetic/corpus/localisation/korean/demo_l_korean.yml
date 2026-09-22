@@ -1,0 +1,6 @@
+# origin: synthetic
+l_korean:
+ demo_echo_theory:0 "메아리 직조"
+ demo_prism_lattice:0 "프리즘 격자"
+ demo_korean_only:0 "한국어 전용 신호"
+ demo_dynamic:0 "조종자 [Root.GetName]가 $demo_prism_lattice$ 관측"

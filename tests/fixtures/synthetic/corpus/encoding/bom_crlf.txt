@@ -1,0 +1,4 @@
+﻿# origin: synthetic
+demo_bom_crlf = {
+    text = "# { stays text }"
+}

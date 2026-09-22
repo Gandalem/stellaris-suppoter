@@ -2,7 +2,7 @@
 
 사용자가 설치한 Stellaris 데이터에 근거하여 한국어로 검색하고 설명하는 로컬 우선 도우미.
 
-> **상태: Python 패키지/개발 도구 골격(TASK-001)까지 구현됨. 게임 데이터 분석 기능은 아직 구현되지 않았습니다.**
+> **상태: TASK-001 개발 환경과 TASK-002 합성 테스트 corpus까지 구현됨. 실제 게임 데이터 parser/search 기능은 아직 구현되지 않았습니다.**
 > 기준일: 2026-09-22 (Asia/Seoul). 이 날짜는 문서 작성일이며 게임 데이터 검증일이 아닙니다.
 > 저장소 이름 `stellaris-suppoter`는 기존 이름을 유지합니다. Python 패키지명은 `stellaris_supporter`, 예정 CLI는 `stellaris-supporter`입니다.
 
@@ -41,13 +41,14 @@ stellaris-supporter --version
 python -m pytest
 python -m ruff check .
 python scripts/check_harness.py
+python scripts/generate_synthetic_corpus.py --output ./tmp-synthetic
 ```
 
-현재 `stellaris-supporter`는 help/version만 제공하는 골격입니다. 게임 파서, 설정/doctor, 검색, 실제 게임 데이터 접근, 모델 연결은 아직 없습니다.
+현재 `stellaris-supporter`는 help/version만 제공하는 골격입니다. [합성 corpus](tests/fixtures/synthetic/README.md)는 parser/localisation 개발을 위한 테스트 입력이며 실제 게임 데이터가 아닙니다. 게임 파서, 설정/doctor, 검색, 실제 게임 데이터 접근, 모델 연결은 아직 없습니다.
 
 ## 프로젝트 상태 관리
 
-제품 기능 상태의 단일 원장은 [features.json](harness/features.json), 작업 상태는 [tasks.json](harness/tasks.json), 다음 작업은 [state.json](harness/state.json)입니다. E-001 개발 환경 평가는 통과했고 TASK-001은 완료됐지만, F-001은 후속 패키징 작업(TASK-020)까지 남아 `in_progress`입니다. 게임 기능과 실제 게임 호환성은 아직 검증되지 않았습니다.
+제품 기능 상태의 단일 원장은 [features.json](harness/features.json), 작업 상태는 [tasks.json](harness/tasks.json), 다음 작업은 [state.json](harness/state.json)입니다. TASK-001/E-001과 TASK-002/E-002는 완료·통과했습니다. F-004/F-006은 합성 corpus만 준비된 상태라 `in_progress`이며 실제 lexer/parser/localisation resolver는 후속 작업입니다. 게임 기능과 실제 게임 호환성은 아직 검증되지 않았습니다.
 
 ## 데이터와 공개 저장소
 
