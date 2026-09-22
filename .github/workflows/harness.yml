@@ -1,0 +1,43 @@
+name: Documentation harness
+
+on:
+  push:
+    branches: [main, docs/bootstrap-harness]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: harness-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Harness - ${{ matrix.os }} - Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.11'
+          - os: windows-latest
+            python: '3.13'
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - name: Check out documentation
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # verified v5 ref
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # verified v6 ref
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Validate ledgers and local Markdown file links
+        run: python scripts/check_harness.py
+      - name: Test the harness validator (not the product)
+        run: python -m unittest discover -s tests_harness -v
