@@ -238,7 +238,12 @@ def _resolve_user_path(
     diagnostics: list[Diagnostic],
 ) -> Path | None:
     try:
-        path = Path(value).expanduser()
+        raw = os.fspath(value)
+        if "\x00" in raw:
+            raise ValueError("NUL is not allowed in filesystem paths")
+        path = Path(raw).expanduser()
+        if raw.startswith("~") and str(path).startswith("~"):
+            raise RuntimeError("home expression could not be resolved")
         if not path.is_absolute():
             path = base / path
         return path.resolve(strict=False)
