@@ -40,12 +40,14 @@
       "id": "F-004",
       "title": "Lossless script parsing",
       "milestone": "v0.1",
-      "status": "planned",
+      "status": "in_progress",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/PARSING.md"
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-002-synthetic-corpus.md"
+      ]
     },
     {
       "id": "F-005",
@@ -62,12 +64,14 @@
       "id": "F-006",
       "title": "Localisation resolution",
       "milestone": "v0.1",
-      "status": "planned",
+      "status": "in_progress",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/PARSING.md"
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-002-synthetic-corpus.md"
+      ]
     },
     {
       "id": "F-007",
