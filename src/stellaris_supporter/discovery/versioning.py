@@ -8,17 +8,39 @@ collection is a separate concern.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Literal
+from typing import Literal, cast
 
 from stellaris_supporter.diagnostics import Diagnostic
 
 VersionSource = Literal["metadata", "user_reported", "unknown"]
+ObservationSource = Literal["metadata", "user_reported"]
+VersionField = Literal["game_version", "build_id", "branch"]
+ObservationDisposition = Literal[
+    "selected",
+    "corroborating",
+    "conflict",
+    "suppressed_by_metadata",
+    "unrecognized",
+]
 Branch = Literal["stable", "beta", "unknown"]
 DlcSource = Literal["filesystem", "platform", "launcher", "user_reported", "unknown"]
 
-_VERSION_SOURCES = {"metadata", "user_reported", "unknown"}
 _BRANCHES = {"stable", "beta"}
 _DLC_SOURCES = {"filesystem", "platform", "launcher", "user_reported", "unknown"}
+
+
+@dataclass(frozen=True)
+class VersionObservation:
+    """One raw version/build/branch observation retained independently of resolution."""
+
+    field: VersionField
+    source: ObservationSource
+    raw_value: str
+    normalized_value: str | None
+    disposition: ObservationDisposition
+
+    def to_dict(self) -> dict[str, object]:
+        return asdict(self)
 
 
 @dataclass(frozen=True)
@@ -30,8 +52,9 @@ class VersionEvidence:
     branch: Branch
     branch_source: VersionSource
     diagnostics: tuple[Diagnostic, ...]
+    observations: tuple[VersionObservation, ...] = ()
 
-    def to_dict(self) -> dict[str, object]:
+    def _resolved_dict(self) -> dict[str, object]:
         return {
             "game_version": self.game_version,
             "game_version_source": self.game_version_source,
@@ -41,6 +64,18 @@ class VersionEvidence:
             "branch_source": self.branch_source,
             "diagnostics": [item.to_dict() for item in self.diagnostics],
         }
+
+    def to_dict(self) -> dict[str, object]:
+        """Private/persistence representation including raw evidence observations."""
+
+        payload = self._resolved_dict()
+        payload["observations"] = [item.to_dict() for item in self.observations]
+        return payload
+
+    def to_public_dict(self) -> dict[str, object]:
+        """Public-safe representation that omits raw observation values."""
+
+        return self._resolved_dict()
 
 
 @dataclass(frozen=True)
@@ -83,46 +118,82 @@ class DlcEvidence:
         }
 
 
-def _clean_text(value: str | None) -> str | None:
+def _raw_and_clean(value: str | None) -> tuple[str | None, str | None]:
     if value is None:
-        return None
+        return None, None
     if not isinstance(value, str):
         raise TypeError("evidence text must be a string or null")
     cleaned = value.strip()
-    return cleaned or None
+    if not cleaned:
+        return None, None
+    return value, cleaned
+
+
+def _clean_text(value: str | None) -> str | None:
+    return _raw_and_clean(value)[1]
 
 
 def _pick_text(
     metadata_value: str | None,
     user_value: str | None,
     *,
+    field: VersionField,
     conflict_code: str,
     conflict_message: str,
     diagnostics: list[Diagnostic],
+    observations: list[VersionObservation],
 ) -> tuple[str | None, VersionSource]:
-    metadata = _clean_text(metadata_value)
-    user = _clean_text(user_value)
+    metadata_raw, metadata = _raw_and_clean(metadata_value)
+    user_raw, user = _raw_and_clean(user_value)
+
     if metadata is not None:
-        if user is not None and user != metadata:
-            diagnostics.append(Diagnostic(conflict_code, "warning", conflict_message))
+        assert metadata_raw is not None
+        observations.append(
+            VersionObservation(field, "metadata", metadata_raw, metadata, "selected")
+        )
+        if user is not None:
+            assert user_raw is not None
+            if user == metadata:
+                observations.append(
+                    VersionObservation(
+                        field,
+                        "user_reported",
+                        user_raw,
+                        user,
+                        "corroborating",
+                    )
+                )
+            else:
+                observations.append(
+                    VersionObservation(field, "user_reported", user_raw, user, "conflict")
+                )
+                diagnostics.append(Diagnostic(conflict_code, "warning", conflict_message))
         return metadata, "metadata"
+
     if user is not None:
+        assert user_raw is not None
+        observations.append(
+            VersionObservation(field, "user_reported", user_raw, user, "selected")
+        )
         return user, "user_reported"
+
     return None, "unknown"
 
 
-def _branch_value(
+def _normalized_branch(
     value: str | None,
     *,
-    source: VersionSource,
+    source: ObservationSource,
     diagnostics: list[Diagnostic],
-) -> Branch | None:
-    cleaned = _clean_text(value)
+) -> tuple[str | None, Branch | None]:
+    raw, cleaned = _raw_and_clean(value)
     if cleaned is None:
-        return None
+        return None, None
+
     normalized = cleaned.lower()
     if normalized in _BRANCHES:
-        return normalized  # type: ignore[return-value]
+        return raw, cast(Branch, normalized)
+
     diagnostics.append(
         Diagnostic(
             "BRANCH_UNKNOWN",
@@ -130,7 +201,126 @@ def _branch_value(
             f"{source} branch evidence is not a supported stable/beta label.",
         )
     )
-    return None
+    return raw, None
+
+
+def _resolve_branch(
+    metadata_value: str | None,
+    user_value: str | None,
+    *,
+    diagnostics: list[Diagnostic],
+    observations: list[VersionObservation],
+) -> tuple[Branch, VersionSource]:
+    metadata_raw, metadata = _normalized_branch(
+        metadata_value,
+        source="metadata",
+        diagnostics=diagnostics,
+    )
+    user_raw, user = _normalized_branch(
+        user_value,
+        source="user_reported",
+        diagnostics=diagnostics,
+    )
+
+    metadata_present = metadata_raw is not None
+    user_present = user_raw is not None
+
+    if metadata_present:
+        assert metadata_raw is not None
+        if metadata is None:
+            observations.append(
+                VersionObservation(
+                    "branch",
+                    "metadata",
+                    metadata_raw,
+                    None,
+                    "unrecognized",
+                )
+            )
+            if user_present:
+                assert user_raw is not None
+                observations.append(
+                    VersionObservation(
+                        "branch",
+                        "user_reported",
+                        user_raw,
+                        user,
+                        "suppressed_by_metadata" if user is not None else "unrecognized",
+                    )
+                )
+                if user is not None:
+                    diagnostics.append(
+                        Diagnostic(
+                            "BRANCH_USER_FALLBACK_BLOCKED",
+                            "warning",
+                            "User-reported branch evidence was not selected because metadata branch evidence was present but unrecognized.",
+                        )
+                    )
+            return "unknown", "unknown"
+
+        observations.append(
+            VersionObservation("branch", "metadata", metadata_raw, metadata, "selected")
+        )
+        if user_present:
+            assert user_raw is not None
+            if user is None:
+                observations.append(
+                    VersionObservation(
+                        "branch",
+                        "user_reported",
+                        user_raw,
+                        None,
+                        "unrecognized",
+                    )
+                )
+            elif user == metadata:
+                observations.append(
+                    VersionObservation(
+                        "branch",
+                        "user_reported",
+                        user_raw,
+                        user,
+                        "corroborating",
+                    )
+                )
+            else:
+                observations.append(
+                    VersionObservation(
+                        "branch",
+                        "user_reported",
+                        user_raw,
+                        user,
+                        "conflict",
+                    )
+                )
+                diagnostics.append(
+                    Diagnostic(
+                        "BRANCH_EVIDENCE_CONFLICT",
+                        "warning",
+                        "Metadata and user-reported branch evidence disagree; metadata is retained.",
+                    )
+                )
+        return metadata, "metadata"
+
+    if user_present:
+        assert user_raw is not None
+        if user is None:
+            observations.append(
+                VersionObservation(
+                    "branch",
+                    "user_reported",
+                    user_raw,
+                    None,
+                    "unrecognized",
+                )
+            )
+            return "unknown", "unknown"
+        observations.append(
+            VersionObservation("branch", "user_reported", user_raw, user, "selected")
+        )
+        return user, "user_reported"
+
+    return "unknown", "unknown"
 
 
 def resolve_version_evidence(
@@ -142,15 +332,19 @@ def resolve_version_evidence(
     user_reported_build_id: str | None = None,
     user_reported_branch: str | None = None,
 ) -> VersionEvidence:
-    """Resolve independent version/build/branch evidence without cross-field inference."""
+    """Resolve values while retaining every non-empty raw observation separately."""
 
     diagnostics: list[Diagnostic] = []
+    observations: list[VersionObservation] = []
+
     game_version, game_version_source = _pick_text(
         metadata_version,
         user_reported_version,
+        field="game_version",
         conflict_code="VERSION_EVIDENCE_CONFLICT",
         conflict_message="Metadata and user-reported version evidence disagree; metadata is retained.",
         diagnostics=diagnostics,
+        observations=observations,
     )
     if game_version is None:
         diagnostics.append(
@@ -164,38 +358,19 @@ def resolve_version_evidence(
     build_id, build_id_source = _pick_text(
         metadata_build_id,
         user_reported_build_id,
+        field="build_id",
         conflict_code="BUILD_EVIDENCE_CONFLICT",
         conflict_message="Metadata and user-reported build evidence disagree; metadata is retained.",
         diagnostics=diagnostics,
+        observations=observations,
     )
 
-    metadata_branch_value = _branch_value(
+    branch, branch_source = _resolve_branch(
         metadata_branch,
-        source="metadata",
-        diagnostics=diagnostics,
-    )
-    user_branch_value = _branch_value(
         user_reported_branch,
-        source="user_reported",
         diagnostics=diagnostics,
+        observations=observations,
     )
-    if metadata_branch_value is not None:
-        branch: Branch = metadata_branch_value
-        branch_source: VersionSource = "metadata"
-        if user_branch_value is not None and user_branch_value != metadata_branch_value:
-            diagnostics.append(
-                Diagnostic(
-                    "BRANCH_EVIDENCE_CONFLICT",
-                    "warning",
-                    "Metadata and user-reported branch evidence disagree; metadata is retained.",
-                )
-            )
-    elif user_branch_value is not None:
-        branch = user_branch_value
-        branch_source = "user_reported"
-    else:
-        branch = "unknown"
-        branch_source = "unknown"
 
     return VersionEvidence(
         game_version=game_version,
@@ -205,6 +380,7 @@ def resolve_version_evidence(
         branch=branch,
         branch_source=branch_source,
         diagnostics=tuple(diagnostics),
+        observations=tuple(observations),
     )
 
 

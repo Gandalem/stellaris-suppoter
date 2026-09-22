@@ -172,3 +172,87 @@ def test_dlc_serialization_keeps_three_tri_state_fields() -> None:
 def test_dlc_id_must_be_nonempty() -> None:
     with pytest.raises(ValueError, match="dlc_id"):
         build_dlc_evidence("   ")
+
+
+def observations_by_key(result) -> dict[tuple[str, str], object]:
+    return {(item.field, item.source): item for item in result.observations}
+
+
+@pytest.mark.parametrize("reported", ["stable", "beta"])
+def test_unrecognized_metadata_branch_blocks_user_fallback(reported: str) -> None:
+    result = resolve_version_evidence(
+        metadata_version="demo-version",
+        metadata_branch="experimental-custom",
+        user_reported_branch=reported,
+    )
+    by_key = observations_by_key(result)
+
+    assert result.branch == "unknown"
+    assert result.branch_source == "unknown"
+    assert by_key[("branch", "metadata")].raw_value == "experimental-custom"
+    assert by_key[("branch", "metadata")].normalized_value is None
+    assert by_key[("branch", "metadata")].disposition == "unrecognized"
+    assert by_key[("branch", "user_reported")].raw_value == reported
+    assert by_key[("branch", "user_reported")].normalized_value == reported
+    assert by_key[("branch", "user_reported")].disposition == "suppressed_by_metadata"
+    assert "BRANCH_USER_FALLBACK_BLOCKED" in diagnostic_codes(result)
+
+
+def test_version_conflict_preserves_both_raw_observations_in_serialization() -> None:
+    result = resolve_version_evidence(
+        metadata_version="demo-meta-v1",
+        user_reported_version="demo-user-v2",
+    )
+    observations = result.to_dict()["observations"]
+
+    assert {
+        (item["field"], item["source"], item["raw_value"], item["disposition"])
+        for item in observations
+        if item["field"] == "game_version"
+    } == {
+        ("game_version", "metadata", "demo-meta-v1", "selected"),
+        ("game_version", "user_reported", "demo-user-v2", "conflict"),
+    }
+
+
+def test_build_conflict_preserves_both_raw_observations_in_serialization() -> None:
+    result = resolve_version_evidence(
+        metadata_build_id="demo-meta-build",
+        user_reported_build_id="demo-user-build",
+    )
+    observations = result.to_dict()["observations"]
+
+    assert {
+        (item["field"], item["source"], item["raw_value"], item["disposition"])
+        for item in observations
+        if item["field"] == "build_id"
+    } == {
+        ("build_id", "metadata", "demo-meta-build", "selected"),
+        ("build_id", "user_reported", "demo-user-build", "conflict"),
+    }
+
+
+def test_unrecognized_branch_raw_label_survives_private_serialization() -> None:
+    result = resolve_version_evidence(metadata_branch="demo-unknown-branch")
+    branch_observation = observations_by_key(result)[("branch", "metadata")]
+
+    assert result.branch == "unknown"
+    assert branch_observation.raw_value == "demo-unknown-branch"
+    assert branch_observation.normalized_value is None
+    assert branch_observation.disposition == "unrecognized"
+    assert result.to_dict()["observations"][0]["raw_value"] == "demo-unknown-branch"
+
+
+def test_public_version_serialization_omits_raw_observations() -> None:
+    result = resolve_version_evidence(
+        metadata_version="demo-meta-v1",
+        user_reported_version="demo-user-v2",
+        metadata_branch="demo-unknown-branch",
+        user_reported_branch="stable",
+    )
+    public_payload = result.to_public_dict()
+    rendered = repr(public_payload)
+
+    assert "observations" not in public_payload
+    assert "demo-user-v2" not in rendered
+    assert "demo-unknown-branch" not in rendered

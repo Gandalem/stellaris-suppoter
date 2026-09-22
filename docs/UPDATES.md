@@ -36,3 +36,12 @@ TASK-005의 로컬 증거 모델은 `game_version`, `build_id`, `branch`를 서�
 `build_id`는 버전 라벨로 변환하지 않습니다. build ID만 있으면 `game_version=null`, `game_version_source=unknown`이며 VERSION_UNKNOWN 상태를 유지합니다. 이 정책은 실제 최신 버전을 알아낸다는 의미가 아닙니다.
 
 DLC는 `installed`, `owned`, `enabled`를 각각 `true|false|null`로 유지하고 각 필드에 독립 source/evidence를 둡니다. 파일 존재는 installed 근거가 될 수 있지만 owned나 enabled를 자동으로 true로 만들지 않습니다. launcher/platform/user report도 다른 필드를 암묵적으로 덮어쓰지 않습니다.
+
+
+### 원본 version evidence 보존
+
+선택된 `game_version`, `build_id`, `branch`와 수집된 원본 observation은 분리합니다. 각 non-empty observation은 field, source(metadata|user_reported), raw_value, normalized_value, disposition을 보존합니다. disposition은 selected|corroborating|conflict|suppressed_by_metadata|unrecognized입니다.
+
+metadata branch가 존재하지만 stable/beta로 해석되지 않으면 이는 "metadata 없음"이 아닙니다. 이 경우 branch는 unknown으로 유지하고 user-reported branch를 선택하지 않습니다. metadata 원문은 unrecognized, 유효한 user report는 suppressed_by_metadata observation으로 남깁니다.
+
+원본 observation은 persistence/private evidence용 `to_dict()`에 포함하고, 공개 보고용 `to_public_dict()`에서는 제외합니다. Diagnostic 메시지는 원본 version/build/branch 문자열을 삽입하지 않는 정적 문구를 유지합니다.

@@ -75,3 +75,15 @@ CI run 35750105437:
 E-007/E-008은 pass지만 TASK-005는 reviewer 재검토와 main 병합 전까지 `doing`으로 유지한다. 실제 게임 설치 버전은 여전히 검증하지 않았고 `latest_game_version=null`을 유지한다.
 
 근거: [TASK-005 evidence](../evidence/TASK-005-version-dlc-evidence.md)
+
+
+## PR #11 review follow-up
+
+최초 candidate 검토에서 두 가지 계약 누락이 재현되어 E-007을 재검증한다.
+
+1. metadata branch가 존재하지만 stable/beta로 해석되지 않을 때 user-reported branch로 fallback하지 않는다.
+2. metadata/user conflict와 unrecognized branch의 원본 observation을 선택 결과와 별도로 직렬화해 보존한다.
+
+보완 모델은 `VersionObservation`을 추가하고 field/source/raw_value/normalized_value/disposition을 persistence representation에 포함한다. 공개 `to_public_dict()`는 raw observations를 제외하며 diagnostics도 정적 메시지를 유지한다.
+
+기존 E-007/E-008 성공 evidence는 삭제하지 않는다. E-007만 follow-up CI 전까지 재검증 상태로 두고 E-008은 기존 pass를 유지한다.
