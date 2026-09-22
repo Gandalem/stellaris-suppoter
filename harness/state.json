@@ -4,13 +4,14 @@
   "product_implemented": false,
   "active_task": "TASK-004",
   "next_task": "TASK-004",
-  "last_session": "harness/sessions/2026-09-23-task-004.md",
+  "last_session": "harness/sessions/2026-09-23-task-004-review-followup.md",
   "latest_game_version": null,
   "updated_on": "2026-09-23",
   "notes": [
-    "TASK-004 was reopened after PR #10 review reproduced seven additional inventory boundary failures.",
-    "Prior 70-test/14-inventory-test success evidence is preserved as historical evidence, but E-005/E-006 are revalidation-pending.",
-    "The remediation stays on the existing PR #10 branch.",
-    "TASK-005 must not start until the reopened TASK-004 passes Linux/Windows CI and receives re-review."
+    "PR #10 review follow-up candidate a7357dec108d6a9bc568a2315311b80d443a4671 passes the expanded inventory regression suite on Ubuntu and Windows.",
+    "E-005 and E-006 are pass on the follow-up candidate; prior 70-test/14-inventory-test evidence is preserved.",
+    "TASK-004 remains doing until reviewer re-check/merge approval and main integration are complete.",
+    "F-003 and F-013 remain in_progress; TASK-005 must not start before TASK-004 leaves doing.",
+    "The POSIX non-UTF8 filename regression is intentionally skipped on Windows because that filename representation is POSIX-specific."
   ]
 }

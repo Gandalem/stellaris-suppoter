@@ -39,7 +39,8 @@
         "docs/UPDATES.md"
       ],
       "evidence": [
-        "harness/evidence/TASK-004-safe-inventory.md"
+        "harness/evidence/TASK-004-safe-inventory.md",
+        "harness/evidence/TASK-004-review-followup.md"
       ]
     },
     {
@@ -156,7 +157,8 @@
       ],
       "evidence": [
         "harness/evidence/TASK-031-safety-hardening-main-integration.md",
-        "harness/evidence/TASK-004-safe-inventory.md"
+        "harness/evidence/TASK-004-safe-inventory.md",
+        "harness/evidence/TASK-004-review-followup.md"
       ]
     },
     {

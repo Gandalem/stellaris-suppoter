@@ -56,3 +56,30 @@ E-006: pass
 F-003: in_progress (TASK-005 version/DLC evidence 남음)  
 F-013: in_progress (후속 safety suite 남음)  
 근거: [TASK-004 evidence](../evidence/TASK-004-safe-inventory.md)
+
+
+## PR #10 review follow-up
+
+PR #10 review에서 기존 CI가 다루지 않은 오류 처리·탐색량 제한·변경 감지·중간 링크 경계가 재현되어 TASK-004를 다시 열었다.
+
+후속 candidate `a7357dec108d6a9bc568a2315311b80d443a4671`에서 다음을 보완했다.
+
+- `fstat()`와 `close()`의 예상 가능한 I/O 오류를 structured diagnostic으로 변환하고, close 오류가 먼저 발생한 오류를 덮어쓰지 않도록 처리.
+- NUL root와 POSIX surrogateescape/non-UTF8 filename을 fail-closed diagnostic으로 처리.
+- `max_entries` 방문 항목 한도를 추가하고 `scandir()`를 전체 list로 materialize하지 않고 순회 중 제한 적용.
+- 파일 수 제한도 enumeration 도중 적용.
+- 읽는 중 파일 증가 시 file/remaining-total budget + 1 byte 이상 읽지 않고 실패.
+- 후보 수집 당시 size/mtime/inode/device identity를 보존하고 open 전 비교.
+- 읽기 종료 후 열린 파일 identity뿐 아니라 경로가 여전히 같은 파일을 가리키는지 다시 확인.
+- 명시적 allowed root 내부에서 scan 시작 경로의 원래 중간 구성요소를 resolve 전에 검사해 symlink/reparse traversal 거부.
+- Windows에서 lstat/open identity 비교에 불안정한 `st_ctime_ns`를 사용하지 않고 size/mtime + 가능한 inode/device를 사용.
+
+검증:
+- Ubuntu/Python 3.11: 전체 81 tests, inventory 25 tests 전부 통과.
+- Windows/Python 3.13: 전체 81 tests 통과, inventory 25개 중 POSIX 전용 non-UTF8 filename 1개만 의도적 skip, 나머지 통과.
+- Ruff/harness 성공.
+- Documentation harness Ubuntu/Windows 성공.
+
+E-005/E-006은 follow-up candidate에서 pass로 복구했지만 TASK-004 자체는 reviewer 재검토와 main 병합 전까지 `doing`으로 유지한다.
+
+근거: [review follow-up evidence](../evidence/TASK-004-review-followup.md)
