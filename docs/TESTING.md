@@ -1,6 +1,6 @@
 # 테스트 전략
 
-문서 검사, 검사기 자체 테스트, 제품 테스트, 실제 게임 검증을 구별합니다. 현재 제품 테스트와 게임 fixture는 아직 없습니다. [평가 사례](../harness/evals.jsonl)는 설계된 사례이며 모두 not_run으로 시작합니다.
+문서 검사, 검사기 자체 테스트, 제품 테스트, 실제 게임 검증을 구별합니다. TASK-001에서 패키지/CLI scaffold 테스트를, TASK-002에서 직접 작성한 합성 corpus와 provenance 테스트를 추가했습니다. parser/localisation 제품 구현과 실제 게임 검증은 아직 없습니다. [평가 사례](../harness/evals.jsonl)는 실행 근거가 있는 항목만 pass로 전환합니다.
 
 ## 테스트 계층
 
@@ -16,7 +16,7 @@
 
 ## fixture 정책
 
-모든 커밋 가능한 fixture는 직접 만든 합성 데이터입니다. 실제 게임·모드·번역·세이브를 복사하지 않습니다. 이름은 demo_/synthetic_ 계열이고 origin: synthetic을 명시합니다. scenario별 README에 목적·입력·정답·지원 범위를 기록합니다. TASK-002가 corpus를 만들고 TASK-018이 평가 runner를 연결합니다.
+모든 커밋 가능한 fixture는 직접 만든 합성 데이터입니다. 실제 게임·모드·번역·세이브를 복사하지 않습니다. 이름은 demo_/synthetic_ 계열이고 origin: synthetic을 명시합니다. TASK-002 corpus는 [tests/fixtures/synthetic](../tests/fixtures/synthetic/README.md)에 있으며 manifest가 상대 경로·scenario·encoding·byte size·SHA-256을 고정합니다. generator 출력과 committed bytes를 Linux/Windows에서 비교합니다. TASK-018이 이후 평가 runner를 연결합니다.
 
 필수 시나리오: 정상·중복·혼합 블록, 문자열 속 brace/#, escaped quote, BOM/CRLF, 미종결 문자열/brace, 비UTF-8, 깊이·파일 한도, 미지원 표현식, 한국어/영어/ID fallback, 번역 순환·중복, 같은 ID의 다른 snapshot, 빈/짧은/특수 질의, 누락 참조·그래프 순환, 파일 추가/삭제/변경, 색인 중 파일 변경, 취소·DB 실패, 입력 지시문·개인 경로 노출.
 
@@ -29,11 +29,13 @@ unit/integration/evaluation은 네트워크를 막고 실제 사용자 홈·게�
 ## 현재 명령
 
 ```sh
+python -m pytest
+python -m ruff check .
 python scripts/check_harness.py
-python -m unittest discover -s tests_harness -v
+python scripts/generate_synthetic_corpus.py --output ./tmp-synthetic
 ```
 
-TASK-001 이후 제품용 pytest와 Ruff 검사를 추가합니다. TASK-018 이후 평가 runner의 정확한 명령을 문서에 적습니다. 아직 없는 명령은 성공 로그에 넣지 않습니다.
+마지막 명령은 검사용 임시 출력 생성이며 기존 비어 있지 않은 디렉터리는 기본적으로 덮어쓰지 않습니다. TASK-018 이후 평가 runner의 정확한 명령을 추가합니다. 아직 없는 parser/index/search 명령은 성공 로그에 넣지 않습니다.
 
 ## 품질 게이트
 
