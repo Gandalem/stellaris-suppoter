@@ -105,7 +105,7 @@
     {
       "id": "TASK-005",
       "title": "Version and DLC evidence",
-      "status": "doing",
+      "status": "done",
       "feature_ids": [
         "F-003"
       ],
@@ -131,7 +131,7 @@
     {
       "id": "TASK-006",
       "title": "Lexer and source spans",
-      "status": "todo",
+      "status": "doing",
       "feature_ids": [
         "F-004"
       ],
