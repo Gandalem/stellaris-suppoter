@@ -2,16 +2,16 @@
   "schema_version": 1,
   "phase": "implementation",
   "product_implemented": false,
-  "active_task": "TASK-004",
-  "next_task": "TASK-004",
-  "last_session": "harness/sessions/2026-09-23-task-004-review-followup.md",
+  "active_task": "TASK-005",
+  "next_task": "TASK-005",
+  "last_session": "harness/sessions/2026-09-23-task-005-review-followup.md",
   "latest_game_version": null,
   "updated_on": "2026-09-23",
   "notes": [
-    "PR #10 review follow-up candidate a7357dec108d6a9bc568a2315311b80d443a4671 passes the expanded inventory regression suite on Ubuntu and Windows.",
-    "E-005 and E-006 are pass on the follow-up candidate; prior 70-test/14-inventory-test evidence is preserved.",
-    "TASK-004 remains doing until reviewer re-check/merge approval and main integration are complete.",
-    "F-003 and F-013 remain in_progress; TASK-005 must not start before TASK-004 leaves doing.",
-    "The POSIX non-UTF8 filename regression is intentionally skipped on Windows because that filename representation is POSIX-specific."
+    "PR #11 follow-up candidate 49352f945e889c6759337a48ecb15d4718742751 resolves the unsupported-metadata fallback and raw-evidence preservation review blockers.",
+    "E-007 passed again on the expanded version-evidence regression suite; E-008 remains pass.",
+    "TASK-005 remains doing and F-003 remains in_progress until reviewer re-check, merge, and actual main push CI complete.",
+    "latest_game_version remains null because no actual Stellaris installation metadata has been verified.",
+    "TASK-006 must not start before TASK-005 leaves doing."
   ]
 }

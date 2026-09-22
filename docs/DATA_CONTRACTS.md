@@ -12,9 +12,9 @@ source_kind는 synthetic|base|mod|official|wiki|community입니다. 웹 출처�
 
 Snapshot: id, content_hash, schema_version, parser_version, adapter_version, policy_hash, context_kind, game_version, game_version_source, build_id, branch, dlc_state, mod_state, created_at, checked_at, status, diagnostics.
 
-context_kind는 synthetic|base_install|effective이며 마지막 값은 모드 검증 후에만 사용합니다. game_version은 string|null, 근거는 metadata|user_reported|unknown입니다. build_id를 패치 버전으로 변환하지 않습니다. branch는 stable|beta|unknown입니다. status는 building|ready|partial|failed이며 building은 조회하지 않습니다. partial 활성화는 명시 승인이 필요합니다.
+context_kind는 synthetic|base_install|effective이며 마지막 값은 모드 검증 후에만 사용합니다. game_version은 string|null, 근거는 metadata|user_reported|unknown입니다. build_id를 패치 버전으로 변환하지 않습니다. branch는 stable|beta|unknown입니다. 선택 결과와 별도로 VersionObservation(field, source, raw_value, normalized_value, disposition)을 보존하며, 미지원 metadata branch가 존재하면 user-reported branch로 fallback하지 않고 branch=unknown을 유지합니다. status는 building|ready|partial|failed이며 building은 조회하지 않습니다. partial 활성화는 명시 승인이 필요합니다.
 
-DLC의 installed, owned, enabled는 각각 true|false|null이고 별도 근거를 갖습니다. mod_state는 none_reported|detected_unresolved|resolved|unknown입니다. 설치 폴더만 보고 모드 없음으로 단정하지 않습니다.
+DLC의 installed, owned, enabled는 각각 true|false|null이고 별도 근거를 갖습니다. 각 필드는 value, source, evidence를 가지며 source는 filesystem|platform|launcher|user_reported|unknown입니다. 알려진 true/false 상태를 source=unknown으로 저장하지 않습니다. mod_state는 none_reported|detected_unresolved|resolved|unknown입니다. 설치 폴더만 보고 모드 없음으로 단정하지 않습니다.
 
 content_hash는 상대 경로·원문 해시·출처 종류/ID의 정렬된 목록으로 계산합니다. snapshot_id는 content_hash와 스키마·파서·adapter·정책·분석 문맥의 canonical JSON SHA-256입니다. 시간과 절대 경로는 제외합니다. 직렬화 규칙은 fixture로 고정합니다.
 

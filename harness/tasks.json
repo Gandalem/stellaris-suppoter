@@ -76,7 +76,7 @@
     {
       "id": "TASK-004",
       "title": "Safe inventory",
-      "status": "doing",
+      "status": "done",
       "feature_ids": [
         "F-003",
         "F-013"
@@ -105,7 +105,7 @@
     {
       "id": "TASK-005",
       "title": "Version and DLC evidence",
-      "status": "todo",
+      "status": "doing",
       "feature_ids": [
         "F-003"
       ],
@@ -123,7 +123,10 @@
       "acceptance": [
         "Unknown and user-reported versions and separate DLC states are preserved."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-005-version-dlc-evidence.md",
+        "harness/evidence/TASK-005-review-followup.md"
+      ]
     },
     {
       "id": "TASK-006",

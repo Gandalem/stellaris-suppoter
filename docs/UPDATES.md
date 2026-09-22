@@ -27,3 +27,21 @@ cache freshness는 fresh|changed|unchecked|unavailable로 표시합니다. fresh
 ## 충돌 우선순위
 
 '내 설치에서 이 필드가 무엇인가'는 해당 snapshot 원문이 근거입니다. '현재 정식 패치에서 무엇이 바뀌었나'는 검증된 공식 공지와 대상 버전이 근거입니다. Wiki·커뮤니티는 설명·가설 자료이며 실제 설치의 수치와 충돌하면 각 문맥을 표시합니다. 서로 다른 버전의 출처를 하나의 수치로 합치지 않습니다.
+
+
+## 설치 버전·분기 증거 정책
+
+TASK-005의 로컬 증거 모델은 `game_version`, `build_id`, `branch`를 서로 독립 필드로 유지합니다. `game_version_source`와 `branch_source`는 `metadata|user_reported|unknown`이며, metadata가 없을 때만 user-reported 값을 해당 출처 그대로 사용할 수 있습니다. 서로 충돌하면 metadata를 유지하고 conflict diagnostic을 남깁니다.
+
+`build_id`는 버전 라벨로 변환하지 않습니다. build ID만 있으면 `game_version=null`, `game_version_source=unknown`이며 VERSION_UNKNOWN 상태를 유지합니다. 이 정책은 실제 최신 버전을 알아낸다는 의미가 아닙니다.
+
+DLC는 `installed`, `owned`, `enabled`를 각각 `true|false|null`로 유지하고 각 필드에 독립 source/evidence를 둡니다. 파일 존재는 installed 근거가 될 수 있지만 owned나 enabled를 자동으로 true로 만들지 않습니다. launcher/platform/user report도 다른 필드를 암묵적으로 덮어쓰지 않습니다.
+
+
+### 원본 version evidence 보존
+
+선택된 `game_version`, `build_id`, `branch`와 수집된 원본 observation은 분리합니다. 각 non-empty observation은 field, source(metadata|user_reported), raw_value, normalized_value, disposition을 보존합니다. disposition은 selected|corroborating|conflict|suppressed_by_metadata|unrecognized입니다.
+
+metadata branch가 존재하지만 stable/beta로 해석되지 않으면 이는 "metadata 없음"이 아닙니다. 이 경우 branch는 unknown으로 유지하고 user-reported branch를 선택하지 않습니다. metadata 원문은 unrecognized, 유효한 user report는 suppressed_by_metadata observation으로 남깁니다.
+
+원본 observation은 persistence/private evidence용 `to_dict()`에 포함하고, 공개 보고용 `to_public_dict()`에서는 제외합니다. Diagnostic 메시지는 원본 version/build/branch 문자열을 삽입하지 않는 정적 문구를 유지합니다.

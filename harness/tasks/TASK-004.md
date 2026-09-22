@@ -83,3 +83,16 @@ PR #10 review에서 기존 CI가 다루지 않은 오류 처리·탐색량 제�
 E-005/E-006은 follow-up candidate에서 pass로 복구했지만 TASK-004 자체는 reviewer 재검토와 main 병합 전까지 `doing`으로 유지한다.
 
 근거: [review follow-up evidence](../evidence/TASK-004-review-followup.md)
+
+
+## 실제 main 병합 완료
+
+PR #10 head `219b41f3853406b0c069d553f9fcf635ffc715c0`는 merge commit `472aad700e24e03b20081f13b653502b673c7d00`으로 main에 반영됐다.
+
+실제 main push CI:
+- Package and tooling run 35749603679
+  - Ubuntu/Python 3.11.16: 81 passed, inventory 25 passed, Ruff/harness success.
+  - Windows/Python 3.13.15: 81 collected, 80 passed + POSIX-only 1 skipped; inventory 24 passed + 1 skipped, Ruff/harness success.
+- Documentation harness run 35749603578: Ubuntu/Windows success.
+
+따라서 TASK-004는 `done`으로 종료한다. E-005/E-006 pass는 유지하며 F-003/F-013은 후속 작업이 남아 `in_progress`를 유지한다.
