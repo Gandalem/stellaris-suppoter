@@ -1,6 +1,6 @@
 # 에이전트 작업 계약
 
-이 파일은 이 저장소에서 일하는 사람·코딩 에이전트의 공통 하네스입니다. 특정 모델, Codex 사용권, 장기 기억을 전제로 하지 않습니다. 제품은 아직 구현 전입니다.
+이 파일은 이 저장소에서 일하는 사람·코딩 에이전트의 공통 하네스입니다. 특정 모델, Codex 사용권, 장기 기억을 전제로 하지 않습니다. 제품은 단계적으로 구현 중이며 원장이 실제 상태의 기준입니다.
 
 ## 읽는 순서와 권위
 
@@ -38,8 +38,10 @@
 ## 현재 실행 가능한 검사
 
 ```sh
+python -m pytest
+python -m ruff check .
 python scripts/check_harness.py
-python -m unittest discover -s tests_harness -v
+stellaris-supporter --help
 ```
 
-제품용 `pytest`, `ruff`, CLI 명령은 TASK-001 이후 만들어질 계약입니다. 현재 없는데 실행했다고 보고하지 않습니다. 공통 종료 양식은 [세션 템플릿](harness/templates/session.md), 다음 세션 시작 프롬프트는 [인계 템플릿](harness/templates/next-session.md)을 사용합니다.
+TASK-003부터 `doctor`도 구현돼 있습니다. 아직 없는 inventory/index/search/refs/diff 명령을 실행했다고 보고하지 않습니다. 공통 종료 양식은 [세션 템플릿](harness/templates/session.md), 다음 세션 시작 프롬프트는 [인계 템플릿](harness/templates/next-session.md)을 사용합니다.

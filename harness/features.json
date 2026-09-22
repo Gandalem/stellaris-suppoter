@@ -18,12 +18,14 @@
       "id": "F-002",
       "title": "Configuration and diagnostics",
       "milestone": "v0.1",
-      "status": "planned",
+      "status": "verified",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/ENVIRONMENT.md"
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-003-configuration-doctor.md"
+      ]
     },
     {
       "id": "F-003",
