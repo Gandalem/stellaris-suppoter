@@ -121,3 +121,76 @@ def test_collision_and_localisation_fixture_invariants() -> None:
     assert b"demo_missing_loc:0" not in english + korean
     assert b'demo_cycle_a:0 "$demo_cycle_b$"' in english
     assert b'demo_cycle_b:0 "$demo_cycle_a$"' in english
+
+
+def run_generator(output: Path, *extra: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(GENERATOR), "--output", str(output), *extra],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_force_refresh_preserves_unmanaged_files_and_repairs_owned_files(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "owned"
+    assert run_generator(output).returncode == 0
+    sentinel = output / "README.user.txt"
+    sentinel.write_text("user-owned", encoding="utf-8")
+
+    managed = output / "corpus/common/technology/00_demo_normal.txt"
+    managed.write_text("tampered", encoding="utf-8")
+
+    result = run_generator(output, "--force")
+
+    assert result.returncode == 0, result.stderr
+    assert sentinel.read_text(encoding="utf-8") == "user-owned"
+    assert managed.read_bytes() == (
+        ROOT / "corpus/common/technology/00_demo_normal.txt"
+    ).read_bytes()
+
+
+def test_force_refuses_unowned_nonempty_directory_without_deleting_files(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "unowned"
+    output.mkdir()
+    sentinel = output / "README.md"
+    sentinel.write_text("keep me", encoding="utf-8")
+
+    result = run_generator(output, "--force")
+
+    assert result.returncode != 0
+    assert sentinel.read_text(encoding="utf-8") == "keep me"
+    assert not (output / "manifest.json").exists()
+
+
+def test_generator_rejects_symlink_output_without_touching_target(tmp_path: Path) -> None:
+    target = tmp_path / "target"
+    target.mkdir()
+    sentinel = target / "keep.txt"
+    sentinel.write_text("keep", encoding="utf-8")
+    link = tmp_path / "output-link"
+    try:
+        link.symlink_to(target, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"symlink creation unavailable on this runner: {exc}")
+
+    result = run_generator(link, "--force")
+
+    assert result.returncode != 0
+    assert sentinel.read_text(encoding="utf-8") == "keep"
+    assert link.is_symlink()
+
+
+def test_generator_rejects_repository_root_as_output() -> None:
+    repository_root = Path(__file__).resolve().parents[1]
+    sentinel = repository_root / "pyproject.toml"
+    before = sentinel.read_bytes()
+
+    result = run_generator(repository_root, "--force")
+
+    assert result.returncode != 0
+    assert sentinel.read_bytes() == before
