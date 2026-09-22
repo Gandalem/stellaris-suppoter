@@ -706,7 +706,7 @@
     {
       "id": "TASK-031",
       "title": "Safety hardening and main integration",
-      "status": "doing",
+      "status": "done",
       "feature_ids": [
         "F-002",
         "F-013",
@@ -727,7 +727,7 @@
       ],
       "acceptance": [
         "Review regressions for generator deletion, path exceptions, directory traversal permissions, public redaction, XDG handling and strict schema types pass on Linux and Windows.",
-        "TASK-001 through TASK-003 are represented on a branch based directly on main and are ready for a main-targeting integration PR."
+        "TASK-001 through TASK-003 plus the containment follow-up are merged to main and the actual main merge commit passes Linux and Windows CI."
       ],
       "evidence": [
         "harness/evidence/TASK-031-safety-hardening-main-integration.md",

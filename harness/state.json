@@ -2,16 +2,17 @@
   "schema_version": 1,
   "phase": "implementation",
   "product_implemented": false,
-  "active_task": "TASK-031",
-  "next_task": "TASK-031",
+  "active_task": null,
+  "next_task": "TASK-004",
   "last_session": "harness/sessions/2026-09-22-task-031-containment-followup.md",
   "latest_game_version": null,
   "updated_on": "2026-09-22",
   "notes": [
-    "PR #7 candidate fixes the four post-merge generator containment regressions and is based on current main.",
-    "E-047 passed on PR #7 candidate with Ubuntu/Windows package CI and documentation harness.",
-    "TASK-031 remains doing because explicit merge approval is still pending; main has not received PR #7.",
-    "F-002 remains in_progress until the approved fix is merged to main and main push CI is verified.",
-    "TASK-004 remains blocked by unfinished TASK-031."
+    "PR #7 was merged to main as b583f89de389ce838987b8c3e5b6a2fd0e7c58b9 after technical review of head 9f61a0a727c4c47d507b84600b18b5611e59b277.",
+    "Main push Package and tooling run 35742263578 passed on Ubuntu/Python 3.11 and Windows/Python 3.13 with 56 tests, including 15 synthetic corpus tests, plus Ruff and harness checks.",
+    "Main push Documentation harness run 35742263716 passed on Ubuntu and Windows.",
+    "TASK-031 is done and F-002 is verified again; TASK-004 Safe inventory is the next task.",
+    "Non-blocking follow-up: malformed manifest JSON that is not an object should be converted to an explicit generator error without traceback.",
+    "Game data, version, DLC, mods, parser/search and user-local acceptance remain unverified."
   ]
 }
