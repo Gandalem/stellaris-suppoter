@@ -74,7 +74,9 @@
         "docs/REQUIREMENTS.md",
         "docs/PARSING.md"
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-008-technology-adapter.md"
+      ]
     },
     {
       "id": "F-006",
