@@ -19,12 +19,13 @@ from stellaris_supporter.parsing.lexer import (
 DEFAULT_PARSER_MAX_DEPTH = 128
 DEFAULT_PARSER_MAX_NODES = 100_000
 DEFAULT_PARSER_MAX_DIAGNOSTICS = 1_000
-MAX_PARSER_RECURSION_DEPTH = 256
+MAX_PARSER_RECURSION_DEPTH = DEFAULT_PARSER_MAX_DEPTH
 
 _TRIVIA = {"bom", "whitespace", "comment"}
 _BINARY_OPERATORS = {"assign", "gt", "lt", "gte", "lte"}
 _SCALAR_KINDS = {"identifier", "variable", "number", "string"}
 _OPERATORISH_RE = re.compile(r"^[\^!~%&|+*/?]+$")
+_OPERATORISH_SUFFIX_RE = re.compile(r"[\^!~%&|+*/?]+$")
 
 DiagnosticOrigin = Literal["lexer", "parser"]
 Severity = Literal["warning", "error"]
@@ -364,6 +365,11 @@ class _Parser:
             operator_index < len(self.tokens)
             and self.tokens[operator_index].kind in _BINARY_OPERATORS
         ):
+            unknown_pair = self._unsupported_pair_expression(index, operator_index)
+            if unknown_pair is not None:
+                return unknown_pair
+            if self.stopped:
+                return None, index
             return self._parse_pair(index, operator_index, depth=depth)
 
         if not self._reserve_node(token.span):
@@ -414,9 +420,77 @@ class _Parser:
         )
         return UnknownNode(kind="unknown", tokens=significant, span=span), end_index
 
+    def _same_line(self, left_index: int, right_index: int) -> bool:
+        return (
+            self.tokens[left_index].span.line_end
+            == self.tokens[right_index].span.line_start
+        )
+
+    def _unsupported_pair_expression(
+        self,
+        key_index: int,
+        operator_index: int,
+    ) -> tuple[UnknownNode, int] | None:
+        key = self.tokens[key_index]
+        value_index = self._next_significant(operator_index + 1)
+        end_index: int | None = None
+
+        if (
+            key.kind == "identifier"
+            and _OPERATORISH_SUFFIX_RE.search(key.text) is not None
+        ):
+            end_index = self._consume_raw_value(operator_index + 1)
+        elif (
+            value_index < len(self.tokens)
+            and self.tokens[value_index].kind in _SCALAR_KINDS
+        ):
+            trailing_index = self._next_significant(value_index + 1)
+            if (
+                trailing_index < len(self.tokens)
+                and self._same_line(value_index, trailing_index)
+                and self.tokens[trailing_index].kind == "lbrace"
+            ):
+                end_index = self._skip_balanced_block(trailing_index)
+            elif (
+                trailing_index < len(self.tokens)
+                and self._same_line(value_index, trailing_index)
+                and self.tokens[trailing_index].kind == "identifier"
+                and _OPERATORISH_RE.fullmatch(
+                    self.tokens[trailing_index].text
+                )
+                is not None
+            ):
+                trailing_operator = self._next_significant(trailing_index + 1)
+                if (
+                    trailing_operator < len(self.tokens)
+                    and self.tokens[trailing_operator].kind in _BINARY_OPERATORS
+                ):
+                    end_index = self._consume_raw_value(trailing_operator + 1)
+
+        if end_index is None:
+            return None
+
+        last_index = self._last_significant_index(key_index, end_index)
+        span = _merge_spans(key.span, self.tokens[last_index].span)
+        if not self._reserve_node(span):
+            return None
+        significant = tuple(
+            token
+            for token in self.tokens[key_index:end_index]
+            if token.kind not in _TRIVIA
+        )
+        self._diagnose(
+            "PARSE_UNKNOWN_SYNTAX",
+            "Unsupported operator or typed expression was preserved without semantics.",
+            span,
+        )
+        return UnknownNode(kind="unknown", tokens=significant, span=span), end_index
+
     def _consume_raw_value(self, index: int) -> int:
         index = self._next_significant(index)
         if index >= len(self.tokens):
+            return index
+        if self.tokens[index].kind == "rbrace":
             return index
         if self.tokens[index].kind == "lbrace":
             return self._skip_balanced_block(index)
