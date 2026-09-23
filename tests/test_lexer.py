@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+import tracemalloc
 
+import pytest
+
+import stellaris_supporter.parsing.lexer as lexer_module
 from stellaris_supporter.parsing.lexer import lex_bytes
 
 FIXTURES = Path(__file__).parent / "fixtures" / "synthetic" / "corpus"
@@ -175,3 +179,113 @@ def test_numbers_identifiers_and_variables_keep_original_text() -> None:
         ("identifier", "alpha"),
         ("variable", "@cost"),
     ]
+
+
+@pytest.mark.parametrize(
+    ("source", "expected_kind"),
+    [
+        (b"#" + b"x" * (1024 * 1024 - 1), "comment"),
+        (b" " * (1024 * 1024), "whitespace"),
+        (b'"' + b"x" * (1024 * 1024 - 2) + b'"', "string"),
+    ],
+)
+def test_large_single_token_inputs_do_not_need_per_character_position_objects(
+    source: bytes,
+    expected_kind: str,
+) -> None:
+    result = lex_bytes(source, max_bytes=len(source), max_tokens=2)
+
+    assert result.ok
+    assert len(result.tokens) == 1
+    assert result.tokens[0].kind == expected_kind
+    assert result.tokens[0].span.byte_end == len(source)
+
+
+def test_large_comment_peak_python_allocation_is_bounded() -> None:
+    source = b"#" + b"x" * (1024 * 1024 - 1)
+
+    tracemalloc.start()
+    try:
+        result = lex_bytes(source, max_bytes=len(source), max_tokens=2)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+
+    assert result.ok
+    assert peak < 24 * 1024 * 1024
+
+
+def test_input_byte_limit_stops_before_utf8_validation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = b"x" * 65
+
+    def unexpected_validation(_: bytes) -> None:
+        raise AssertionError("validation must not run after byte-budget rejection")
+
+    monkeypatch.setattr(lexer_module, "_validate_utf8", unexpected_validation)
+
+    result = lex_bytes(source, max_bytes=64, max_tokens=10)
+
+    assert not result.ok
+    assert result.tokens == ()
+    assert [item.code for item in result.diagnostics] == ["LIMIT_EXCEEDED"]
+
+
+def test_input_byte_limit_accepts_exact_boundary() -> None:
+    source = b"#" + b"x" * 63
+
+    result = lex_bytes(source, max_bytes=64, max_tokens=2)
+
+    assert result.ok
+    assert len(result.tokens) == 1
+
+
+def test_token_limit_stops_before_allocating_the_next_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = b"{}" * (512 * 1024)
+    real_make_token = lexer_module._make_token
+    created = 0
+
+    def counting_make_token(*args, **kwargs):
+        nonlocal created
+        created += 1
+        return real_make_token(*args, **kwargs)
+
+    monkeypatch.setattr(lexer_module, "_make_token", counting_make_token)
+
+    result = lex_bytes(source, max_bytes=len(source), max_tokens=64)
+
+    assert not result.ok
+    assert len(result.tokens) == 64
+    assert created == 64
+    assert [item.code for item in result.diagnostics] == ["LIMIT_EXCEEDED"]
+    assert result.diagnostics[0].span.byte_start == 64
+
+
+def test_token_limit_accepts_exact_boundary() -> None:
+    source = b"{}{}"
+
+    result = lex_bytes(source, max_bytes=len(source), max_tokens=4)
+
+    assert result.ok
+    assert len(result.tokens) == 4
+
+
+@pytest.mark.parametrize(
+    ("max_bytes", "max_tokens", "error_type"),
+    [
+        (0, 1, ValueError),
+        (1, 0, ValueError),
+        (True, 1, TypeError),
+        (1, False, TypeError),
+    ],
+)
+def test_lexer_limits_require_positive_integers(
+    max_bytes: int,
+    max_tokens: int,
+    error_type: type[Exception],
+) -> None:
+    with pytest.raises(error_type):
+        lex_bytes(b"x", max_bytes=max_bytes, max_tokens=max_tokens)

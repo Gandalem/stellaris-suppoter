@@ -8,10 +8,10 @@
   "latest_game_version": null,
   "updated_on": "2026-09-23",
   "notes": [
-    "TASK-005 is done and F-003 verified on main commit 1e0a8fcfbb9661362c85aa24bd54b4e134901107.",
-    "TASK-006 lexer candidate 2912d1c192e5f0033a82da5845841c43e8a0ee5b passed E-009/E-010 on Ubuntu and Windows.",
-    "TASK-006 remains doing until review/merge and actual main CI complete.",
-    "F-004 remains in_progress because TASK-007 ordered AST parser and E-011/E-012/E-013 are still outstanding.",
+    "TASK-005 remains done and F-003 verified on main integration evidence recorded in this branch.",
+    "PR #12 review found a lexer resource-boundary issue: per-character position-map allocation and unbounded token accumulation.",
+    "E-009/E-010 remain pass because string/span behavior was independently confirmed; TASK-006 remains doing for resource follow-up validation.",
+    "F-004 remains in_progress because TASK-006 is not merged and TASK-007/E-011~013 are outstanding.",
     "latest_game_version remains null."
   ]
 }

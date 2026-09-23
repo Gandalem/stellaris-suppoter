@@ -1,9 +1,12 @@
-"""Lossless byte-oriented lexer for Paradox-style script fixtures.
+"""Lossless, bounded byte-oriented lexer for Paradox-style script fixtures.
 
 Byte spans are zero-based half-open offsets into the original input. Line and column
 coordinates are one-based; end coordinates are exclusive. CRLF counts as one newline.
 A leading UTF-8 BOM is emitted as its own zero-column-width token so the following
 source byte still begins at line 1, column 1.
+
+The lexer enforces input-byte and token-count budgets before unbounded Python object
+growth. Position tracking is streaming and does not build a per-character position map.
 """
 
 from __future__ import annotations
@@ -29,6 +32,9 @@ TokenKind = Literal[
     "variable",
 ]
 Severity = Literal["warning", "error"]
+
+DEFAULT_LEXER_MAX_BYTES = 16 * 1024 * 1024
+DEFAULT_LEXER_MAX_TOKENS = 100_000
 
 _UTF8_BOM = b"\xef\xbb\xbf"
 _WHITESPACE = b" \t\r\n\v\f"
@@ -92,6 +98,14 @@ class LexResult:
         return not any(item.severity == "error" for item in self.diagnostics)
 
 
+def _validate_limit(value: int, *, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(f"{name} must be an integer")
+    if value <= 0:
+        raise ValueError(f"{name} must be positive")
+    return value
+
+
 def _utf8_length(first: int) -> int:
     if first < 0x80:
         return 1
@@ -102,23 +116,21 @@ def _utf8_length(first: int) -> int:
     return 4
 
 
-def _position_map(source: bytes) -> dict[int, tuple[int, int]]:
-    positions: dict[int, tuple[int, int]] = {0: (1, 1)}
-    line = 1
-    column = 1
-    offset = 0
+def _advance_position(
+    source: bytes,
+    start: int,
+    end: int,
+    line: int,
+    column: int,
+) -> tuple[int, int]:
+    """Advance line/column over one already-validated byte range without allocations."""
 
-    if source.startswith(_UTF8_BOM):
-        positions[3] = (1, 1)
-        offset = 3
-
-    while offset < len(source):
-        positions[offset] = (line, column)
-        if source.startswith(b"\r\n", offset):
+    offset = start
+    while offset < end:
+        if offset + 1 < end and source[offset] == 0x0D and source[offset + 1] == 0x0A:
             offset += 2
             line += 1
             column = 1
-            positions[offset] = (line, column)
             continue
 
         byte = source[offset]
@@ -126,59 +138,51 @@ def _position_map(source: bytes) -> dict[int, tuple[int, int]]:
             offset += 1
             line += 1
             column = 1
-            positions[offset] = (line, column)
             continue
 
         offset += _utf8_length(byte)
         column += 1
-        positions[offset] = (line, column)
 
-    positions[len(source)] = (line, column)
-    return positions
-
-
-def _raw_position(source: bytes, offset: int) -> tuple[int, int]:
-    prefix = source[:offset]
-    if prefix.startswith(_UTF8_BOM):
-        prefix = prefix[len(_UTF8_BOM) :]
-    text = prefix.decode("utf-8", errors="strict")
-    line = 1
-    column = 1
-    index = 0
-    while index < len(text):
-        if text.startswith("\r\n", index):
-            line += 1
-            column = 1
-            index += 2
-        elif text[index] in "\r\n":
-            line += 1
-            column = 1
-            index += 1
-        else:
-            column += 1
-            index += 1
     return line, column
 
 
-def _span(
-    positions: dict[int, tuple[int, int]],
-    byte_start: int,
-    byte_end: int,
-) -> SourceSpan:
-    line_start, column_start = positions[byte_start]
-    line_end, column_end = positions[byte_end]
-    return SourceSpan(
-        byte_start=byte_start,
-        byte_end=byte_end,
-        line_start=line_start,
-        column_start=column_start,
-        line_end=line_end,
-        column_end=column_end,
+def _span_from_cursor(
+    source: bytes,
+    start: int,
+    end: int,
+    line: int,
+    column: int,
+) -> tuple[SourceSpan, int, int]:
+    line_end, column_end = _advance_position(source, start, end, line, column)
+    return (
+        SourceSpan(
+            byte_start=start,
+            byte_end=end,
+            line_start=line,
+            column_start=column,
+            line_end=line_end,
+            column_end=column_end,
+        ),
+        line_end,
+        column_end,
     )
 
 
+def _position_at(source: bytes, offset: int) -> tuple[int, int]:
+    start = len(_UTF8_BOM) if source.startswith(_UTF8_BOM) else 0
+    if offset <= start:
+        return 1, 1
+    return _advance_position(source, start, offset, 1, 1)
+
+
+def _validate_utf8(source: bytes) -> None:
+    """Strict validation bounded by max_bytes at the public entrypoint."""
+
+    source.decode("utf-8", errors="strict")
+
+
 def _decode_error_result(source: bytes, exc: UnicodeDecodeError) -> LexResult:
-    line, column = _raw_position(source, exc.start)
+    line, column = _position_at(source, exc.start)
     width = max(1, exc.end - exc.start)
     diagnostic = LexerDiagnostic(
         code="ENCODING_ERROR",
@@ -196,17 +200,51 @@ def _decode_error_result(source: bytes, exc: UnicodeDecodeError) -> LexResult:
     return LexResult(tokens=(), diagnostics=(diagnostic,))
 
 
-def _token(
+def _limit_diagnostic(
+    *,
+    message: str,
+    offset: int,
+    line: int,
+    column: int,
+) -> LexerDiagnostic:
+    return LexerDiagnostic(
+        code="LIMIT_EXCEEDED",
+        severity="error",
+        message=message,
+        span=SourceSpan(
+            byte_start=offset,
+            byte_end=offset,
+            line_start=line,
+            column_start=column,
+            line_end=line,
+            column_end=column,
+        ),
+    )
+
+
+def _make_token(
     kind: TokenKind,
     source: bytes,
-    positions: dict[int, tuple[int, int]],
     start: int,
     end: int,
-) -> Token:
-    return Token(
-        kind=kind,
-        text=source[start:end].decode("utf-8", errors="strict"),
-        span=_span(positions, start, end),
+    line: int,
+    column: int,
+) -> tuple[Token, int, int]:
+    span, line_end, column_end = _span_from_cursor(
+        source,
+        start,
+        end,
+        line,
+        column,
+    )
+    return (
+        Token(
+            kind=kind,
+            text=source[start:end].decode("utf-8", errors="strict"),
+            span=span,
+        ),
+        line_end,
+        column_end,
     )
 
 
@@ -218,25 +256,96 @@ def _scalar_kind(text: str) -> TokenKind:
     return "identifier"
 
 
-def lex_bytes(source: bytes) -> LexResult:
-    """Tokenize validated UTF-8 bytes while preserving exact original byte spans."""
+def lex_bytes(
+    source: bytes,
+    *,
+    max_bytes: int = DEFAULT_LEXER_MAX_BYTES,
+    max_tokens: int = DEFAULT_LEXER_MAX_TOKENS,
+) -> LexResult:
+    """Tokenize UTF-8 bytes with bounded allocations and exact original byte spans."""
 
     if not isinstance(source, bytes):
         raise TypeError("source must be bytes")
+    max_bytes = _validate_limit(max_bytes, name="max_bytes")
+    max_tokens = _validate_limit(max_tokens, name="max_tokens")
+
+    if len(source) > max_bytes:
+        return LexResult(
+            tokens=(),
+            diagnostics=(
+                _limit_diagnostic(
+                    message="Lexer input-byte limit was exceeded before tokenization.",
+                    offset=0,
+                    line=1,
+                    column=1,
+                ),
+            ),
+        )
 
     try:
-        source.decode("utf-8", errors="strict")
+        _validate_utf8(source)
     except UnicodeDecodeError as exc:
         return _decode_error_result(source, exc)
 
-    positions = _position_map(source)
     tokens: list[Token] = []
     diagnostics: list[LexerDiagnostic] = []
     offset = 0
+    line = 1
+    column = 1
     size = len(source)
 
+    def emit(kind: TokenKind, start: int, end: int) -> LexResult | None:
+        nonlocal line, column
+        if len(tokens) >= max_tokens:
+            return LexResult(
+                tokens=tuple(tokens),
+                diagnostics=(
+                    _limit_diagnostic(
+                        message="Lexer token-count limit was exceeded.",
+                        offset=start,
+                        line=line,
+                        column=column,
+                    ),
+                ),
+            )
+        token, line, column = _make_token(
+            kind,
+            source,
+            start,
+            end,
+            line,
+            column,
+        )
+        tokens.append(token)
+        return None
+
     if source.startswith(_UTF8_BOM):
-        tokens.append(_token("bom", source, positions, 0, len(_UTF8_BOM)))
+        if max_tokens < 1:
+            return LexResult(
+                tokens=(),
+                diagnostics=(
+                    _limit_diagnostic(
+                        message="Lexer token-count limit was exceeded.",
+                        offset=0,
+                        line=1,
+                        column=1,
+                    ),
+                ),
+            )
+        tokens.append(
+            Token(
+                kind="bom",
+                text=_UTF8_BOM.decode("utf-8"),
+                span=SourceSpan(
+                    byte_start=0,
+                    byte_end=len(_UTF8_BOM),
+                    line_start=1,
+                    column_start=1,
+                    line_end=1,
+                    column_end=1,
+                ),
+            )
+        )
         offset = len(_UTF8_BOM)
 
     while offset < size:
@@ -246,7 +355,9 @@ def lex_bytes(source: bytes) -> LexResult:
             end = offset + 1
             while end < size and source[end] in _WHITESPACE:
                 end += 1
-            tokens.append(_token("whitespace", source, positions, offset, end))
+            limited = emit("whitespace", offset, end)
+            if limited is not None:
+                return limited
             offset = end
             continue
 
@@ -254,7 +365,9 @@ def lex_bytes(source: bytes) -> LexResult:
             end = offset + 1
             while end < size and source[end] not in (0x0A, 0x0D):
                 end += 1
-            tokens.append(_token("comment", source, positions, offset, end))
+            limited = emit("comment", offset, end)
+            if limited is not None:
+                return limited
             offset = end
             continue
 
@@ -274,25 +387,40 @@ def lex_bytes(source: bytes) -> LexResult:
                     break
                 end += 1
 
-            tokens.append(_token("string", source, positions, offset, end))
+            start_line = line
+            start_column = column
+            limited = emit("string", offset, end)
+            if limited is not None:
+                return limited
             if not terminated:
                 diagnostics.append(
                     LexerDiagnostic(
                         code="LEX_UNTERMINATED_STRING",
                         severity="error",
                         message="Quoted string reaches end of file without a closing quote.",
-                        span=_span(positions, offset, end),
+                        span=SourceSpan(
+                            byte_start=offset,
+                            byte_end=end,
+                            line_start=start_line,
+                            column_start=start_column,
+                            line_end=line,
+                            column_end=column,
+                        ),
                     )
                 )
             offset = end
             continue
 
         if source.startswith(b">=", offset):
-            tokens.append(_token("gte", source, positions, offset, offset + 2))
+            limited = emit("gte", offset, offset + 2)
+            if limited is not None:
+                return limited
             offset += 2
             continue
         if source.startswith(b"<=", offset):
-            tokens.append(_token("lte", source, positions, offset, offset + 2))
+            limited = emit("lte", offset, offset + 2)
+            if limited is not None:
+                return limited
             offset += 2
             continue
 
@@ -304,7 +432,9 @@ def lex_bytes(source: bytes) -> LexResult:
             ord("<"): "lt",
         }
         if byte in single:
-            tokens.append(_token(single[byte], source, positions, offset, offset + 1))
+            limited = emit(single[byte], offset, offset + 1)
+            if limited is not None:
+                return limited
             offset += 1
             continue
 
@@ -316,7 +446,9 @@ def lex_bytes(source: bytes) -> LexResult:
         ):
             end += 1
         text = source[offset:end].decode("utf-8", errors="strict")
-        tokens.append(_token(_scalar_kind(text), source, positions, offset, end))
+        limited = emit(_scalar_kind(text), offset, end)
+        if limited is not None:
+            return limited
         offset = end
 
     return LexResult(tokens=tuple(tokens), diagnostics=tuple(diagnostics))

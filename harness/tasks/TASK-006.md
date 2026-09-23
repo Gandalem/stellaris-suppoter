@@ -62,3 +62,16 @@ E-009 pass.
 E-010 pass.  
 TASK-006은 review/main integration 전까지 doing.  
 F-004는 TASK-007 AST parser가 남아 in_progress.
+
+
+## PR #12 resource follow-up
+
+리뷰에서 기존 per-character `_position_map()`과 무제한 token accumulation의 메모리 증폭이 재현되어 TASK-006을 계속 doing으로 유지한다. 기존 E-009/E-010 문자열/span 성공 기록은 보존한다.
+
+보완 정책:
+- 위치 계산을 streaming line/column cursor로 전환해 문자별 dict/tuple을 만들지 않음.
+- lexer 기본 `max_bytes=16 MiB`, `max_tokens=100,000`.
+- byte limit은 UTF-8 validation 전에 적용.
+- token limit은 다음 Token/SourceSpan 생성 전에 적용.
+- 초과 시 partial success가 아니라 `LIMIT_EXCEEDED`.
+- 긴 단일 comment/whitespace/string과 short-token flood 회귀를 추가.
