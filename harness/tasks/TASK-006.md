@@ -75,3 +75,35 @@ F-004는 TASK-007 AST parser가 남아 in_progress.
 - token limit은 다음 Token/SourceSpan 생성 전에 적용.
 - 초과 시 partial success가 아니라 `LIMIT_EXCEEDED`.
 - 긴 단일 comment/whitespace/string과 short-token flood 회귀를 추가.
+
+
+## PR #12 resource follow-up 검증
+
+리뷰에서 재현된 per-character position map 및 unbounded token growth를 보완했다.
+
+최종 follow-up head: `ba130da911b0082b858e06e9c04a008993540ca6`
+
+구현:
+- 문자마다 `dict[offset] -> (line,column)`을 만들던 position map 제거.
+- token이 소비될 때만 streaming line/column cursor 갱신.
+- 긴 whitespace/comment/scalar/string 탐색은 regex/bytes.find 등 C-backed search 사용.
+- 기본 `max_bytes=16 MiB`, `max_tokens=100,000`.
+- byte limit은 UTF-8 validation 전에 적용.
+- token limit은 다음 Token/SourceSpan 생성 및 긴 다음 token scan 전에 적용.
+- 초과는 `LIMIT_EXCEEDED`; input truncation을 성공으로 처리하지 않음.
+- 1 MiB comment/whitespace/string, token flood, 정확한 boundary, invalid limit type/value 회귀 추가.
+- POSIX CPython에서 1 MiB comment의 tracemalloc peak가 16 MiB 미만인지 회귀 검사.
+- 대형 parametrized bytes에 고정된 짧은 pytest id를 지정해 test collection/log 자체의 불필요한 대형 표현 생성을 피함.
+
+검증:
+- Package push run 35804610541
+  - Ubuntu/Python 3.11: 122 passed, lexer 22 passed, Ruff/harness success.
+  - Windows/Python 3.13: 122 collected, 120 passed + 2 intentional skips; lexer 21 passed + POSIX-only allocation probe 1 skipped; Ruff/harness success.
+- Windows skips:
+  - 기존 inventory surrogateescape filename POSIX-only.
+  - lexer tracemalloc peak threshold POSIX CPython-only.
+- Documentation harness PR run 35804614559: Ubuntu/Windows success.
+
+기존 E-009/E-010 문자열/span evidence는 보존한다. 자원 반례와 이번 수정은 별도 follow-up evidence로 연결하며 TASK-006은 reviewer 재검토/main integration 전까지 `doing` 유지한다.
+
+근거: [resource follow-up evidence](../evidence/TASK-006-resource-followup.md)

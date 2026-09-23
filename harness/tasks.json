@@ -150,7 +150,8 @@
         "Token boundaries remain correct for strings, comments, BOM and CRLF."
       ],
       "evidence": [
-        "harness/evidence/TASK-006-lexer-source-spans.md"
+        "harness/evidence/TASK-006-lexer-source-spans.md",
+        "harness/evidence/TASK-006-resource-followup.md"
       ]
     },
     {
