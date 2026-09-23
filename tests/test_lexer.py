@@ -189,6 +189,7 @@ def test_numbers_identifiers_and_variables_keep_original_text() -> None:
         (b" " * (1024 * 1024), "whitespace"),
         (b'"' + b"x" * (1024 * 1024 - 2) + b'"', "string"),
     ],
+    ids=["comment", "whitespace", "string"],
 )
 def test_large_single_token_inputs_do_not_need_per_character_position_objects(
     source: bytes,
