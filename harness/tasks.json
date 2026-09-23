@@ -177,7 +177,9 @@
       "acceptance": [
         "Duplicates and unknown syntax are preserved; malformed and deep input is bounded."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-007-ordered-ast-parser.md"
+      ]
     },
     {
       "id": "TASK-008",
