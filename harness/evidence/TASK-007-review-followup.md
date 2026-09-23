@@ -82,3 +82,24 @@ E-013은 R2/R3 follow-up까지 포함해 pass 재확정.
 TASK-007은 reviewer re-check/main integration 전까지 doing.  
 F-004는 in_progress.  
 latest_game_version=null.
+
+
+## R4 compact value operator follow-up
+
+추가 경계에서 scalar value token 자체에 unsupported operator suffix가 붙는 경우를 보완했다.
+
+수정:
+- pair value가 identifier이고 operator-like suffix를 가지며 같은 line의 다음 significant token이 known binary operator이면, 앞의 key부터 trailing value까지 expression 전체를 `UnknownNode`로 보존한다.
+- 기존 spaced form `x = y ^= z` 동작을 유지한다.
+- compact forms `x=y^=z`, `x = y^ = z`, `x=y!=z`도 partial known pair를 만들지 않고 `PARSE_UNKNOWN_SYNTAX`으로 처리한다.
+- quoted key/value 및 기존 typed-block/mixed-block 처리는 변경하지 않는다.
+
+R4 code/test head: `76a2cc51104176a4ba84d18c79fc89389e0c4d55`
+
+PR Package run `35856865735`, test-merge `5795e26`:
+- Ubuntu / Python 3.11: 154 passed, Ruff/harness success.
+- Windows / Python 3.13: 154 collected, 151 passed + 기존 3 intentional skips, Ruff/harness success.
+- Documentation harness PR run `35856865750`: Ubuntu/Windows success.
+- TASK-007 parser regressions are included in both platforms without parser-specific skips.
+
+E-012는 이 R4 follow-up을 포함해 pass 상태를 유지한다. TASK-007은 review/main integration 전까지 doing, F-004는 in_progress, latest_game_version=null 유지.
