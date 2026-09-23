@@ -120,3 +120,22 @@ code/test head `76a2cc51104176a4ba84d18c79fc89389e0c4d55` / PR test-merge `5795e
 E-012 pass 유지. TASK-007 doing / F-004 in_progress 유지.
 
 근거: [review follow-up evidence](../evidence/TASK-007-review-followup.md)
+
+
+## Main integration
+
+PR #13 final head `149a36e8983eb299feddafc0d95c064ecc67ac60` was merged to main as `959e3fc669c0927ed8eddec559bef055e155f253`.
+
+Actual main push verification:
+- Package and tooling run `35858348427`
+  - Ubuntu / Python 3.11.16: 154 passed, parser 24 passed, Ruff/harness success.
+  - Windows / Python 3.13.15: 154 collected, 151 passed + 3 existing intentional skips, parser 24 passed, Ruff/harness success.
+- Documentation harness run `35858348284`: Ubuntu/Windows success.
+
+Final state:
+- TASK-007: done.
+- E-011/E-012/E-013: pass.
+- F-004: verified.
+- latest_game_version: null.
+
+Evidence: [TASK-007 main integration](../evidence/TASK-007-main-integration.md)
