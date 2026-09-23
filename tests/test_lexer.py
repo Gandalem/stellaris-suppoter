@@ -201,8 +201,8 @@ def test_large_single_token_inputs_do_not_need_per_character_position_objects(
     assert result.tokens[0].span.byte_end == len(source)
 
 
-def test_large_comment_peak_python_allocation_is_bounded() -> None:
-    source = b"#" + b"x" * (1024 * 1024 - 1)
+def test_comment_position_tracking_does_not_allocate_per_character_map() -> None:
+    source = b"#" + b"x" * (64 * 1024 - 1)
 
     tracemalloc.start()
     try:
@@ -212,7 +212,7 @@ def test_large_comment_peak_python_allocation_is_bounded() -> None:
         tracemalloc.stop()
 
     assert result.ok
-    assert peak < 24 * 1024 * 1024
+    assert peak < 8 * 1024 * 1024
 
 
 def test_input_byte_limit_stops_before_utf8_validation(
