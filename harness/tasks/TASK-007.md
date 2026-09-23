@@ -61,6 +61,7 @@ latest_game_version=null.
 - unsupported operator-like expression은 `UnknownNode` + `PARSE_UNKNOWN_SYNTAX`.
 - unclosed block은 `PARSE_UNCLOSED_BLOCK`.
 - default parser limits: depth 128, nodes 100,000, diagnostics 1,000.
+- configurable max_depth는 현재 recursive implementation에서 128 이하만 허용.
 - depth limit 초과는 bounded raw unknown region + `PARSE_DEPTH_LIMIT`.
 - node limit 초과는 `PARSE_NODE_LIMIT`.
 - lexer diagnostics는 parse result에 origin=lexer로 전달.
@@ -74,3 +75,28 @@ latest_game_version=null.
 TASK-007은 reviewer re-check 및 main integration 전까지 doing 유지. F-004도 main integration 전까지 in_progress 유지.
 
 근거: [ordered AST parser evidence](../evidence/TASK-007-ordered-ast-parser.md)
+
+
+## PR #13 review follow-up
+
+리뷰에서 compact unsupported operators, value-context unsupported expression/typed block, unknown recovery의 parent rbrace consumption, unsafe configurable max_depth=256이 재현됐다.
+
+follow-up code/test head: `24ea1dc2b2048cbf132f85b9d0f0ddf0464479c6`
+
+수정:
+- unsupported operator-like suffix가 붙은 key를 normal pair로 확정하지 않음.
+- scalar value 뒤 같은 line의 unsupported operator chain 및 typed block을 full raw unknown region으로 보존.
+- quoted key/value 내부 operator text는 normal scalar/string 처리.
+- unknown missing value에서 parent `}`를 소비하지 않음.
+- configurable `max_depth` 상한을 128로 제한하고 128-level parse/to_dict/JSON serialization을 양 OS에서 검증.
+- 129-level input은 `PARSE_DEPTH_LIMIT`, max_depth >128은 parsing 전 explicit ValueError.
+
+검증:
+- PR Package run 35818193879 / test-merge `c23a35e`.
+- Ubuntu: 151 passed, parser 21 passed, Ruff/harness success.
+- Windows: 151 collected, 148 passed + 기존 3 intentional skips, parser 21 passed, Ruff/harness success.
+- Documentation harness run 35818193854: Ubuntu/Windows success.
+
+E-011 기존 pass 유지. E-012/E-013은 follow-up evidence를 포함해 pass 재확정. TASK-007은 reviewer re-check 및 main integration 전까지 doing 유지.
+
+근거: [review follow-up evidence](../evidence/TASK-007-review-followup.md)
