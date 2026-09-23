@@ -32,7 +32,7 @@ src/stellaris_supporter/
 | InventoryScanner | RootPolicy → Inventory + Diagnostics | 허용 루트 읽기만 |
 | ScriptParser | SourceBytes → OrderedAST + Diagnostics | 없음 |
 | LocalisationParser | SourceBytes → LocalisationEntries | 없음 |
-| DomainAdapter | AST + SourceRef → EntityCandidates + Relations | 없음 |
+| DomainAdapter | ParseResult + SourceRef → EntityCandidates + Relations | 없음 |
 | SnapshotRepository | 검증된 records → staging/ready snapshot | 개인 data_dir 안 쓰기 |
 | SearchService | Query + SnapshotID → SearchResult | 활성 스냅샷 읽기만 |
 | AnswerFormatter | SearchResult → AnswerEnvelope | 없음 |
