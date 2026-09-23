@@ -75,7 +75,8 @@
         "docs/PARSING.md"
       ],
       "evidence": [
-        "harness/evidence/TASK-008-technology-adapter.md"
+        "harness/evidence/TASK-008-technology-adapter.md",
+        "harness/evidence/TASK-008-review-followup.md"
       ]
     },
     {
