@@ -207,7 +207,7 @@ def test_large_single_token_inputs_do_not_need_per_character_position_objects(
     reason="tracemalloc peak threshold is calibrated on POSIX CPython",
 )
 def test_comment_position_tracking_does_not_allocate_per_character_map() -> None:
-    source = b"#" + b"x" * (64 * 1024 - 1)
+    source = b"#" + b"x" * (1024 * 1024 - 1)
 
     tracemalloc.start()
     try:
@@ -217,7 +217,7 @@ def test_comment_position_tracking_does_not_allocate_per_character_map() -> None
         tracemalloc.stop()
 
     assert result.ok
-    assert peak < 8 * 1024 * 1024
+    assert peak < 16 * 1024 * 1024
 
 
 def test_input_byte_limit_stops_before_utf8_validation(
