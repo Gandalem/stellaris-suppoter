@@ -446,6 +446,17 @@ class _Parser:
         ):
             trailing_index = self._next_significant(value_index + 1)
             if (
+                self.tokens[value_index].kind == "identifier"
+                and _OPERATORISH_SUFFIX_RE.search(
+                    self.tokens[value_index].text
+                )
+                is not None
+                and trailing_index < len(self.tokens)
+                and self._same_line(value_index, trailing_index)
+                and self.tokens[trailing_index].kind in _BINARY_OPERATORS
+            ):
+                end_index = self._consume_raw_value(trailing_index + 1)
+            elif (
                 trailing_index < len(self.tokens)
                 and self._same_line(value_index, trailing_index)
                 and self.tokens[trailing_index].kind == "lbrace"
