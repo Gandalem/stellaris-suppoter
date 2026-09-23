@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 import tracemalloc
 from pathlib import Path
 
@@ -307,3 +308,33 @@ def test_token_limit_stops_before_scanning_a_large_next_token() -> None:
     assert result.tokens[0].kind == "lbrace"
     assert [item.code for item in result.diagnostics] == ["LIMIT_EXCEEDED"]
     assert result.diagnostics[0].span.byte_start == 1
+
+
+def test_escape_dense_large_string_preserves_contents() -> None:
+    payload = b"\\x" * (512 * 1024)
+    source = b'"' + payload + b'"'
+
+    result = lex_bytes(source, max_bytes=len(source), max_tokens=2)
+
+    assert result.ok
+    assert len(result.tokens) == 1
+    assert result.tokens[0].kind == "string"
+    assert result.tokens[0].raw_bytes(source) == source
+
+
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason="wall-clock regression threshold is calibrated on POSIX CI",
+)
+def test_escape_dense_string_scan_is_bounded_on_large_input() -> None:
+    size = 4 * 1024 * 1024
+    source = b'"' + b"\\x" * ((size - 2) // 2) + b'"'
+
+    started = time.perf_counter()
+    result = lex_bytes(source, max_bytes=len(source), max_tokens=2)
+    elapsed = time.perf_counter() - started
+
+    assert result.ok
+    assert len(result.tokens) == 1
+    assert result.tokens[0].span.byte_end == len(source)
+    assert elapsed < 5.0
