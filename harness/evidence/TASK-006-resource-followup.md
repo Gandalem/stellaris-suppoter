@@ -2,7 +2,8 @@
 
 날짜: 2026-09-23  
 리뷰 기준 head: `6b54a19d1a0384f1eef04e95494e9b0ce050a16b`  
-최종 follow-up head: `ba130da911b0082b858e06e9c04a008993540ca6`  
+R1 follow-up head: `ba130da911b0082b858e06e9c04a008993540ca6`  
+R2 CPU follow-up code head: `6bb62ee13a6c7790be4f62c861a00c93e470e55b`  
 PR: https://github.com/Gandalem/stellaris-suppoter/pull/12
 
 ## 리뷰 반례
@@ -52,6 +53,30 @@ PR: https://github.com/Gandalem/stellaris-suppoter/pull/12
 - invalid limit types/values.
 - token budget exhausted before scanning a large next string.
 - large parameter cases use short explicit pytest ids so test infrastructure does not stringify 1 MiB values into node ids.
+
+## R2 escape-dense string CPU follow-up
+
+재검토에서 quoted string scanner가 각 escape마다 closing quote를 suffix 전체에서 다시 찾을 수 있어 escape-dense 입력에서 제곱 시간에 가까운 증가가 확인됐다.
+
+수정:
+- quote와 backslash를 `_STRING_BOUNDARY_RE` 하나로 검색.
+- `_scan_quoted_string()`은 찾은 boundary 이후로 cursor를 단조 증가시킨다.
+- backslash는 기존 의미대로 자신과 다음 byte를 함께 건너뛰므로 escaped quote/backslash parity contract를 유지한다.
+- 남은 suffix 전체의 quote search를 escape마다 반복하지 않는다.
+
+추가 regression:
+- 1 MiB급 escape-dense string의 원문 보존/정상 종료.
+- POSIX CI에서 4 MiB escape-dense string의 bounded wall-clock regression (`< 5s`).
+- Windows는 wall-clock threshold 자체는 환경 편차 때문에 intentional skip하고 기능 회귀는 실행한다.
+
+R2 code head `6bb62ee13a6c7790be4f62c861a00c93e470e55b`의 PR test-merge `3ba4326` 검증:
+- Package PR run `35805472084`.
+- Ubuntu / Python 3.11: 124 passed, lexer 24 passed, Ruff/harness success.
+- Windows / Python 3.13: 124 collected, 121 passed + 3 intentional skips, Ruff/harness success.
+  - inventory surrogateescape filename regression.
+  - POSIX-only tracemalloc threshold.
+  - POSIX-only escape-dense wall-clock threshold.
+- Documentation harness PR run `35805472091`: Ubuntu/Windows success.
 
 ## CI
 
