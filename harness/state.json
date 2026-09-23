@@ -2,17 +2,19 @@
   "schema_version": 1,
   "phase": "implementation",
   "product_implemented": false,
-  "active_task": "TASK-006",
-  "next_task": "TASK-006",
-  "last_session": "harness/sessions/2026-09-23-task-006-resource-followup.md",
+  "active_task": "TASK-007",
+  "next_task": "TASK-007",
+  "last_session": "harness/sessions/2026-09-23-task-007-start.md",
   "latest_game_version": null,
   "updated_on": "2026-09-23",
   "notes": [
-    "TASK-005 remains done and F-003 verified on main integration evidence recorded in this branch.",
-    "PR #12 resource follow-up head ba130da911b0082b858e06e9c04a008993540ca6 removes per-character position maps and enforces pre-allocation byte/token budgets.",
-    "E-009/E-010 remain pass; resource follow-up tests passed on Ubuntu and Windows.",
-    "TASK-006 remains doing until reviewer re-check, merge, and actual main push CI complete.",
-    "F-004 remains in_progress because TASK-007/E-011~013 are outstanding.",
+    "PR #12 merged to main as 1c8247ee2eea330b6444de33fdc2cb03a82abb91 and actual main push CI passed on Ubuntu and Windows.",
+    "TASK-006 is done; E-009/E-010 remain pass.",
+    "TASK-007 review follow-up head 24ea1dc2b2048cbf132f85b9d0f0ddf0464479c6 fixes unsupported-syntax context, parent-rbrace recovery, and unsafe configurable depth.",
+    "E-011 remains pass; E-012/E-013 are pass with review follow-up evidence.",
+    "PR follow-up integration candidate c23a35e passed 151 tests on Ubuntu and 148 passed + 3 existing skips on Windows; parser 21 passed on both.",
+    "TASK-007 remains doing until reviewer re-check, merge, and actual main push CI complete.",
+    "F-004 remains in_progress until TASK-007 main integration completes.",
     "latest_game_version remains null."
   ]
 }

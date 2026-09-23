@@ -107,3 +107,22 @@ F-004는 TASK-007 AST parser가 남아 in_progress.
 기존 E-009/E-010 문자열/span evidence는 보존한다. 자원 반례와 이번 수정은 별도 follow-up evidence로 연결하며 TASK-006은 reviewer 재검토/main integration 전까지 `doing` 유지한다.
 
 근거: [resource follow-up evidence](../evidence/TASK-006-resource-followup.md)
+
+
+## Main integration
+
+PR #12는 `9c9f1111cc672c05e1e848e14a1c2537574d55a2`에서 기술 검토를 통과한 뒤 main merge commit `1c8247ee2eea330b6444de33fdc2cb03a82abb91`로 병합됐다.
+
+실제 main push 검증:
+- Package and tooling run 35815351949
+  - Ubuntu/Python 3.11.16: 130 passed, lexer 30 passed, Ruff/harness success.
+  - Windows/Python 3.13.15: 130 collected, 127 passed + 3 intentional skips; lexer 28 passed + 2 intentional skips; Ruff/harness success.
+- Documentation harness run 35815351946: Ubuntu/Windows success.
+
+최종 상태:
+- TASK-006: done.
+- E-009/E-010: pass 유지.
+- F-004: TASK-007/E-011~013이 남아 in_progress.
+- latest_game_version: null 유지.
+
+근거: [main integration evidence](../evidence/TASK-006-main-integration.md)
