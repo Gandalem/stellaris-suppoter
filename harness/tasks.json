@@ -131,7 +131,7 @@
     {
       "id": "TASK-006",
       "title": "Lexer and source spans",
-      "status": "doing",
+      "status": "done",
       "feature_ids": [
         "F-004"
       ],
@@ -151,13 +151,14 @@
       ],
       "evidence": [
         "harness/evidence/TASK-006-lexer-source-spans.md",
-        "harness/evidence/TASK-006-resource-followup.md"
+        "harness/evidence/TASK-006-resource-followup.md",
+        "harness/evidence/TASK-006-main-integration.md"
       ]
     },
     {
       "id": "TASK-007",
       "title": "Ordered AST parser",
-      "status": "todo",
+      "status": "doing",
       "feature_ids": [
         "F-004"
       ],
