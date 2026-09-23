@@ -157,9 +157,10 @@ def test_parser_limits_are_explicit(name: str, value: object, error_type: type[E
     "source",
     [
         b"mystery^=42",
+        b"mystery^ = 42",
         b"mystery!=42",
     ],
-    ids=["caret-compact", "bang-compact"],
+    ids=["caret-compact", "caret-key-space", "bang-compact"],
 )
 def test_compact_unsupported_operators_are_not_normal_pairs(source: bytes) -> None:
     result = parse_bytes(source)
@@ -197,6 +198,24 @@ def test_typed_block_is_unknown_instead_of_scalar_pair_plus_block() -> None:
     unknown = result.document.items[0]
     assert isinstance(unknown, UnknownNode)
     assert unknown.raw_bytes(source) == source
+
+
+
+
+
+def test_operator_symbols_inside_quoted_key_do_not_trigger_unknown_syntax() -> None:
+    source = b'"mystery^" = 42'
+
+    result = parse_bytes(source)
+
+    assert result.ok
+    assert len(result.document.items) == 1
+    pair = result.document.items[0]
+    assert isinstance(pair, PairNode)
+    assert pair.key_kind == "string"
+    assert pair.key_text == '"mystery^"'
+    assert isinstance(pair.value, ScalarNode)
+    assert pair.value.text == "42"
 
 
 def test_operator_symbols_inside_quoted_value_remain_supported_scalar_text() -> None:
