@@ -174,9 +174,19 @@ def test_compact_unsupported_operators_are_not_normal_pairs(source: bytes) -> No
     assert not any(isinstance(item, PairNode) for item in result.document.items)
 
 
-def test_unsupported_operator_in_value_context_preserves_whole_expression() -> None:
-    source = b"x = y ^= z"
-
+@pytest.mark.parametrize(
+    "source",
+    [
+        b"x = y ^= z",
+        b"x=y^=z",
+        b"x = y^ = z",
+        b"x=y!=z",
+    ],
+    ids=["spaced", "caret-compact", "caret-value-space", "bang-compact"],
+)
+def test_unsupported_operator_in_value_context_preserves_whole_expression(
+    source: bytes,
+) -> None:
     result = parse_bytes(source)
 
     assert not result.ok
