@@ -40,6 +40,8 @@ _UTF8_BOM = b"\xef\xbb\xbf"
 _WHITESPACE = b" \t\r\n\v\f"
 _SPECIAL = b'{}=<>"#'
 _NUMBER_RE = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)\Z")
+_WHITESPACE_RE = re.compile(rb"[ \t\r\n\v\f]+")
+_SCALAR_END_RE = re.compile(rb'[ \t\r\n\v\f{}=<>"#]')
 
 
 @dataclass(frozen=True)
@@ -344,9 +346,9 @@ def lex_bytes(
         byte = source[offset]
 
         if byte in _WHITESPACE:
-            end = offset + 1
-            while end < size and source[end] in _WHITESPACE:
-                end += 1
+            match = _WHITESPACE_RE.match(source, offset)
+            assert match is not None
+            end = match.end()
             limited = emit("whitespace", offset, end)
             if limited is not None:
                 return limited
@@ -354,9 +356,10 @@ def lex_bytes(
             continue
 
         if byte == ord("#"):
-            end = offset + 1
-            while end < size and source[end] not in (0x0A, 0x0D):
-                end += 1
+            lf = source.find(b"\n", offset + 1)
+            cr = source.find(b"\r", offset + 1)
+            candidates = [value for value in (lf, cr) if value != -1]
+            end = min(candidates) if candidates else size
             limited = emit("comment", offset, end)
             if limited is not None:
                 return limited
@@ -367,17 +370,17 @@ def lex_bytes(
             end = offset + 1
             terminated = False
             while end < size:
-                if source[end] == ord("\\"):
-                    if end + 1 < size:
-                        end += 2
-                    else:
-                        end += 1
-                    continue
-                if source[end] == ord('"'):
-                    end += 1
-                    terminated = True
+                quote = source.find(b'"', end)
+                escape = source.find(b"\\", end)
+                if quote == -1 and escape == -1:
+                    end = size
                     break
-                end += 1
+                if escape != -1 and (quote == -1 or escape < quote):
+                    end = min(size, escape + 2)
+                    continue
+                end = quote + 1
+                terminated = True
+                break
 
             start_line = line
             start_column = column
@@ -430,13 +433,8 @@ def lex_bytes(
             offset += 1
             continue
 
-        end = offset + 1
-        while (
-            end < size
-            and source[end] not in _WHITESPACE
-            and source[end] not in _SPECIAL
-        ):
-            end += 1
+        boundary = _SCALAR_END_RE.search(source, offset + 1)
+        end = boundary.start() if boundary is not None else size
         text = source[offset:end].decode("utf-8", errors="strict")
         limited = emit(_scalar_kind(text), offset, end)
         if limited is not None:
