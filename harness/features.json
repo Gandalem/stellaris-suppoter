@@ -50,7 +50,7 @@
       "id": "F-004",
       "title": "Lossless script parsing",
       "milestone": "v0.1",
-      "status": "in_progress",
+      "status": "verified",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/PARSING.md"
@@ -61,19 +61,23 @@
         "harness/evidence/TASK-006-resource-followup.md",
         "harness/evidence/TASK-006-main-integration.md",
         "harness/evidence/TASK-007-ordered-ast-parser.md",
-        "harness/evidence/TASK-007-review-followup.md"
+        "harness/evidence/TASK-007-review-followup.md",
+        "harness/evidence/TASK-007-main-integration.md"
       ]
     },
     {
       "id": "F-005",
       "title": "Domain adapters",
       "milestone": "v0.1",
-      "status": "planned",
+      "status": "in_progress",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/PARSING.md"
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-008-technology-adapter.md",
+        "harness/evidence/TASK-008-review-followup.md"
+      ]
     },
     {
       "id": "F-006",
