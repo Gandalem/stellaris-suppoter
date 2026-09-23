@@ -60,7 +60,8 @@
         "harness/evidence/TASK-006-lexer-source-spans.md",
         "harness/evidence/TASK-006-resource-followup.md",
         "harness/evidence/TASK-006-main-integration.md",
-        "harness/evidence/TASK-007-ordered-ast-parser.md"
+        "harness/evidence/TASK-007-ordered-ast-parser.md",
+        "harness/evidence/TASK-007-review-followup.md"
       ]
     },
     {
