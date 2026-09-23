@@ -4,6 +4,7 @@
 리뷰 기준 head: `6b54a19d1a0384f1eef04e95494e9b0ce050a16b`  
 R1 follow-up head: `ba130da911b0082b858e06e9c04a008993540ca6`  
 R2 CPU follow-up code head: `6bb62ee13a6c7790be4f62c861a00c93e470e55b`  
+R3 comment CPU follow-up code/test head: `761ed058cf46c950167aa5b95452aa1109dc26cf`  
 PR: https://github.com/Gandalem/stellaris-suppoter/pull/12
 
 ## 리뷰 반례
@@ -77,6 +78,29 @@ R2 code head `6bb62ee13a6c7790be4f62c861a00c93e470e55b`의 PR test-merge `3ba432
   - POSIX-only tracemalloc threshold.
   - POSIX-only escape-dense wall-clock threshold.
 - Documentation harness PR run `35805472091`: Ubuntu/Windows success.
+
+## R3 many-comment CPU follow-up
+
+재검토에서 comment scanner가 LF와 CR을 별도 `bytes.find()`로 찾기 때문에, LF-only/CR-only 파일의 많은 주석에서 존재하지 않는 반대쪽 newline을 남은 파일 끝까지 반복 검색하는 경로가 확인됐다.
+
+수정:
+- `_COMMENT_BOUNDARY_RE = re.compile(rb"[\\r\\n]")`를 추가했다.
+- `_scan_comment_end()`은 현재 주석 시작 이후의 첫 CR 또는 LF를 단일 regex search로 찾는다.
+- 각 주석에서 newline search는 한 번뿐이고, lexer의 전체 offset은 기존처럼 앞으로만 진행한다.
+- CRLF는 첫 CR 앞에서 comment token을 끝내고 기존 whitespace scanner가 CRLF를 하나의 newline으로 소비하므로 span contract를 유지한다.
+
+추가 regression:
+- LF-only / CR-only / CRLF 각각 2,048개 주석에서 comment boundary search가 주석당 정확히 한 번 호출되는지 검사.
+- 각 search 시작 offset이 단조 증가하는지 검사하여 이전 suffix 반복 검색 구조가 되돌아오지 않도록 함.
+- mixed LF/CR/CRLF + 마지막 EOF comment에서 raw bytes와 comment span을 검증.
+- 2 MiB LF-only / CR-only many-comment 입력이 기본 16 MiB / 100,000 token 제한 안에서 정상 처리되고 원문을 완전 재구성하는지 검증.
+
+R3 code/test head `761ed058cf46c950167aa5b95452aa1109dc26cf` 검증:
+- Package PR run `35814524647`, test-merge `c1579bd`.
+- Ubuntu / Python 3.11: 130 passed, lexer 30 passed, Ruff/harness success.
+- Windows / Python 3.13: 130 collected, 127 passed + 3 intentional skips; lexer 28 passed + 2 intentional skips; Ruff/harness success.
+- Windows intentional skips는 기존 inventory surrogateescape, POSIX tracemalloc threshold, POSIX escape-dense wall-clock threshold이며 R3의 LF/CR/CRLF search-count 및 correctness regressions는 Windows에서도 실행됐다.
+- Documentation harness PR run `35814524674`: Ubuntu/Windows success.
 
 ## CI
 
