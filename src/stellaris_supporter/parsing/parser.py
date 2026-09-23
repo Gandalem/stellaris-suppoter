@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Literal, TypeAlias
 
 from stellaris_supporter.parsing.lexer import (
