@@ -10,9 +10,10 @@
   "notes": [
     "PR #12 merged to main as 1c8247ee2eea330b6444de33fdc2cb03a82abb91 and actual main push CI passed on Ubuntu and Windows.",
     "TASK-006 is done; E-009/E-010 remain pass.",
-    "TASK-007 candidate b475f72394494d83a427f8b04bdc3761b83da95b implements ordered bounded AST parsing.",
-    "E-011/E-012/E-013 are pass on synthetic fixtures and parser resource regressions.",
-    "TASK-007 remains doing until review, merge, and actual main push CI complete.",
+    "TASK-007 review follow-up head 24ea1dc2b2048cbf132f85b9d0f0ddf0464479c6 fixes unsupported-syntax context, parent-rbrace recovery, and unsafe configurable depth.",
+    "E-011 remains pass; E-012/E-013 are pass with review follow-up evidence.",
+    "PR follow-up integration candidate c23a35e passed 151 tests on Ubuntu and 148 passed + 3 existing skips on Windows; parser 21 passed on both.",
+    "TASK-007 remains doing until reviewer re-check, merge, and actual main push CI complete.",
     "F-004 remains in_progress until TASK-007 main integration completes.",
     "latest_game_version remains null."
   ]
