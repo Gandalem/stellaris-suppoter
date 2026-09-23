@@ -88,3 +88,23 @@ follow-up code/test head: `e5f3a98ab2970f786e5f2b90262fa737c0325910`
 E-014 기존 pass는 유지하고 follow-up evidence를 추가했다. TASK-008 doing / F-005 in_progress 유지.
 
 근거: [TASK-008 review follow-up](../evidence/TASK-008-review-followup.md)
+
+
+## Main integration
+
+PR #14 final head `9ad4e7f61344b6c6c7876ea505dca1c803ea6ebf` was merged to main as `3275aeabbfa51a249b3449c34ec192fbec966adb`.
+
+Actual main push verification:
+- Package and tooling run `35868827744`
+  - Ubuntu / Python 3.11.16: 174 passed, technology adapter 20 passed, Ruff/harness success.
+  - Windows / Python 3.13.15: 174 collected, 171 passed + 3 existing intentional skips, technology adapter 20 passed, Ruff/harness success.
+- Documentation harness run `35868827712`: Ubuntu/Windows success.
+
+Final state:
+- TASK-008: done.
+- E-014: pass.
+- F-005: in_progress.
+- latest_game_version: null.
+- TASK-009 is next but not started by this closure change.
+
+Evidence: [TASK-008 main integration](../evidence/TASK-008-main-integration.md)
