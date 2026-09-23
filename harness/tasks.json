@@ -105,7 +105,7 @@
     {
       "id": "TASK-005",
       "title": "Version and DLC evidence",
-      "status": "doing",
+      "status": "done",
       "feature_ids": [
         "F-003"
       ],
@@ -131,7 +131,7 @@
     {
       "id": "TASK-006",
       "title": "Lexer and source spans",
-      "status": "todo",
+      "status": "doing",
       "feature_ids": [
         "F-004"
       ],
@@ -149,7 +149,10 @@
       "acceptance": [
         "Token boundaries remain correct for strings, comments, BOM and CRLF."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-006-lexer-source-spans.md",
+        "harness/evidence/TASK-006-resource-followup.md"
+      ]
     },
     {
       "id": "TASK-007",

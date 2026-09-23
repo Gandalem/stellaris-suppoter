@@ -109,3 +109,16 @@ Documentation harness run 35751962314: Ubuntu/Windows success.
 E-007을 새 follow-up 근거로 다시 pass 처리한다. TASK-005는 reviewer 재검토와 main 병합 전까지 `doing` 유지.
 
 근거: [TASK-005 review follow-up](../evidence/TASK-005-review-followup.md)
+
+
+## 실제 main 통합 완료
+
+PR #11 head `9fffe22424eed84285a8d5ad7eb545dcfe28bbb0`는 merge commit `1e0a8fcfbb9661362c85aa24bd54b4e134901107`으로 main에 반영됐다.
+
+실제 main push CI:
+- Package and tooling run 35753291361
+  - Ubuntu/Python 3.11.16: 100 passed; versioning 19 passed; Ruff/harness success.
+  - Windows/Python 3.13.15: 100 collected, 99 passed + 기존 POSIX-only inventory 1 skipped; versioning 19 passed; Ruff/harness success.
+- Documentation harness run 35753291305: Ubuntu/Windows success.
+
+TASK-005는 `done`, F-003은 연결 작업 TASK-004/TASK-005와 E-005/E-007/E-008이 모두 완료되어 `verified`로 전환한다. `latest_game_version=null`은 유지한다.

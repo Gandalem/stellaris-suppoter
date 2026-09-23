@@ -62,3 +62,16 @@ Documentation harness run 35751962314도 Ubuntu/Windows 모두 success.
 ## 상태
 
 E-007 pass로 복구. E-008 기존 pass 유지. TASK-005는 reviewer 재검토 및 실제 main 병합 전까지 doing. F-003은 in_progress. latest_game_version=null.
+
+
+## 실제 main 통합
+
+PR #11 merge commit: `1e0a8fcfbb9661362c85aa24bd54b4e134901107`
+
+Main push run 35753291361:
+- Ubuntu/Python 3.11.16: 100 passed; versioning 19 passed; Ruff/harness success.
+- Windows/Python 3.13.15: 100 collected, 99 passed + 기존 POSIX-only inventory 1 skipped; versioning 19 passed; Ruff/harness success.
+
+Documentation harness run 35753291305도 Ubuntu/Windows 모두 success였다.
+
+이 실제 main evidence로 TASK-005 종료 조건과 F-003 verified 조건이 충족됐다. 실제 설치 버전/DLC 상태를 검증한 것은 아니므로 latest_game_version은 null을 유지한다.
