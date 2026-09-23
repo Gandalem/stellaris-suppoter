@@ -106,54 +106,31 @@ def _validate_limit(value: int, *, name: str) -> int:
     return value
 
 
-def _utf8_length(first: int) -> int:
-    if first < 0x80:
-        return 1
-    if first < 0xE0:
-        return 2
-    if first < 0xF0:
-        return 3
-    return 4
-
-
-def _advance_position(
-    source: bytes,
-    start: int,
-    end: int,
+def _advance_text_position(
+    text: str,
     line: int,
     column: int,
 ) -> tuple[int, int]:
-    """Advance line/column over one already-validated byte range without allocations."""
+    """Advance coordinates using C-backed string scans, with CRLF as one newline."""
 
-    offset = start
-    while offset < end:
-        if offset + 1 < end and source[offset] == 0x0D and source[offset + 1] == 0x0A:
-            offset += 2
-            line += 1
-            column = 1
-            continue
+    cr_count = text.count("\r")
+    lf_count = text.count("\n")
+    newline_count = cr_count + lf_count - text.count("\r\n")
+    if newline_count == 0:
+        return line, column + len(text)
 
-        byte = source[offset]
-        if byte in (0x0A, 0x0D):
-            offset += 1
-            line += 1
-            column = 1
-            continue
-
-        offset += _utf8_length(byte)
-        column += 1
-
-    return line, column
+    last_break = max(text.rfind("\r"), text.rfind("\n"))
+    return line + newline_count, len(text) - last_break
 
 
-def _span_from_cursor(
-    source: bytes,
+def _span_from_text(
+    text: str,
     start: int,
     end: int,
     line: int,
     column: int,
 ) -> tuple[SourceSpan, int, int]:
-    line_end, column_end = _advance_position(source, start, end, line, column)
+    line_end, column_end = _advance_text_position(text, line, column)
     return (
         SourceSpan(
             byte_start=start,
@@ -172,7 +149,8 @@ def _position_at(source: bytes, offset: int) -> tuple[int, int]:
     start = len(_UTF8_BOM) if source.startswith(_UTF8_BOM) else 0
     if offset <= start:
         return 1, 1
-    return _advance_position(source, start, offset, 1, 1)
+    prefix = source[start:offset].decode("utf-8", errors="strict")
+    return _advance_text_position(prefix, 1, 1)
 
 
 def _validate_utf8(source: bytes) -> None:
@@ -230,8 +208,9 @@ def _make_token(
     line: int,
     column: int,
 ) -> tuple[Token, int, int]:
-    span, line_end, column_end = _span_from_cursor(
-        source,
+    text = source[start:end].decode("utf-8", errors="strict")
+    span, line_end, column_end = _span_from_text(
+        text,
         start,
         end,
         line,
@@ -240,7 +219,7 @@ def _make_token(
     return (
         Token(
             kind=kind,
-            text=source[start:end].decode("utf-8", errors="strict"),
+            text=text,
             span=span,
         ),
         line_end,
