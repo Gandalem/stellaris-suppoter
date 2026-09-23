@@ -158,7 +158,7 @@
     {
       "id": "TASK-007",
       "title": "Ordered AST parser",
-      "status": "doing",
+      "status": "done",
       "feature_ids": [
         "F-004"
       ],
@@ -179,13 +179,14 @@
       ],
       "evidence": [
         "harness/evidence/TASK-007-ordered-ast-parser.md",
-        "harness/evidence/TASK-007-review-followup.md"
+        "harness/evidence/TASK-007-review-followup.md",
+        "harness/evidence/TASK-007-main-integration.md"
       ]
     },
     {
       "id": "TASK-008",
       "title": "Technology adapter",
-      "status": "todo",
+      "status": "doing",
       "feature_ids": [
         "F-005"
       ],
