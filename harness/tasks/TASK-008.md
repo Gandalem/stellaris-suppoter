@@ -58,3 +58,33 @@ latest_game_version=null.
 TASK-008은 review/main integration 전까지 doing 유지. F-005는 remaining domain adapters가 남아 in_progress 유지.
 
 근거: [technology adapter evidence](../evidence/TASK-008-technology-adapter.md)
+
+
+## PR #14 review follow-up
+
+리뷰 기준 head `c7052a3879a24a7fd66fb60355a18188bab1cab4`에서 다음 경계가 재현됐다.
+
+- R1: parser/lexer diagnostics와 truncation/completeness state가 adapter에서 사라짐.
+- R2: comparison operator, variable, empty/number prerequisite를 confirmed technology ID로 승격.
+- R3: nested subtree raw strings와 duplicated raw tree 때문에 memory/output 증폭.
+
+follow-up code/test head: `e5f3a98ab2970f786e5f2b90262fa737c0325910`
+
+수정:
+- adapter input을 `ParseResult`로 올려 diagnostics/origin/completeness를 보존.
+- parse error가 겹치는 candidate는 partial; normal empty와 error-produced empty AST를 구분.
+- prerequisite extraction을 assignment block + non-empty identifier/quoted literal로 제한.
+- unsupported prerequisite forms는 raw/source ref를 유지하고 warning + partial resolution.
+- RawNodeRef는 subtree raw string을 저장하지 않고 source bytes + SourceRef를 공유.
+- field value는 candidate ordered raw tree의 same node object를 참조.
+- default serialization은 raw strings를 materialize하지 않으며 explicit raw output에는 byte budget 적용.
+
+검증:
+- PR Package run `35864909563`, test-merge `e5b1e18`.
+- Ubuntu: 174 passed, technology adapter 20 passed, Ruff/harness success.
+- Windows: 174 collected, 171 passed + 기존 3 intentional skips, technology adapter 20 passed, Ruff/harness success.
+- Documentation harness run `35864909480`: Ubuntu/Windows success.
+
+E-014 기존 pass는 유지하고 follow-up evidence를 추가했다. TASK-008 doing / F-005 in_progress 유지.
+
+근거: [TASK-008 review follow-up](../evidence/TASK-008-review-followup.md)
