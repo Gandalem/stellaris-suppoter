@@ -23,7 +23,7 @@ inventory에서 실재 경로를 먼저 확인합니다. 경로가 없으면 게
 
 블록의 assignment와 bare scalar 혼합, 중복 키, namespace, 파일 변수는 순서 있는 노드로 보존합니다. typed block·매크로형 표현식·새 연산자 등 미지원 구조는 unknown 노드와 진단으로 남깁니다. 입력을 코드로 실행하지 않습니다.
 
-UTF-8/BOM을 우선 지원합니다. decoding 실패를 replacement 문자나 임의 인코딩 추측으로 숨기지 않습니다. lexer byte span은 0-based half-open, line/column은 1-based이며 end는 exclusive입니다. CRLF는 한 번의 줄바꿈으로 계산합니다. 선두 UTF-8 BOM은 별도 token으로 보존하되 다음 실제 문자는 line 1/column 1에서 시작합니다. 위치는 문자별 map을 선할당하지 않고 token 순회 중 line/column cursor로 계산합니다. lexer 기본 자원 한도는 입력 16 MiB와 token 100,000개이며 byte 한도는 UTF-8 검증 전에, token 한도는 다음 Token/SourceSpan 생성 전에 적용합니다. 한도 초과는 LIMIT_EXCEEDED로 실패하며 입력을 잘라 성공 처리하지 않습니다. 문자열 미종결·brace 누락·예상 밖 EOF는 오류이며 조용한 성공이 아닙니다. AST 깊이 제한은 TASK-007에서 별도로 적용합니다.
+UTF-8/BOM을 우선 지원합니다. decoding 실패를 replacement 문자나 임의 인코딩 추측으로 숨기지 않습니다. lexer byte span은 0-based half-open, line/column은 1-based이며 end는 exclusive입니다. CRLF는 한 번의 줄바꿈으로 계산합니다. 선두 UTF-8 BOM은 별도 token으로 보존하되 다음 실제 문자는 line 1/column 1에서 시작합니다. 위치는 문자별 map을 선할당하지 않고 token 순회 중 line/column cursor로 계산합니다. lexer 기본 자원 한도는 입력 16 MiB와 token 100,000개이며 byte 한도는 UTF-8 검증 전에, token 한도는 다음 Token/SourceSpan 생성 전에 적용합니다. 한도 초과는 LIMIT_EXCEEDED로 실패하며 입력을 잘라 성공 처리하지 않습니다. 문자열 미종결·brace 누락·예상 밖 EOF는 오류이며 조용한 성공이 아닙니다. ordered AST는 duplicate pair와 mixed scalar/pair 순서를 보존하고 unknown syntax를 raw span + explicit diagnostic으로 남깁니다. parser 기본 자원 한도는 depth 128, node 100,000개, diagnostic 1,000개이며 configurable recursion depth는 256 이하만 허용합니다. depth/node 한도 초과는 explicit parser diagnostic으로 중단하거나 해당 raw region을 bounded unknown node로 보존합니다.
 
 ## 도메인 adapter
 
