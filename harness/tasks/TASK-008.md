@@ -35,3 +35,26 @@ F-005 in_progress.
 E-014 not_run.  
 F-004 verified.  
 latest_game_version=null.
+
+
+## 구현 candidate
+
+기능 candidate: `7810f9972ee520dd8da716fcc84c3d5d6c70bb21`
+
+구현:
+- DATA_CONTRACTS SourceRef 필드에 맞춘 source context/ref.
+- ordered raw node tree로 field/condition 구조 보존.
+- duplicate field occurrence/order 보존.
+- prerequisites target/raw/source ref 추출.
+- unknown technology item raw 보존 + explicit warning.
+- 같은 game_id를 파일 간 overwrite하지 않음.
+
+검증:
+- Package and tooling push run `35858794110`.
+- Ubuntu: 159 passed, technology adapter 5 passed, Ruff/harness success.
+- Windows: 159 collected, 156 passed + 기존 3 intentional skips, technology adapter 5 passed, Ruff/harness success.
+- E-014 pass.
+
+TASK-008은 review/main integration 전까지 doing 유지. F-005는 remaining domain adapters가 남아 in_progress 유지.
+
+근거: [technology adapter evidence](../evidence/TASK-008-technology-adapter.md)
