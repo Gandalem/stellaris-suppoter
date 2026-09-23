@@ -203,7 +203,9 @@
       "acceptance": [
         "Synthetic technology fields, conditions and prerequisites retain source spans."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-008-technology-adapter.md"
+      ]
     },
     {
       "id": "TASK-009",
