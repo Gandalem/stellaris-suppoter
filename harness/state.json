@@ -8,11 +8,12 @@
   "latest_game_version": null,
   "updated_on": "2026-09-23",
   "notes": [
-    "PR #12 merged to main as 1c8247ee2eea330b6444de33fdc2cb03a82abb91.",
-    "Actual main push Package and tooling run 35815351949 passed on Ubuntu and Windows; Documentation harness run 35815351946 passed on both platforms.",
-    "TASK-006 is done and E-009/E-010 remain pass; R1/R2/R3 resource follow-ups are preserved in evidence.",
-    "TASK-007 Ordered AST parser is now doing; E-011/E-012/E-013 remain not_run.",
-    "F-004 remains in_progress until TASK-007 and E-011 through E-013 complete.",
+    "PR #12 merged to main as 1c8247ee2eea330b6444de33fdc2cb03a82abb91 and actual main push CI passed on Ubuntu and Windows.",
+    "TASK-006 is done; E-009/E-010 remain pass.",
+    "TASK-007 candidate b475f72394494d83a427f8b04bdc3761b83da95b implements ordered bounded AST parsing.",
+    "E-011/E-012/E-013 are pass on synthetic fixtures and parser resource regressions.",
+    "TASK-007 remains doing until review, merge, and actual main push CI complete.",
+    "F-004 remains in_progress until TASK-007 main integration completes.",
     "latest_game_version remains null."
   ]
 }
