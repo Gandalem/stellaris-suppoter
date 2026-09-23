@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import tracemalloc
 from pathlib import Path
 
@@ -201,6 +202,10 @@ def test_large_single_token_inputs_do_not_need_per_character_position_objects(
     assert result.tokens[0].span.byte_end == len(source)
 
 
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason="tracemalloc peak threshold is calibrated on POSIX CPython",
+)
 def test_comment_position_tracking_does_not_allocate_per_character_map() -> None:
     source = b"#" + b"x" * (64 * 1024 - 1)
 
