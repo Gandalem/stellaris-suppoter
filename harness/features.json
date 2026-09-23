@@ -58,7 +58,8 @@
       "evidence": [
         "harness/evidence/TASK-002-synthetic-corpus.md",
         "harness/evidence/TASK-006-lexer-source-spans.md",
-        "harness/evidence/TASK-006-resource-followup.md"
+        "harness/evidence/TASK-006-resource-followup.md",
+        "harness/evidence/TASK-006-main-integration.md"
       ]
     },
     {
