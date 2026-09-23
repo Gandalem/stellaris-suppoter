@@ -41,6 +41,7 @@ _WHITESPACE = b" \t\r\n\v\f"
 _SPECIAL = b'{}=<>"#'
 _NUMBER_RE = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)\Z")
 _WHITESPACE_RE = re.compile(rb"[ \t\r\n\v\f]+")
+_STRING_BOUNDARY_RE = re.compile(rb'["\\\\]')
 _SCALAR_END_RE = re.compile(rb'[ \t\r\n\v\f{}=<>"#]')
 
 
@@ -237,6 +238,22 @@ def _scalar_kind(text: str) -> TokenKind:
     return "identifier"
 
 
+def _scan_quoted_string(source: bytes, start: int) -> tuple[int, bool]:
+    """Find a quoted-string end without repeatedly rescanning the remaining suffix."""
+
+    size = len(source)
+    cursor = start + 1
+    while cursor < size:
+        boundary = _STRING_BOUNDARY_RE.search(source, cursor)
+        if boundary is None:
+            return size, False
+        index = boundary.start()
+        if source[index] == ord('"'):
+            return index + 1, True
+        cursor = min(size, index + 2)
+    return size, False
+
+
 def lex_bytes(
     source: bytes,
     *,
@@ -367,20 +384,7 @@ def lex_bytes(
             continue
 
         if byte == ord('"'):
-            end = offset + 1
-            terminated = False
-            while end < size:
-                quote = source.find(b'"', end)
-                escape = source.find(b"\\", end)
-                if quote == -1 and escape == -1:
-                    end = size
-                    break
-                if escape != -1 and (quote == -1 or escape < quote):
-                    end = min(size, escape + 2)
-                    continue
-                end = quote + 1
-                terminated = True
-                break
+            end, terminated = _scan_quoted_string(source, offset)
 
             start_line = line
             start_column = column
