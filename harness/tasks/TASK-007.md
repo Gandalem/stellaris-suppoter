@@ -100,3 +100,23 @@ follow-up code/test head: `24ea1dc2b2048cbf132f85b9d0f0ddf0464479c6`
 E-011 기존 pass 유지. E-012/E-013은 follow-up evidence를 포함해 pass 재확정. TASK-007은 reviewer re-check 및 main integration 전까지 doing 유지.
 
 근거: [review follow-up evidence](../evidence/TASK-007-review-followup.md)
+
+
+## R4 compact value operator follow-up
+
+값 위치의 compact unsupported operator 경계를 추가 보완했다.
+
+- `x=y^=z`
+- `x = y^ = z`
+- `x=y!=z`
+
+위 입력은 expression 전체를 raw `UnknownNode`로 보존하고 `PARSE_UNKNOWN_SYNTAX`을 생성한다. partial normal pair를 생성하지 않는다.
+
+code/test head `76a2cc51104176a4ba84d18c79fc89389e0c4d55` / PR test-merge `5795e26`:
+- Ubuntu 154 passed.
+- Windows 151 passed + 기존 3 intentional skips.
+- Documentation harness Ubuntu/Windows success.
+
+E-012 pass 유지. TASK-007 doing / F-004 in_progress 유지.
+
+근거: [review follow-up evidence](../evidence/TASK-007-review-followup.md)
