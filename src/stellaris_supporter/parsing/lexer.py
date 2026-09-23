@@ -42,6 +42,7 @@ _SPECIAL = b'{}=<>"#'
 _NUMBER_RE = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)\Z")
 _WHITESPACE_RE = re.compile(rb"[ \t\r\n\v\f]+")
 _STRING_BOUNDARY_RE = re.compile(rb'["\\\\]')
+_COMMENT_BOUNDARY_RE = re.compile(rb"[\r\n]")
 _SCALAR_END_RE = re.compile(rb'[ \t\r\n\v\f{}=<>"#]')
 
 
@@ -254,6 +255,13 @@ def _scan_quoted_string(source: bytes, start: int) -> tuple[int, bool]:
     return size, False
 
 
+def _scan_comment_end(source: bytes, start: int) -> int:
+    """Find the first CR or LF after a comment marker with one forward search."""
+
+    boundary = _COMMENT_BOUNDARY_RE.search(source, start + 1)
+    return boundary.start() if boundary is not None else len(source)
+
+
 def lex_bytes(
     source: bytes,
     *,
@@ -373,10 +381,7 @@ def lex_bytes(
             continue
 
         if byte == ord("#"):
-            lf = source.find(b"\n", offset + 1)
-            cr = source.find(b"\r", offset + 1)
-            candidates = [value for value in (lf, cr) if value != -1]
-            end = min(candidates) if candidates else size
+            end = _scan_comment_end(source, offset)
             limited = emit("comment", offset, end)
             if limited is not None:
                 return limited
