@@ -289,3 +289,15 @@ def test_lexer_limits_require_positive_integers(
 ) -> None:
     with pytest.raises(error_type):
         lex_bytes(b"x", max_bytes=max_bytes, max_tokens=max_tokens)
+
+
+def test_token_limit_stops_before_scanning_a_large_next_token() -> None:
+    source = b"{" + b'"' + b"x" * (1024 * 1024 - 3) + b'"'
+
+    result = lex_bytes(source, max_bytes=len(source), max_tokens=1)
+
+    assert not result.ok
+    assert len(result.tokens) == 1
+    assert result.tokens[0].kind == "lbrace"
+    assert [item.code for item in result.diagnostics] == ["LIMIT_EXCEEDED"]
+    assert result.diagnostics[0].span.byte_start == 1

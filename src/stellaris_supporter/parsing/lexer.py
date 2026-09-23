@@ -349,6 +349,19 @@ def lex_bytes(
         offset = len(_UTF8_BOM)
 
     while offset < size:
+        if len(tokens) >= max_tokens:
+            return LexResult(
+                tokens=tuple(tokens),
+                diagnostics=(
+                    _limit_diagnostic(
+                        message="Lexer token-count limit was exceeded.",
+                        offset=offset,
+                        line=line,
+                        column=column,
+                    ),
+                ),
+            )
+
         byte = source[offset]
 
         if byte in _WHITESPACE:
