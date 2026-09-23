@@ -178,7 +178,8 @@
         "Duplicates and unknown syntax are preserved; malformed and deep input is bounded."
       ],
       "evidence": [
-        "harness/evidence/TASK-007-ordered-ast-parser.md"
+        "harness/evidence/TASK-007-ordered-ast-parser.md",
+        "harness/evidence/TASK-007-review-followup.md"
       ]
     },
     {
