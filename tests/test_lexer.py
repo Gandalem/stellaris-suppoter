@@ -338,3 +338,71 @@ def test_escape_dense_string_scan_is_bounded_on_large_input() -> None:
     assert len(result.tokens) == 1
     assert result.tokens[0].span.byte_end == len(source)
     assert elapsed < 5.0
+
+
+
+@pytest.mark.parametrize("newline", [b"\n", b"\r", b"\r\n"], ids=["lf", "cr", "crlf"])
+def test_many_comment_lines_use_one_boundary_search_each(
+    monkeypatch: pytest.MonkeyPatch,
+    newline: bytes,
+) -> None:
+    rows = 2048
+    line = b"#" + b"x" * (128 - len(newline) - 1) + newline
+    source = line * rows
+    real_pattern = lexer_module._COMMENT_BOUNDARY_RE
+    search_starts: list[int] = []
+
+    class CountingPattern:
+        def search(self, data: bytes, pos: int = 0):
+            search_starts.append(pos)
+            return real_pattern.search(data, pos)
+
+    monkeypatch.setattr(lexer_module, "_COMMENT_BOUNDARY_RE", CountingPattern())
+
+    result = lex_bytes(source)
+
+    assert result.ok
+    assert len(search_starts) == rows
+    assert all(later > earlier for earlier, later in zip(search_starts, search_starts[1:]))
+    assert b"".join(token.raw_bytes(source) for token in result.tokens) == source
+
+
+def test_comment_newline_variants_and_eof_preserve_spans() -> None:
+    source = b"#a\n#bb\r#ccc\r\n#tail"
+
+    result = lex_bytes(source)
+
+    assert result.ok
+    assert b"".join(token.raw_bytes(source) for token in result.tokens) == source
+
+    comments = [token for token in result.tokens if token.kind == "comment"]
+    assert [token.raw_bytes(source) for token in comments] == [
+        b"#a",
+        b"#bb",
+        b"#ccc",
+        b"#tail",
+    ]
+    assert [
+        (token.span.line_start, token.span.column_start, token.span.line_end, token.span.column_end)
+        for token in comments
+    ] == [
+        (1, 1, 1, 3),
+        (2, 1, 2, 4),
+        (3, 1, 3, 5),
+        (4, 1, 4, 6),
+    ]
+
+
+@pytest.mark.parametrize("newline", [b"\n", b"\r"], ids=["lf", "cr"])
+def test_large_many_comment_inputs_remain_within_default_limits(newline: bytes) -> None:
+    line_size = 256
+    rows = 8192
+    line = b"#" + b"x" * (line_size - len(newline) - 1) + newline
+    source = line * rows
+
+    result = lex_bytes(source)
+
+    assert result.ok
+    assert len(source) == 2 * 1024 * 1024
+    assert len(result.tokens) == rows * 2
+    assert b"".join(token.raw_bytes(source) for token in result.tokens) == source
