@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -140,7 +141,7 @@ def test_lexer_error_is_carried_into_parse_result() -> None:
     ("name", "value", "error_type"),
     [
         ("max_depth", 0, ValueError),
-        ("max_depth", 257, ValueError),
+        ("max_depth", 129, ValueError),
         ("max_nodes", 0, ValueError),
         ("max_diagnostics", False, TypeError),
     ],
@@ -149,3 +150,118 @@ def test_parser_limits_are_explicit(name: str, value: object, error_type: type[E
     kwargs = {name: value}
     with pytest.raises(error_type):
         parse_bytes(b"x", **kwargs)
+
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        b"mystery^=42",
+        b"mystery!=42",
+    ],
+    ids=["caret-compact", "bang-compact"],
+)
+def test_compact_unsupported_operators_are_not_normal_pairs(source: bytes) -> None:
+    result = parse_bytes(source)
+
+    assert not result.ok
+    assert [item.code for item in result.diagnostics] == ["PARSE_UNKNOWN_SYNTAX"]
+    assert len(result.document.items) == 1
+    unknown = result.document.items[0]
+    assert isinstance(unknown, UnknownNode)
+    assert unknown.raw_bytes(source) == source
+    assert not any(isinstance(item, PairNode) for item in result.document.items)
+
+
+def test_unsupported_operator_in_value_context_preserves_whole_expression() -> None:
+    source = b"x = y ^= z"
+
+    result = parse_bytes(source)
+
+    assert not result.ok
+    assert [item.code for item in result.diagnostics] == ["PARSE_UNKNOWN_SYNTAX"]
+    assert len(result.document.items) == 1
+    unknown = result.document.items[0]
+    assert isinstance(unknown, UnknownNode)
+    assert unknown.raw_bytes(source) == source
+
+
+def test_typed_block_is_unknown_instead_of_scalar_pair_plus_block() -> None:
+    source = b"color = rgb { 1 2 3 }"
+
+    result = parse_bytes(source)
+
+    assert not result.ok
+    assert [item.code for item in result.diagnostics] == ["PARSE_UNKNOWN_SYNTAX"]
+    assert len(result.document.items) == 1
+    unknown = result.document.items[0]
+    assert isinstance(unknown, UnknownNode)
+    assert unknown.raw_bytes(source) == source
+
+
+def test_operator_symbols_inside_quoted_value_remain_supported_scalar_text() -> None:
+    source = b'x = "^= != { }"'
+
+    result = parse_bytes(source)
+
+    assert result.ok
+    assert len(result.document.items) == 1
+    pair = result.document.items[0]
+    assert isinstance(pair, PairNode)
+    assert isinstance(pair.value, ScalarNode)
+    assert pair.value.text == '"^= != { }"'
+
+
+def test_unknown_missing_value_does_not_consume_parent_closing_brace() -> None:
+    source = b"root = { mystery ^= } after = 1"
+
+    result = parse_bytes(source)
+
+    assert not result.ok
+    assert [item.code for item in result.diagnostics] == ["PARSE_UNKNOWN_SYNTAX"]
+    assert len(result.document.items) == 2
+
+    root = result.document.items[0]
+    after = result.document.items[1]
+    assert isinstance(root, PairNode)
+    assert isinstance(root.value, BlockNode)
+    assert root.value.closed is True
+    assert len(root.value.items) == 1
+    unknown = root.value.items[0]
+    assert isinstance(unknown, UnknownNode)
+    assert unknown.raw_bytes(source) == b"mystery ^="
+
+    assert isinstance(after, PairNode)
+    assert after.key_text == "after"
+    assert isinstance(after.value, ScalarNode)
+    assert after.value.text == "1"
+
+
+def test_supported_max_depth_parses_and_serializes_without_recursion_error() -> None:
+    depth = 128
+    source = b"a={" * depth + b"x=1" + b"}" * depth
+
+    result = parse_bytes(source, max_depth=depth)
+
+    assert result.ok
+    serialized = json.dumps(result.to_dict())
+    assert '"document"' in serialized
+
+
+def test_one_level_beyond_supported_depth_is_structured_limit() -> None:
+    depth = 129
+    source = b"a={" * depth + b"x=1" + b"}" * depth
+
+    result = parse_bytes(source, max_depth=128)
+
+    assert not result.ok
+    assert "PARSE_DEPTH_LIMIT" in [item.code for item in result.diagnostics]
+    serialized = json.dumps(result.to_dict())
+    assert "PARSE_DEPTH_LIMIT" in serialized
+
+
+def test_previous_unsafe_depth_setting_is_rejected_before_parsing() -> None:
+    source = b"a={" * 200 + b"x=1" + b"}" * 200
+
+    with pytest.raises(ValueError, match=r"max_depth must be <= 128"):
+        parse_bytes(source, max_depth=256)
