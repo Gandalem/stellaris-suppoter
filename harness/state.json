@@ -8,12 +8,12 @@
   "latest_game_version": null,
   "updated_on": "2026-09-23",
   "notes": [
-    "PR #13 merged to main as 959e3fc669c0927ed8eddec559bef055e155f253.",
-    "Actual main push Package and tooling run 35858348427 passed on Ubuntu and Windows; Documentation harness run 35858348284 passed on both platforms.",
-    "TASK-007 is done; E-011/E-012/E-013 remain pass, including the R1-R4 parser follow-ups.",
-    "F-004 Lossless script parsing is verified with TASK-002/TASK-006/TASK-007 evidence and E-009 through E-013 pass.",
-    "TASK-008 Technology adapter is now doing; E-014 remains not_run.",
-    "F-005 Domain adapters is now in_progress.",
+    "PR #13 merged to main as 959e3fc669c0927ed8eddec559bef055e155f253 and actual main push CI passed on Ubuntu and Windows.",
+    "TASK-007 is done; E-011/E-012/E-013 remain pass; F-004 is verified.",
+    "TASK-008 technology adapter candidate 7810f9972ee520dd8da716fcc84c3d5d6c70bb21 preserves ordered raw fields, conditions, prerequisites and source refs.",
+    "E-014 Technology extraction is pass on the synthetic demo technology fixtures.",
+    "TASK-008 remains doing until review, merge, and actual main push CI complete.",
+    "F-005 remains in_progress because remaining domain adapters are future work.",
     "latest_game_version remains null."
   ]
 }
