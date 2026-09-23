@@ -48,3 +48,29 @@ E-011/E-012/E-013 not_run.
 TASK-007 doing.  
 F-004 in_progress.  
 latest_game_version=null.
+
+
+## 구현 candidate
+
+기능 candidate: `b475f72394494d83a427f8b04bdc3761b83da95b`
+
+구현:
+- ordered scalar/pair/block/unknown AST.
+- duplicate pair와 mixed scalar/pair block 순서 보존.
+- original byte span 및 raw source slice 보존.
+- unsupported operator-like expression은 `UnknownNode` + `PARSE_UNKNOWN_SYNTAX`.
+- unclosed block은 `PARSE_UNCLOSED_BLOCK`.
+- default parser limits: depth 128, nodes 100,000, diagnostics 1,000.
+- depth limit 초과는 bounded raw unknown region + `PARSE_DEPTH_LIMIT`.
+- node limit 초과는 `PARSE_NODE_LIMIT`.
+- lexer diagnostics는 parse result에 origin=lexer로 전달.
+
+검증:
+- Package and tooling push run 35815674467.
+- Ubuntu/Python 3.11: 140 passed, parser 10 passed, Ruff/harness success.
+- Windows/Python 3.13: 140 collected, 137 passed + 기존 3 intentional skips, parser 10 passed, Ruff/harness success.
+- E-011/E-012/E-013 pass.
+
+TASK-007은 reviewer re-check 및 main integration 전까지 doing 유지. F-004도 main integration 전까지 in_progress 유지.
+
+근거: [ordered AST parser evidence](../evidence/TASK-007-ordered-ast-parser.md)
