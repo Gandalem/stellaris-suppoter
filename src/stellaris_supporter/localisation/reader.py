@@ -218,6 +218,7 @@ def parse_localisation(
     max_bytes: int = MAX_LOCALISATION_BYTES,
     max_line_bytes: int = MAX_LOCALISATION_LINE_BYTES,
     max_entries: int = MAX_LOCALISATION_ENTRIES,
+    max_records: int = MAX_LOCALISATION_ENTRIES,
     max_diagnostics: int = MAX_LOCALISATION_DIAGNOSTICS,
 ) -> LocalisationDocument:
     """Read one verified source file; all spans are original byte offsets.
@@ -229,6 +230,7 @@ def parse_localisation(
         ("max_bytes", max_bytes),
         ("max_line_bytes", max_line_bytes),
         ("max_entries", max_entries),
+        ("max_records", max_records),
         ("max_diagnostics", max_diagnostics),
     ):
         if isinstance(value, bool) or not isinstance(value, int) or value < 1:
@@ -310,6 +312,9 @@ def parse_localisation(
     start = 0
     line_no = 1
     while start < len(source):
+        if len(entries) + len(headers) + len(comments) + len(unknown) >= max_records:
+            emit("LIMIT_EXCEEDED", "error", "Localisation record count limit exceeded.")
+            break
         lf = source.find(b"\n", start)
         next_start = len(source) if lf < 0 else lf + 1
         physical_end = len(source) if lf < 0 else lf
@@ -329,7 +334,6 @@ def parse_localisation(
             start, line_no = next_start, line_no + 1
             continue
 
-        comment_index = text.find("#")
         if stripped.startswith("#"):
             pos = text.index("#")
             comments.append(
@@ -372,7 +376,7 @@ def parse_localisation(
             start, line_no = next_start, line_no + 1
             continue
 
-        if stripped.startswith("l_"):
+        if stripped.startswith("l_") and _ENTRY_PREFIX.match(text) is None:
             unknown.append(line_ref)
             if not emit("LOC_INVALID_HEADER", "error", "Invalid localisation language header.", line_ref):
                 break
