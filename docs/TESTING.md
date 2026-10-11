@@ -1,6 +1,6 @@
 # 테스트 전략
 
-문서 검사, 검사기 자체 테스트, 제품 테스트, 실제 게임 검증을 구별합니다. 패키지·설정/doctor, 합성 corpus, 안전한 inventory·버전 증거, lexer/ordered parser, technology adapter에는 구현과 합성 회귀 테스트가 있습니다. 현지화 reader/resolver, SQLite 저장·검색·인용을 연결한 전체 흐름과 실제 게임 설치본 검증은 아직 완료되지 않았습니다. [평가 사례](../harness/evals.jsonl)는 실행 근거가 있는 항목만 pass로 기록합니다.
+문서 검사, 검사기 자체 테스트, 제품 테스트, 실제 게임 검증을 구별합니다. 패키지·설정/doctor, 합성 corpus, 안전한 inventory·버전 증거, lexer/ordered parser, technology adapter에는 구현과 합성 회귀 테스트가 있습니다. 현지화 reader/resolver에는 별도 합성 E-015~017 회귀를 추가하고 있으며, SQLite 저장·검색·인용 전체 흐름과 실제 게임 설치본 검증은 아직 완료되지 않았습니다. [평가 사례](../harness/evals.jsonl)는 실행 근거가 있는 항목만 pass로 기록합니다.
 
 ## 테스트 계층
 
