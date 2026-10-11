@@ -647,3 +647,38 @@ def test_e019_commit_survives_reopen_and_failed_work_cannot_mask_it(tmp_path: Pa
             before_ready=lambda: (_ for _ in ()).throw(RuntimeError("simulated stop")),
         )
     assert SnapshotRepository(directory).active_snapshot_id() == sid
+
+
+
+def test_e018_resource_limits_prevent_unbounded_manifest_or_file(tmp_path: Path) -> None:
+    source = SourceFileInput("synthetic", "demo", "limited.txt", b"x")
+    with pytest.raises(SnapshotError) as count:
+        snapshot_identity((source,) * 50_001, _policy())
+    assert count.value.code == "LIMIT_EXCEEDED"
+    too_large = replace(source, data=b"x" * (16 * 1024 * 1024 + 1))
+    with pytest.raises(SnapshotError) as size:
+        snapshot_identity((too_large,), _policy())
+    assert size.value.code == "LIMIT_EXCEEDED"
+    assert not (tmp_path / "data").exists()
+
+
+def test_e019_partial_approval_never_bypasses_source_hash_error(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    source = SourceFileInput(
+        "synthetic", "demo", "forged.txt", b"data", expected_sha256="0" * 64
+    )
+    with pytest.raises(SnapshotError) as exc:
+        repo.stage((source,), _policy(), partial=True)
+    assert exc.value.code == "SOURCE_CHANGED"
+    assert repo.active_snapshot_id() is None
+
+
+def test_e019_sqlite_write_connection_has_foreign_keys_wal_and_full(tmp_path: Path) -> None:
+    from stellaris_supporter.storage.schema import connect
+
+    repo = SnapshotRepository(tmp_path / "data")
+    with connect(repo.db_path) as conn:
+        assert conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+        assert conn.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
+        assert conn.execute("PRAGMA synchronous").fetchone()[0] == 2
+        assert conn.execute("PRAGMA busy_timeout").fetchone()[0] == 250
