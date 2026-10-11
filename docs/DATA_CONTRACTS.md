@@ -68,3 +68,13 @@ schema_version과 앱 버전은 다릅니다. migration에는 백업·복구가 
 - 기본 제한: 파일 50,000개, 각 16MiB, 총 512MiB, 기술 후보+현지화 레코드 100,000개, 진단 10,000개, 각 JSON 직렬화 1MiB, 유한 writer 대기 250ms. 실제 메모리 사용량 측정에 대한 별도 보장은 아닙니다.
 - DB `PRAGMA user_version=1`과 settings schema_version=1을 함께 확인하고 read-only 연결로 **먼저 검증**한 후 기존 DB에 접근합니다. 알 수 없는 과거/미래 버전·손상된 DB를 새 빈 DB로 간주하지 않고 거부합니다. 자동 migration은 구현하지 않았습니다. SQLite backup API는 DB 단독의 일관된 백업을 만들며, 실제 복구에는 같은 snapshot의 cache blob도 함께 보존해야 합니다.
 
+
+
+### PR #19 R1~R4 보완 — live 원본·손실 없는 JSON·해시 일관성
+
+- **서로 다른 두 경로 계약:** SourceRef의 `(source_kind, source_id, relative_path)`는 공개 가능한 **논리적 provenance**이고, `live_path`는 별도의 **실제 입력 파일**입니다. 논리 상대 경로가 game_root의 실제 경로와 같다고 가정하지 않습니다. base/mod별 source_id의 namespace는 그대로 유지하고, 모든 live 입력은 명시한 단일 game_root 내부의 실제 root-relative 경로여야 합니다. 그 밖의 모드 루트·링크·reparse·탈출 경로는 아직 지원하지 않으며 실패합니다.
+- Staging 때 SQLite `source_files.live_relative_path`와 `live_root_sha256`를 **개인 DB 안에만** 기록합니다. 활성화 입력의 source key/bytes/SHA뿐 아니라 같은 game_root 바인딩과 동일한 root-relative 물리 파일을 검사한 뒤, **해당 파일**의 현재 SHA를 다시 확인합니다. 서로 다른 파일의 bytes가 같더라도 검증 대상을 바꿀 수 없습니다. 이 개인용 루트 fingerprint 및 실제 경로는 snapshot identity, 공개 E evidence, 로그의 원문 절대 경로에 포함하지 않습니다. 기존 v1의 구 물리 스키마에 대한 자동 migration은 제공하지 않으며 스키마 preflight에서 명시적으로 거부합니다.
+- **JSON 용도 분리:** 파일 경로/metadata/policy 및 snapshot ID 계산의 canonical JSON은 Unicode NFC를 **요구하되 수정하지 않습니다**. 기술·현지화의 raw/display record를 저장하는 JSON은 codepoint를 있는 그대로 보존하며 NFC로 변환하거나 비-NFC를 거부하지 않습니다. 저장 JSON도 기존 record **1MiB**, 깊이 **280**, 항목 방문 **100,000**의 한도 내에서만 직렬화하며, 원본 바이트의 출처는 SHA-256 캐시와 SourceRef span입니다.
+- **정책 자원 한도:** `SnapshotPolicy` 전체 identity JSON은 UTF-8 **1MiB(1,048,576 bytes)**, 중첩 **32**, JSON 노드/key 방문 수 **10,000**의 제한을 적용합니다. snapshot ID hash에 추가되는 `content_hash` envelope에는 최대 **128 bytes** 추가 한도를 명시합니다. 입력의 거대한 문자열은 byte-budget 이전에 글자 수 하한으로 조기 거부하며 최종 JSON은 제한된 streaming encoder로 검사합니다. 실패는 `LIMIT_EXCEEDED`; 새 building row나 active 갱신을 만들지 않습니다.
+- **원문 pointer 일관성:** `source_files.cache_sha256=file_sha256`은 v1 테이블 CHECK 조건이고, `source_bytes()`가 읽을 때도 SourceRef hash = file SHA = cache SHA를 확인합니다. 실제 cache bytes는 다시 SHA 검증하며 불일치 시 `SOURCE_CHANGED`/무결성 오류로 fail-closed합니다. 원문 조회 오류 때문에 이전 active를 임의 변경하지 않습니다.
+- **SQLite read-only 검사:** 최초 DB 열기·쓰기·백업에서는 전체 `PRAGMA quick_check`를 유지하지만 반복 read-only 조회마다 전체 페이지 검사를 재실행하지 않고 schema/version/FK preflight를 수행합니다. 비용 측정은 합성 DB의 비차단 benchmark로 관측하고, 실게임 검색 warm p95 검증으로 주장하지 않습니다.
