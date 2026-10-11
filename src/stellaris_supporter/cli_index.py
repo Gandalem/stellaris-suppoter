@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 
+from stellaris_supporter.cli_setup import _check_components
 from stellaris_supporter.config import Settings
 from stellaris_supporter.discovery.inventory import scan_inventory
 from stellaris_supporter.domain import SourceContext, adapt_technologies
@@ -54,6 +55,7 @@ def _inventory_sources(settings: Settings) -> tuple[SourceFileInput, ...]:
     count_files = 0
     for prefix, suffix in _INDEX_ROOTS:
         folder = root.joinpath(*prefix.split("/"))
+        _check_components(folder)
         if folder.is_symlink():
             raise SnapshotError("PATH_REJECTED", "Index input directory is a link.")
         if not folder.exists():
