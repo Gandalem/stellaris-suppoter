@@ -722,23 +722,27 @@
     },
     {
       "id": "TASK-030",
-      "title": "Local interface",
+      "title": "Windows game overlay UI",
       "status": "todo",
       "feature_ids": [
         "F-020"
       ],
       "depends_on": [
-        "TASK-029"
+        "TASK-029",
+        "TASK-032"
       ],
       "eval_ids": [
         "E-046"
       ],
       "docs": [
         "docs/BACKLOG.md",
-        "docs/PRODUCT.md"
+        "docs/PRODUCT.md",
+        "docs/OVERLAY.md"
       ],
       "acceptance": [
-        "The service layer is reused with loopback binding, escaping and path protection."
+        "OVL-01..06 pass synthetic and real Windows borderless/windowed acceptance, including hotkey, bilingual technology search, citation, layout/opacity, folded input passthrough, safe hide.",
+        "Reuse pinned-snapshot SearchService/AnswerService; no game memory reads, injection, graphics hooks, modification or unapproved network.",
+        "Security, unsupported modes and display/DPI failures documented with real Windows evidence."
       ],
       "evidence": []
     },
@@ -772,6 +776,31 @@
         "harness/evidence/TASK-031-safety-hardening-main-integration.md",
         "harness/evidence/TASK-031-generator-containment-followup.md"
       ]
+    },
+    {
+      "id": "TASK-032",
+      "title": "Windows overlay feasibility spike",
+      "status": "todo",
+      "feature_ids": [
+        "F-020"
+      ],
+      "depends_on": [
+        "TASK-022"
+      ],
+      "eval_ids": [
+        "E-048"
+      ],
+      "docs": [
+        "docs/OVERLAY.md",
+        "docs/ROADMAP.md",
+        "SECURITY.md"
+      ],
+      "acceptance": [
+        "After TASK-022, test separate-process Windows borderless/windowed overlay and hotkey register/conflict/unregister.",
+        "Test folded input passthrough, minimize/exit hide, stale window identity, DPI/monitor transitions on real Windows.",
+        "Document unsupported cases and do not claim final UI release."
+      ],
+      "evidence": []
     }
   ]
 }

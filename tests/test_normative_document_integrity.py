@@ -21,6 +21,7 @@ HEADING_CONTRACTS = {
         "## 엔티티·관계·현지화",
         "## 질의·답변",
         "## 저장 구조",
+        "## 후속 오버레이 데이터 표시 계약 (F-020 계획)",
     ),
     "PARSING.md": (
         "# 정적 파싱·현지화",
@@ -44,6 +45,7 @@ HEADING_CONTRACTS = {
         "## 인터페이스 경계",
         "## 스냅샷과 정합성",
         "## 오류와 자원",
+        "## 후속 Windows 오버레이 설계 (미구현)",
     ),
     "TESTING.md": (
         "# 테스트 전략",
@@ -52,6 +54,7 @@ HEADING_CONTRACTS = {
         "## 실행 규칙",
         "## 현재 명령",
         "## 품질 게이트",
+        "## 후속 Windows 오버레이 테스트 계획",
     ),
 }
 
@@ -192,3 +195,15 @@ def test_r5_regression_detects_semantic_clause_loss_with_valid_markdown() -> Non
     missing = contents.replace(clause, "정적 참조 정책은 별도 문서 참고.", 1)
     with pytest.raises(AssertionError):
         _verify_normative_markdown("DATA_CONTRACTS.md", missing)
+
+
+def test_overlay_mvp_plan_preserves_six_conditions_and_future_gates() -> None:
+    """Lock the new overlay acceptance contract without weakening older checks."""
+    plan = (DOCS_ROOT / "OVERLAY.md").read_text(encoding="utf-8")
+    for number in range(1, 7):
+        assert plan.count(f"| OVL-{number:02d} |") == 1
+    assert "TASK-032 / E-048" in plan
+    assert "TASK-030 / E-046" in plan
+    assert "Windows borderless/windowed" in plan
+    assert "F-020=planned" in plan
+    assert "E-048/E-046=not_run" in plan
