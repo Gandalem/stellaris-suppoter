@@ -450,3 +450,91 @@ def test_r4_exact_value_512_bytes_and_one_over(tmp_path: Path) -> None:
     no = service(repo2).answer(Query("demo_a"))
     assert no.status == "partial" and no.truncated
     assert not no.results[0].facts
+
+
+def test_r6_stage_forged_candidate_game_id_fails_closed(tmp_path: Path) -> None:
+    """A valid original file cannot prove a different staged technology ID."""
+    repo = SnapshotRepository(tmp_path / "db")
+    script = b"demo_real = { cost = 100 }\n"
+    source = SourceFileInput(
+        "synthetic", "demo", "common/technology/real.txt", script
+    )
+    policy = SnapshotPolicy("parser-1", "adapter-1", "a" * 64)
+    sid = snapshot_identity((source,), policy).snapshot_id
+    context = SourceContext(
+        sid, source.source_kind, source.source_id, source.relative_path,
+        hashlib.sha256(script).hexdigest(),
+    )
+    parsed = adapt_technologies(parse_bytes(script), script, context)
+    assert len(parsed.candidates) == 1
+    original = parsed.candidates[0]
+    assert original.game_id == "demo_real"
+    forged = replace(original, game_id="demo_forged")
+    assert forged.source_ref == original.source_ref
+    assert forged.fields == original.fields
+    repo.stage((source,), policy, candidates=(forged,))
+    repo.activate(sid, allow_partial=True)
+
+    response = service(repo).answer(Query("demo_forged"))
+    assert response.status == "error"
+    assert response.results == ()
+    assert response.diagnostics[0].code == "SOURCE_CHANGED"
+
+
+def test_r6_sqlite_entity_game_id_tamper_fails_closed(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    _synthetic_multi(repo, (("real.txt", "demo_real = { cost = 100 }\n"),))
+    with sqlite3.connect(repo.db_path) as conn:
+        conn.execute(
+            "UPDATE entities SET game_id='demo_forged' WHERE game_id='demo_real'"
+        )
+    response = service(repo).answer(Query("demo_forged"))
+    assert response.status == "error" and response.results == ()
+    assert response.diagnostics[0].code == "SOURCE_CHANGED"
+
+
+@pytest.mark.parametrize("change", ["game_id", "kind"])
+def test_r6_candidate_json_identity_tamper_fails_closed(
+    tmp_path: Path, change: str,
+) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    _synthetic_multi(repo, (("real.txt", "demo_real = { cost = 100 }\n"),))
+    _mutate_candidate(repo, "demo_real", lambda candidate: candidate.update(
+        {change: "demo_forged" if change == "game_id" else "other"}
+    ))
+    response = service(repo).answer(Query("demo_real"))
+    assert response.status == "error" and response.results == ()
+    assert response.diagnostics[0].code == "SOURCE_CHANGED"
+
+
+def test_r6_entity_occurrence_identity_tamper_fails_closed(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    _synthetic_multi(repo, (("real.txt", "demo_real = { cost = 100 }\n"),))
+    with sqlite3.connect(repo.db_path) as conn:
+        conn.execute(
+            "UPDATE entities SET occurrence=occurrence+1 WHERE game_id='demo_real'"
+        )
+    response = service(repo).answer(Query("demo_real"))
+    assert response.status == "error" and response.results == ()
+    assert response.diagnostics[0].code == "SOURCE_CHANGED"
+
+
+def test_r6_normal_same_id_multi_file_and_multiple_occurrences(
+    tmp_path: Path,
+) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    _synthetic_multi(repo, (
+        ("a.txt", "demo_shared = { cost = 100 }\ndemo_shared = { cost = 200 }\n"),
+        ("b.txt", "demo_shared = { cost = 300 }\n"),
+        ("other.txt", "demo_other = { cost = 999 }\n"),
+    ))
+    response = service(repo).answer(Query("demo_shared"))
+    assert response.status == "partial"
+    assert len(response.results) == 3
+    assert len({hit.entity_key for hit in response.results}) == 3
+    assert sorted(
+        f.raw_expression for hit in response.results for f in hit.facts
+        if f.field_name == "cost"
+    ) == ["100", "200", "300"]
+    other = service(repo).answer(Query("demo_other"))
+    assert other.results and other.results[0].facts[0].raw_expression == "999"
