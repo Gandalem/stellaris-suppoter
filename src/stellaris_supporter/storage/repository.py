@@ -13,6 +13,9 @@ import hashlib
 import json
 import os
 import sqlite3
+from array import array
+from bisect import bisect_left
+from collections import OrderedDict
 from collections.abc import Callable
 from contextlib import closing, contextmanager
 from dataclasses import dataclass
@@ -167,6 +170,102 @@ class SnapshotSummary:
     content_hash: str
     status: str
     game_version: str | None
+
+
+
+# Per-answer verified content cache: source bytes plus compact newline indices.
+# 16 MiB maximum physical blob, 1,000,000 newline positions (4 MiB), and
+# 24 MiB retained verified buffers across ALL files of one answer.
+MAX_ANSWER_CACHE_BYTES = 24 * 1024 * 1024
+MAX_ANSWER_NEWLINES = 1_000_000
+
+
+class _VerifiedCitationReader:
+    """Read-only, snapshot-pinned, bounded LRU of fully SHA-verified blobs.
+
+    One SQLite read transaction fixes the source-file manifest for the answer.
+    Each unique (SHA, size) is rehashed by BlobCache.read exactly once while
+    resident; repeated SourceRefs reuse the exact verified bytes and binary-
+    searched original newline positions rather than rescanning whole files.
+    """
+
+    def __init__(
+        self, repository: SnapshotRepository, conn: sqlite3.Connection, sid: str
+    ) -> None:
+        self.repository = repository
+        self.conn = conn
+        self.snapshot_id = sid
+        self._blobs: OrderedDict[
+            tuple[str, int], tuple[bytes, array, int]
+        ] = OrderedDict()
+        self._bytes = 0
+
+    def _evict(self) -> None:
+        _, (_, _, charge) = self._blobs.popitem(last=False)
+        self._bytes -= charge
+
+    def _verified(self, digest: str, size: int) -> tuple[bytes, array]:
+        key = (digest, size)
+        if key in self._blobs:
+            self._blobs.move_to_end(key)
+            data, newlines, _ = self._blobs[key]
+            return data, newlines
+        if size < 0 or size > MAX_SOURCE_BYTES:
+            raise SnapshotError("LIMIT_EXCEEDED", "Cached source exceeds file budget.")
+        while self._blobs and self._bytes + size > MAX_ANSWER_CACHE_BYTES:
+            self._evict()
+        data = self.repository.cache.read(digest, size)
+        newlines = array("I")
+        # Deterministic upper bound on auxiliary line-index memory.
+        start = 0
+        while True:
+            pos = data.find(b"\n", start)
+            if pos < 0:
+                break
+            if len(newlines) >= MAX_ANSWER_NEWLINES:
+                raise SnapshotError("LIMIT_EXCEEDED", "Citation line-index limit exceeded.")
+            newlines.append(pos)
+            start = pos + 1
+        charge = len(data) + len(newlines) * newlines.itemsize
+        if charge > MAX_ANSWER_CACHE_BYTES:
+            raise SnapshotError("LIMIT_EXCEEDED", "Citation blob exceeds cache budget.")
+        while self._blobs and self._bytes + charge > MAX_ANSWER_CACHE_BYTES:
+            self._evict()
+        self._blobs[key] = (data, newlines, charge)
+        self._bytes += charge
+        return data, newlines
+
+    def read(self, ref: SourceRef) -> bytes:
+        if (
+            not isinstance(ref, SourceRef) or ref.snapshot_id != self.snapshot_id
+            or any(isinstance(x, bool) or not isinstance(x, int) for x in (
+                ref.byte_start, ref.byte_end, ref.line_start, ref.line_end
+            ))
+        ):
+            raise SnapshotError("SOURCE_CHANGED", "Citation is not in the pinned snapshot.")
+        row = self.conn.execute(
+            "SELECT file_sha256,cache_sha256,byte_size FROM source_files "
+            "WHERE snapshot_id=? AND source_kind=? AND source_id=? AND relative_path=?",
+            (self.snapshot_id, ref.source_kind, ref.source_id, ref.relative_path),
+        ).fetchone()
+        if (
+            row is None or ref.file_sha256 != row["file_sha256"]
+            or row["cache_sha256"] != row["file_sha256"]
+            or ref.byte_start < 0 or ref.byte_start >= ref.byte_end
+            or ref.byte_end > row["byte_size"]
+        ):
+            raise SnapshotError("SOURCE_CHANGED", "Citation source or byte span differs.")
+        data, newlines = self._verified(row["cache_sha256"], row["byte_size"])
+        start_line = bisect_left(newlines, ref.byte_start) + 1
+        end_line = bisect_left(newlines, ref.byte_end - 1) + 1
+        if ref.line_start != start_line or ref.line_end != end_line:
+            raise SnapshotError("SOURCE_CHANGED", "Citation line positions differ.")
+        span = data[ref.byte_start:ref.byte_end]
+        try:
+            span.decode("utf-8", errors="strict")
+        except UnicodeError as exc:
+            raise SnapshotError("SOURCE_CHANGED", "Citation cuts a UTF-8 codepoint.") from exc
+        return span
 
 
 class SnapshotRepository:
@@ -688,6 +787,15 @@ class SnapshotRepository:
                     else json.loads(row["localisation_json"])
                 ),
             }
+
+    @contextmanager
+    def citation_reader(self, snapshot_id: str):
+        """Share bounded verified SHA/line evidence within one answer request."""
+        with self._connection(read_only=True) as conn:
+            conn.execute("BEGIN")
+            self._ensure_ready(conn, snapshot_id)
+            yield _VerifiedCitationReader(self, conn, snapshot_id)
+            conn.execute("ROLLBACK")
 
     def citation_bytes(self, ref: SourceRef) -> bytes:
         """Read an exact cached span and validate *original* byte and line positions.
