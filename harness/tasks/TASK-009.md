@@ -41,3 +41,22 @@ Test-merge `83a044412bdb59eb1b07069b41e7886295860a5a`.
 TASK-009 remains **doing** until reviewed/merged and actual main push CI succeeds.  
 F-006 **in_progress**, F-005 **in_progress**, latest_game_version **null**.  
 No main merge, original game file use, or review thread changes.
+
+
+## PR #17 R1-R4 review follow-up
+
+Reviewed blocked head: `1a260d2c045410781eeb1fa8dfb76c8b44a226d0`.
+
+- R1/P2: replace overlapping whitespace regexp with monotonic entry-prefix scan; verify long no-quote malformed lines and 1 MiB boundary.
+- R2/P2: classify bracketed/dynamic/unknown-escape regions before static dollar references; preserve regions without choosing inner references.
+- R3/P2: repair duplicated/broken PARSING.md and add semantic document integrity regression.
+- R4/P3: charge each record immediately before appending, including header/entry plus inline comments and exact-budget EOF.
+
+Code/test/doc head `10dd9b721e13819cfa764ab30d6fe26e15ac2499`; PR test-merge `889ef8b85321a45ebcb68a39fc48f1f0f24429e3`.
+Package PR run `38126968416`: Ubuntu 268 passed; Windows 265 passed + 3 existing skips. Ruff and harness succeeded both. Documentation PR run `38126968353`: both successful.
+
+Historical evaluation successes remain intact, with additional follow-up evidence:
+[TASK-009 R1-R4 review follow-up](../evidence/TASK-009-review-followup.md).
+
+TASK-009 = doing; F-006 and F-005 = in_progress; E-015/E-016/E-017 = pass; latest_game_version = null.
+No actual merge or TASK-010 work. Final evidence-only head will receive its own PR CI.
