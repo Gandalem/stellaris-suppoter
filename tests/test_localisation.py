@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -560,3 +561,12 @@ def test_reference_provenance_records_language_specific_fallback() -> None:
     assert choice.language_used == "english"
     assert choice.source_ref.relative_path == "localisation/english/target.yml"
     assert result.to_dict()["reference_selections"][0]["language_used"] == "english"
+
+
+
+def test_document_rejects_source_ref_from_different_source_kind() -> None:
+    source = b'l_english:\n demo:0 "value"\n'
+    document = _doc(source)
+    bad_ref = replace(document.entries[0].source_ref, source_kind="mod")
+    with pytest.raises(ValueError, match="does not belong"):
+        document.raw_bytes(bad_ref)
