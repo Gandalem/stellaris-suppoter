@@ -8,11 +8,11 @@
   "latest_game_version": null,
   "updated_on": "2026-10-11",
   "notes": [
-    "PR #16 merged as e49ab75153d695b92614b2db3a0e54136f148e37; actual main push Package 38125171893 and Documentation harness 38125171970 succeeded on Ubuntu and Windows.",
-    "Issue #9 closed/completed.",
-    "TASK-009 localisation reader/resolver is doing on separate task branch.",
-    "E-015/E-016/E-017 remain not_run pending successful tests.",
-    "F-006 and F-005 remain in_progress.",
-    "latest_game_version remains null."
+    "PR #16 merged to main as e49ab75153d695b92614b2db3a0e54136f148e37; main Package run 38125171893 and Documentation harness 38125171970 succeeded on Ubuntu/Windows; Issue #9 closed.",
+    "TASK-009 is doing on dedicated branch; reader and resolver implementation has not merged to main.",
+    "E-015/E-016/E-017 are pass on verified synthetic PR candidate test-merge 83a0444: Ubuntu 230 passed; Windows 227 passed plus 3 existing intentional skips.",
+    "E-015/E-016/E-017 evidence is harness/evidence/TASK-009-localisation-reader-resolver.md.",
+    "F-006 and F-005 remain in_progress until all related acceptance conditions and main integration are met.",
+    "latest_game_version remains null; no real Stellaris installation has been inspected."
   ]
 }
