@@ -536,3 +536,32 @@ def test_e026_private_data_directory_missing_returns_exit_three(tmp_path: Path) 
     assert code == 3
     assert result["status"] == "error"
     assert result["diagnostics"][0]["code"] == "DATA_DIR_MISSING"
+
+
+def test_e026_pre_stage_technology_root_id_validation(tmp_path: Path) -> None:
+    import hashlib
+    from dataclasses import replace
+
+    import stellaris_supporter.cli_index as integration
+    from stellaris_supporter.domain import SourceContext, adapt_technologies
+    from stellaris_supporter.parsing import parse_bytes
+    from stellaris_supporter.storage import SnapshotError, SourceFileInput
+
+    game, _, _ = corpus(tmp_path)
+    data = (game / "common/technology/demo.txt").read_bytes()
+    source = SourceFileInput(
+        "base", "base_install", "common/technology/demo.txt", data
+    )
+    ctx = SourceContext(
+        "a" * 64, "base", "base_install",
+        source.relative_path, hashlib.sha256(data).hexdigest(),
+    )
+    adapted = adapt_technologies(parse_bytes(data), data, ctx)
+    assert len(adapted.candidates) == 1
+    forged = replace(adapted, candidates=(
+        replace(adapted.candidates[0], game_id="demo_forged"),
+    ))
+    with pytest.raises(SnapshotError) as exc:
+        integration._verify_adapted_ids(source, forged)
+    assert exc.value.code == "SOURCE_CHANGED"
+    integration._verify_adapted_ids(source, adapted)
