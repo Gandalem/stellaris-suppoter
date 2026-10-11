@@ -14,6 +14,7 @@
     "E-015/E-016/E-017 evidence is harness/evidence/TASK-009-localisation-reader-resolver.md.",
     "F-006 and F-005 remain in_progress until all related acceptance conditions and main integration are met.",
     "latest_game_version remains null; no real Stellaris installation has been inspected.",
-    "PR #17 R1-R4 follow-up: code/test/docs head 10dd9b721e13819cfa764ab30d6fe26e15ac2499; test-merge 889ef8b85321a45ebcb68a39fc48f1f0f24429e3, Package PR CI 38126968416 and Documentation CI 38126968353 success on both OS. 38 additional regression cases passed alongside existing 50 localisation tests. Follow-up evidence at harness/evidence/TASK-009-review-followup.md. PR remains unmerged; TASK-010 not started."
+    "PR #17 R1-R4 follow-up: code/test/docs head 10dd9b721e13819cfa764ab30d6fe26e15ac2499; test-merge 889ef8b85321a45ebcb68a39fc48f1f0f24429e3, Package PR CI 38126968416 and Documentation CI 38126968353 success on both OS. 38 additional regression cases passed alongside existing 50 localisation tests. Follow-up evidence at harness/evidence/TASK-009-review-followup.md. PR remains unmerged; TASK-010 not started.",
+    "PR #17 R5/P2 follow-up: DATA_CONTRACTS.md duplicate/broken localisation contract repaired, 11 normative documentation integrity tests added and passing alongside R1-R4. Code/test candidate eb5b68b377e7ba6566173543faf0a784de575b21; PR CI test-merge 03718d748bda4ba12ba708d3268a5c142cd4c53d; Package run 38128348984 Ubuntu 279 passed / Windows 276 passed + 3 existing skips, Ruff/harness success; Documentation run 38128348992 both OS success. Evidence harness/evidence/TASK-009-r5-document-integrity.md. Review and real main merge still pending; TASK-010 not started."
   ]
 }
