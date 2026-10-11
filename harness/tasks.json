@@ -346,7 +346,8 @@
         "Synthetic index to search/show and JSON/error behavior match the command contract."
       ],
       "evidence": [
-        "harness/evidence/TASK-013-cli-vertical-slice.md"
+        "harness/evidence/TASK-013-cli-vertical-slice.md",
+        "harness/evidence/TASK-013-review-followup.md"
       ]
     },
     {
