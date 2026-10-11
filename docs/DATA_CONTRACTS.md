@@ -55,3 +55,26 @@ AnswerEnvelope: schema_version, status, query, context, results, diagnostics, tr
 논리 테이블: snapshots, source_files, entities, localisation_entries, relations, search_documents, diagnostics, settings. 모든 관계·조회는 snapshot 경계를 적용합니다. 원문 bytes는 개인 content-addressed cache에 보존하고 DB가 해시를 참조합니다. FTS는 재생성 가능한 보조 색인입니다.
 
 schema_version과 앱 버전은 다릅니다. migration에는 백업·복구가 필요합니다. 더 최신 schema를 발견한 구버전 프로그램은 쓰지 않습니다. 캐시 정리는 참조된 snapshot 원문을 보존해야 합니다.
+
+**TASK-010 SQLite v1 물리 계약 (저장 API, 전체 CLI/검색은 후속):**
+
+- `SnapshotPolicy`는 schema_version, parser_version, adapter_version, policy_hash(SHA-256), context_kind, analysis_context, game_version|null, game_version_source, build_id|null, branch, dlc_state, mod_state를 별도 typed 값으로 받습니다. 순수 identity 계산은 schema 변경에도 다른 ID를 생성할 수 있지만 현 Repository의 쓰기 지원 버전은 오직 v1입니다.
+- 경로는 두 OS의 slash를 `/`로 통일하되 **대소문자 원형을 보존**합니다. 상대 경로는 정규화된 NFC만 수락하고 절대 경로, `..`, 빈 구성요소, OS 예약 이름, case-insensitive 충돌을 거부합니다. 다른 출처를 묵시적으로 하나로 합치지 않습니다.
+- canonical JSON은 UTF-8, `ensure_ascii=False`, 키 정렬, 공백 없는 구분자, 비유한 부동소수·임의 객체 거부입니다. 파일 identity 목록을 `(source_kind,source_id,relative_path)`로 정렬한 다음 각 항목의 `source_kind`, `source_id`, `relative_path`, `file_sha256`에 SHA-256을 적용해 content_hash를 생성합니다. snapshot ID는 content_hash와 정책/스키마/문맥 필드의 canonical JSON SHA-256입니다. 수집 시각·개인 절대 경로·임시 디렉터리·탐색 순서는 포함하지 않습니다. `created_at`은 저장 메타데이터일 뿐 ID의 구성요소가 아닙니다.
+- 물리 테이블은 `snapshots`, `source_files`, `entities`, `localisation_entries`, `relations`, `search_documents`, `diagnostics`, `settings`입니다. `(snapshot_id,entity_key)` 및 복합 source FK를 쓰고 `game_id`는 중복 가능한 인덱스 열입니다. 기술 candidate/field/source_refs의 bounded JSON과 별도 localisation result JSON을 유지합니다. 해당 값의 `null`, `false`, `0`, `[]`는 구별됩니다. 원문은 레코드마다 복제하지 않고 파일 SHA-256 cache를 참조합니다. `search_documents`는 TASK-011을 위한 빈 저장 경계로, FTS와 순위는 아직 없습니다.
+- 별도 settings key `active_snapshot`이 선택 포인터입니다. 스냅샷 빌드 상태는 `building|ready|partial|failed`로 보존하며 `active`는 상태를 뜻하지 않습니다. `stage`는 building 기록을 먼저 남긴 뒤 원본·SourceRef·FK·cache를 검증해 ready/partial로 전환합니다. 스냅샷이 이미 존재하면 덮어쓰지 않고 명시적 재선택만 허용합니다. building/failed는 명시 snapshot 조회에도 제외합니다. 재시작 후 잔존 building의 failed 전환은 **다른 writer가 없음을 확인한 뒤** 명시적 복구 API로 수행합니다.
+- `activate`는 `BEGIN IMMEDIATE` 트랜잭션 안에서 source manifest/live source 재검사, cache 원문·SHA 검사, FK 검사, partial 승인/취소 확인을 통과한 후에만 active 포인터를 변경하고 commit합니다. 외래 키는 모든 연결에서 ON, busy timeout 250ms, WAL+FULL 동기화입니다. DB commit 전 캐시 파일을 임시 파일→검증→원자적 파일 교체로 영속화하고 다시 검증합니다. SQLite와 파일시스템의 원자성을 동일하다고 주장하지 않으며, 과거 active가 참조하는 cache는 제거하지 않습니다.
+- real/live 파일에는 명시 game_root와 안전한 경로 및 다시 읽기 경계가 필요하며, 활성화 때 현재 원문 검증용 manifest도 요구합니다. synthetic immutable bytes만 있는 경우 캐시 SHA 검사로 재현성을 확인합니다. `allow_partial`로도 경로 탈출·SHA 위조·캐시 오류를 우회하지 못합니다.
+- 기본 제한: 파일 50,000개, 각 16MiB, 총 512MiB, 기술 후보+현지화 레코드 100,000개, 진단 10,000개, 각 JSON 직렬화 1MiB, 유한 writer 대기 250ms. 실제 메모리 사용량 측정에 대한 별도 보장은 아닙니다.
+- DB `PRAGMA user_version=1`과 settings schema_version=1을 함께 확인하고 read-only 연결로 **먼저 검증**한 후 기존 DB에 접근합니다. 알 수 없는 과거/미래 버전·손상된 DB를 새 빈 DB로 간주하지 않고 거부합니다. 자동 migration은 구현하지 않았습니다. SQLite backup API는 DB 단독의 일관된 백업을 만들며, 실제 복구에는 같은 snapshot의 cache blob도 함께 보존해야 합니다.
+
+
+
+**PR #19 R1~R4 보완 — live 원본·손실 없는 JSON·해시 일관성:**
+
+- **서로 다른 두 경로 계약:** SourceRef의 `(source_kind, source_id, relative_path)`는 공개 가능한 **논리적 provenance**이고, `live_path`는 별도의 **실제 입력 파일**입니다. 논리 상대 경로가 game_root의 실제 경로와 같다고 가정하지 않습니다. base/mod별 source_id의 namespace는 그대로 유지하고, 모든 live 입력은 명시한 단일 game_root 내부의 실제 root-relative 경로여야 합니다. 그 밖의 모드 루트·링크·reparse·탈출 경로는 아직 지원하지 않으며 실패합니다.
+- Staging 때 SQLite `source_files.live_relative_path`와 `live_root_sha256`를 **개인 DB 안에만** 기록합니다. 활성화 입력의 source key/bytes/SHA뿐 아니라 같은 game_root 바인딩과 동일한 root-relative 물리 파일을 검사한 뒤, **해당 파일**의 현재 SHA를 다시 확인합니다. 서로 다른 파일의 bytes가 같더라도 검증 대상을 바꿀 수 없습니다. 이 개인용 루트 fingerprint 및 실제 경로는 snapshot identity, 공개 E evidence, 로그의 원문 절대 경로에 포함하지 않습니다. 기존 v1의 구 물리 스키마에 대한 자동 migration은 제공하지 않으며 스키마 preflight에서 명시적으로 거부합니다.
+- **JSON 용도 분리:** 파일 경로/metadata/policy 및 snapshot ID 계산의 canonical JSON은 Unicode NFC를 **요구하되 수정하지 않습니다**. 기술·현지화의 raw/display record를 저장하는 JSON은 codepoint를 있는 그대로 보존하며 NFC로 변환하거나 비-NFC를 거부하지 않습니다. 저장 JSON도 기존 record **1MiB**, 깊이 **280**, 항목 방문 **100,000**의 한도 내에서만 직렬화하며, 원본 바이트의 출처는 SHA-256 캐시와 SourceRef span입니다.
+- **정책 자원 한도:** `SnapshotPolicy` 전체 identity JSON은 UTF-8 **1MiB(1,048,576 bytes)**, 중첩 **32**, JSON 노드/key 방문 수 **10,000**의 제한을 적용합니다. snapshot ID hash에 추가되는 `content_hash` envelope에는 최대 **128 bytes** 추가 한도를 명시합니다. 입력의 거대한 문자열은 byte-budget 이전에 글자 수 하한으로 조기 거부하며 최종 JSON은 제한된 streaming encoder로 검사합니다. 실패는 `LIMIT_EXCEEDED`; 새 building row나 active 갱신을 만들지 않습니다.
+- **원문 pointer 일관성:** `source_files.cache_sha256=file_sha256`은 v1 테이블 CHECK 조건이고, `source_bytes()`가 읽을 때도 SourceRef hash = file SHA = cache SHA를 확인합니다. 실제 cache bytes는 다시 SHA 검증하며 불일치 시 `SOURCE_CHANGED`/무결성 오류로 fail-closed합니다. 원문 조회 오류 때문에 이전 active를 임의 변경하지 않습니다.
+- **SQLite read-only 검사:** 최초 DB 열기·쓰기·백업에서는 전체 `PRAGMA quick_check`를 유지하지만 반복 read-only 조회마다 전체 페이지 검사를 재실행하지 않고 schema/version/FK preflight를 수행합니다. 비용 측정은 합성 DB의 비차단 benchmark로 관측하고, 실게임 검색 warm p95 검증으로 주장하지 않습니다.

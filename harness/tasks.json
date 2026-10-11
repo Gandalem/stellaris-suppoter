@@ -241,7 +241,7 @@
     {
       "id": "TASK-010",
       "title": "Schema and snapshots",
-      "status": "todo",
+      "status": "doing",
       "feature_ids": [
         "F-007"
       ],
@@ -262,7 +262,10 @@
       "acceptance": [
         "Typed contracts, deterministic IDs and atomic activation are tested."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-010-sqlite-snapshots.md",
+        "harness/evidence/TASK-010-review-followup.md"
+      ]
     },
     {
       "id": "TASK-011",

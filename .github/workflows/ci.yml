@@ -49,9 +49,14 @@ jobs:
         run: stellaris-supporter --help
       - name: Check CLI version
         run: stellaris-supporter --version
+      - name: Report Python and SQLite runtime
+        run: python -c "import sqlite3, sys; print('Python', sys.version.split()[0], 'SQLite', sqlite3.sqlite_version)"
       - name: Run tests
         run: python -m pytest
       - name: Run Ruff
         run: python -m ruff check .
       - name: Validate harness ledgers and links
         run: python scripts/check_harness.py
+      - name: Measure synthetic SQLite read preflight (non-gating)
+        run: python scripts/bench_storage_schema.py
+        continue-on-error: true

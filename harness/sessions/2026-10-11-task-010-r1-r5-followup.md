@@ -1,0 +1,11 @@
+# TASK-010 PR #19 R1–R5 follow-up session
+
+Date: 2026-10-11 (Asia/Seoul). Branch: `task/TASK-010-sqlite-snapshots`. Original independent review: [#5482958006](https://github.com/Gandalem/stellaris-suppoter/pull/19#pullrequestreview-5482958006).
+
+Reviewed head `d4fddd5425ce71a5a689e5740550d6a2c7b0e25e`; base/main `d2be6af6795f7bf2b5e5e2ae1be4672f00d6618c`. Implemented R1 stage-to-activation physical source path/root binding, R2 lossless bounded raw Unicode storage, R3 policy JSON bytes/depth/items budget and immutable identity-row consistency, R4 DB constraint and SourceRef/cache pointer recheck, R5 contiguous ADR table and read-only quick_check split with synthetic performance measurement. The baseline E-018/E-019 evidence, original 58 SQLite tests and existing dependencies were not removed.
+
+**Verified code/test candidate:** `e3c598b92de53a54baa2bb0bf708a60f457dba9f`; PR test-merge `9d4fcdaf77226687dd1f033fb5f4b5eb52e339cb` (not actual main merge). Package PR run `38133251652`: Ubuntu Python 3.11.17 SQLite 3.45.1 **359 passed**, Windows Python 3.13.15 SQLite 3.50.4 **356 passed, three pre-existing POSIX-only skips**; Ruff/harness both OS success. Docs run `38133251707` both OS success, head push Package run `38133247585` success. Synthetic benchmark printed 0/1000/5000-row full-vs-light timings on both OS; no p95 or memory threshold claimed. Details: [review follow-up evidence](../evidence/TASK-010-review-followup.md).
+
+Intermediate attempts: one test expected a nonexistent eager adapter raw_value (corrected to verify the existing SourceRef), then Ruff UP012 at two explicit UTF-8 encode sites (fixed), and frozen normative-heading test caught an added heading (replaced with bold inline label without weakening test). Superseded CI cancellations were not called passes. No real game or user data, no local full suite, no merge, no review-thread resolution.
+
+E-018 and E-019 retain historical `pass` and now link to R1–R5 follow-up evidence. TASK-010 stays `doing`, F-007 `in_progress`, TASK-009 done, F-006 verified, F-005 in_progress, E-020–022 not_run, game version null, product_implemented false. Next gate: final PR evidence head CI and independent technical re-review, followed by owner-controlled actual merge/main CI if separately approved. TASK-011 remains blocked.

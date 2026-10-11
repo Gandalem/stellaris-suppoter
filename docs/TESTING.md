@@ -1,6 +1,8 @@
 # 테스트 전략
 
-문서 검사, 검사기 자체 테스트, 제품 테스트, 실제 게임 검증을 구별합니다. 패키지·설정/doctor, 합성 corpus, 안전한 inventory·버전 증거, lexer/ordered parser, technology adapter에는 구현과 합성 회귀 테스트가 있습니다. 현지화 reader/resolver는 합성 E-015~017 회귀가 구현되어 PR #17의 실제 `main` 병합 커밋 CI에서 검증됐습니다. 이는 합성 입력에 한정되며, SQLite 저장·검색·인용 전체 흐름과 실제 게임 설치본 검증은 아직 완료되지 않았습니다. [평가 사례](../harness/evals.jsonl)는 실행 근거가 있는 항목만 pass로 기록합니다.
+문서 검사, 검사기 자체 테스트, 제품 테스트, 실제 게임 검증을 구별합니다. 패키지·설정/doctor, 합성 corpus, 안전한 inventory·버전 증거, lexer/ordered parser, technology adapter에는 구현과 합성 회귀 테스트가 있습니다. 현지화 reader/resolver는 합성 E-015~017 회귀가 구현되어 PR #17의 실제 `main` 병합 커밋 CI에서 검증됐습니다.
+
+PR #19 보완 합성 회귀는 R1에서 원본/복제 동일 bytes 경로 바꿔치기·루트 변경·source ID 충돌·symlink, R2에서 NFC 한국어/분해형 한글 자모/Latin combining/BOM/CRLF/원문 byte 위치, R3에서 정책 JSON 1MiB 정확 경계·초과·중첩·노드 수, R4에서 DB cache pointer 위조와 과거 정상 snapshot 읽기를 검증합니다. R5는 ADR 테이블 행 연속성과 합성 DB 크기별 `PRAGMA quick_check` 대비 read-only schema preflight 비용을 별도 **비차단** 방식으로 측정합니다. 실게임 검색 warm p95나 실제 파일시스템 공격 완전 방어를 이 측정 결과로 보장하지 않습니다. 현지화 reader/resolver의 합성 E-015~017 검증은 유지되며 TASK-010은 SQLite 저장소와 스냅샷 원자성에 대한 별도 E-018/E-019 부정·경계 회귀를 추가합니다. 이는 DB Repository 단위 검증으로, DB를 포함한 검색·인용/CLI 종단 연결이나 실제 게임 설치본 검증 완료를 뜻하지 않습니다. [평가 사례](../harness/evals.jsonl)는 실행 근거가 있는 항목만 pass로 기록합니다.
 
 ## 테스트 계층
 
