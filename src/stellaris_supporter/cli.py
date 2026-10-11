@@ -84,6 +84,26 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+MAX_CLI_OUTPUT_BYTES = 1024 * 1024
+
+
+def _bounded_json(payload: dict) -> str:
+    """Serialize one complete JSON object without unbounded output buffering.
+
+    The wire representation, not only number of facts, is capped. Any
+    over-budget response is fully abstained, not returned as partial facts.
+    """
+    encoder = json.JSONEncoder(ensure_ascii=False, sort_keys=True, allow_nan=False)
+    parts: list[str] = []
+    total = 0
+    for fragment in encoder.iterencode(payload):
+        total += len(fragment.encode("utf-8"))
+        if total > MAX_CLI_OUTPUT_BYTES:
+            raise SnapshotError("LIMIT_EXCEEDED", "CLI output byte budget exceeded.")
+        parts.append(fragment)
+    return "".join(parts)
+
+
 def _format_doctor_text(report: DoctorReport) -> str:
     settings = report.settings
     runtime = report.runtime
@@ -325,8 +345,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         # The user-facing error must not contain private paths, raw game text,
         # SQL details, or unexpected tracebacks. Report no unverified facts.
         rc, payload = _failed(args.command, "COMMAND_FAILED")
+    try:
+        # Preflight the complete serialized response for both output formats.
+        serialized = _bounded_json(payload)
+    except (SnapshotError, UnicodeError, TypeError, ValueError):
+        rc, payload = _failed(args.command, "LIMIT_EXCEEDED")
+        serialized = _bounded_json(payload)
     if args.format == "json":
-        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        print(serialized)
     else:
         _emit_text(payload)
     return rc
