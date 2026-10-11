@@ -375,9 +375,12 @@ def resolve_localisation(
                     append(value[cursor:cursor_end])
                     cursor = cursor_end
                 else:
-                    cursor_end = min(cursor + 2, len(value))
-                    append(value[cursor:cursor_end])
-                    cursor = cursor_end
+                    # Preserve an unsupported slash, then inspect its next
+                    # character normally. A following '[' or '£' must still
+                    # begin a protected region; otherwise a hidden $KEY$
+                    # could be incorrectly expanded.
+                    append("\\")
+                    cursor += 1
 
             elif ch == "[":
                 # No dynamic scope evaluation. Bracket nesting is consumed
@@ -385,11 +388,15 @@ def resolve_localisation(
                 depth = 1
                 cursor_end = cursor + 1
                 while cursor_end < len(value) and depth:
-                    if value[cursor_end] == "[":
-                        depth += 1
-                    elif value[cursor_end] == "]":
-                        depth -= 1
-                    cursor_end += 1
+                    if value[cursor_end] == "\\" and cursor_end + 1 < len(value):
+                        # Escaped delimiters remain within the same scope.
+                        cursor_end += 2
+                    else:
+                        if value[cursor_end] == "[":
+                            depth += 1
+                        elif value[cursor_end] == "]":
+                            depth -= 1
+                        cursor_end += 1
                 emit(
                     "LOC_DYNAMIC_UNSUPPORTED", "warning",
                     "Bracketed dynamic scope is preserved without interpretation.",
