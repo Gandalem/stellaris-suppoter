@@ -182,10 +182,15 @@ def index_technologies(
         else:
             documents.append(parse_localisation(source.data, context))
     catalog = build_localisation_catalog(tuple(documents))
-    if not catalog.complete or any(d.severity == "error" for d in catalog.diagnostics):
-        # stage_from_results accounts for individual reader errors; catalog-wide
-        # errors also must never silently become a fully-ready snapshot.
-        raise SnapshotError("SOURCE_CHANGED", "Localisation catalog is incomplete.")
+    for diagnostic in catalog.diagnostics:
+        if diagnostic.code in {"LIMIT_EXCEEDED", "LOC_SNAPSHOT_MISMATCH"}:
+            # Catalog security/identity failures cannot be made safe by
+            # --allow-partial. Individual document parse diagnostics belong
+            # to stage_from_results and must remain visible as partial.
+            raise SnapshotError(
+                "LIMIT_EXCEEDED" if diagnostic.code == "LIMIT_EXCEEDED" else "SOURCE_CHANGED",
+                "Localisation catalog identity or bound is invalid.",
+            )
     names = tuple(
         resolve_technology_name(candidate, catalog, requested_language=_language(settings.language))
         for result in technology_results for candidate in result.candidates

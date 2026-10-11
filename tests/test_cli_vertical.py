@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 
 
-
 def invoke(*args: str) -> tuple[int, dict, str]:
     process = subprocess.run(
         [sys.executable, "-m", "stellaris_supporter", *args],
@@ -429,3 +428,38 @@ def test_e026_limit_failure_does_not_replace_active(tmp_path: Path) -> None:
     code, listings, _ = query(config, "snapshots")
     assert code == 0
     assert next(x for x in listings["results"] if x["active"])["snapshot_id"] == previous
+
+
+@pytest.mark.parametrize("arguments", [
+    ("--format", "json", "search"),
+    ("--format", "json", "search", "demo_tech", "--limit", "not-an-int"),
+    ("--format", "json", "show"),
+    ("--format", "json", "unsupported-subcommand"),
+])
+def test_e026_argparse_failure_is_single_sanitized_json(arguments: tuple[str, ...]) -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "stellaris_supporter", *arguments],
+        text=True, capture_output=True, check=False,
+    )
+    assert result.returncode == 2
+    obj = json.loads(result.stdout)
+    assert obj["schema_version"] == 1
+    assert obj["status"] == "error"
+    assert obj["diagnostics"][0]["code"] == "QUERY_INVALID"
+    assert "Traceback" not in result.stderr
+
+
+def test_e026_partial_localisation_can_only_activate_with_consent(tmp_path: Path) -> None:
+    game, _, config = initialised(tmp_path)
+    loc = game / "localisation/korean/demo_l_korean.yml"
+    loc.write_bytes(b"l_korean:\n demo_tech:0 \xff\n")
+    rc, failed, _ = query(config, "index")
+    assert rc == 5 and failed["status"] == "error"
+    rc, listed, _ = query(config, "snapshots")
+    assert rc == 0
+    assert listed["results"][0]["status"] == "partial"
+    assert not listed["results"][0]["active"]
+    rc, accepted, _ = query(config, "index", "--allow-partial")
+    assert rc == 0
+    assert accepted["status"] == "partial"
+    assert accepted["activated"] is True

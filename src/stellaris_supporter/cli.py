@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import sqlite3
+import sys
 import tomllib
 from collections.abc import Sequence
 from dataclasses import asdict
@@ -19,6 +20,24 @@ from stellaris_supporter.retrieval import Query, SearchService
 from stellaris_supporter.storage import SnapshotError, SnapshotRepository
 
 
+class _UsageError(ValueError):
+    """Sanitized argparse failure without a raw command-line echo."""
+
+
+class _ArgumentParser(argparse.ArgumentParser):
+    def error(self, message: str) -> None:
+        raise _UsageError("Invalid command arguments.") from None
+
+
+def _wants_json(argv: Sequence[str] | None) -> bool:
+    selected = list(sys.argv[1:] if argv is None else argv)
+    return any(
+        (arg == "--format" and index + 1 < len(selected)
+         and selected[index + 1] == "json") or arg == "--format=json"
+        for index, arg in enumerate(selected)
+    )
+
+
 def _add_common(parser: argparse.ArgumentParser, *, subcommand: bool = False) -> None:
     # SUPPRESS prevents absent subcommand options from erasing global values.
     kw = {"default": argparse.SUPPRESS} if subcommand else {}
@@ -31,7 +50,7 @@ def _add_common(parser: argparse.ArgumentParser, *, subcommand: bool = False) ->
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = _ArgumentParser(
         prog="stellaris-supporter",
         description="Offline technology indexing, search, and verified static citations.",
     )
@@ -268,7 +287,15 @@ def _run_command(args: argparse.Namespace) -> tuple[int, dict]:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(argv)
+    try:
+        args = parser.parse_args(argv)
+    except _UsageError:
+        rc, payload = _failed(None, "QUERY_INVALID", exit_code=2)
+        if _wants_json(argv):
+            print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        else:
+            print("error: Invalid command arguments.", file=sys.stderr)
+        return rc
     if args.command is None:
         parser.print_help()
         return 0
