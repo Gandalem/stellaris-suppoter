@@ -163,7 +163,7 @@ def test_e016_missing_reference_is_not_silently_resolved() -> None:
 
 def test_e016_depth_and_visit_limits_stop_before_excessive_expansion() -> None:
     source = b"l_english:\n" + b"".join(
-        (" demo_%s:0 \"$demo_%s$\"\n" % (str(i).encode(), str(i + 1).encode()))
+        f' demo_{i}:0 "$demo_{i + 1}$"\n'.encode()
         for i in range(12)
     ) + b' demo_12:0 "end"\n'
     doc = _doc(source)
