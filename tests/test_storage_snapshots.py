@@ -682,3 +682,24 @@ def test_e019_sqlite_write_connection_has_foreign_keys_wal_and_full(tmp_path: Pa
         assert conn.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
         assert conn.execute("PRAGMA synchronous").fetchone()[0] == 2
         assert conn.execute("PRAGMA busy_timeout").fetchone()[0] == 250
+
+
+
+def test_e018_staging_manifest_scans_sources_linearly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = SourceFileInput.descriptor
+    calls = [0]
+    def counted(self):
+        calls[0] += 1
+        return original(self)
+    monkeypatch.setattr(SourceFileInput, "descriptor", counted)
+    inputs = tuple(
+        SourceFileInput("synthetic", "demo", f"bounded/{i:04d}.txt", b"x")
+        for i in range(128)
+    )
+    repo = SnapshotRepository(tmp_path / "data")
+    sid = repo.stage(inputs, _policy()).snapshot_id
+    assert repo.snapshot(sid).status == "ready"
+    # Identity + direct indexed source map + bounded rechecks, not O(N**2).
+    assert calls[0] <= len(inputs) * 5
