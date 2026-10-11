@@ -122,7 +122,8 @@
         "docs/SEARCH_AND_ANSWERS.md"
       ],
       "evidence": [
-        "harness/evidence/TASK-011-retrieval.md"
+        "harness/evidence/TASK-011-retrieval.md",
+        "harness/evidence/TASK-011-review-followup.md"
       ]
     },
     {

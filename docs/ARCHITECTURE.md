@@ -43,7 +43,7 @@ src/stellaris_supporter/
 
 TASK-010에서는 `stellaris_supporter.storage`의 `identity`, `schema`, `cache`, `repository` 경계가 이를 구현합니다. Inventory/technology/localisation이 제공한 원본 bytes와 SourceRef를 Repository 경계에서 다시 검증하며, 파일 해시→canonical snapshot identity→cache 저장→building record→ready/partial 검증→SQLite active pointer 갱신 순서를 유지합니다. 각 row는 snapshot_id 및 원본 source FK에 묶이고 `game_id` 자체는 unique하지 않습니다. 명시적 selected snapshot만 조회하며 building/failed는 노출하지 않습니다. 검색 및 FTS는 TASK-011 범위입니다.
 
-SearchService는 검증된 SnapshotRepository의 snapshot-scoped 스트리밍 읽기를 이용해 메모리의 재생성 가능한 SQL projection을 만듭니다. 검색 경로에서 파서·게임 파일·네트워크·모델을 실행하지 않으며 FTS5는 선택적 가속입니다. 한 query의 active snapshot 선택은 고정되고 result limit은 SQL에서 적용합니다. DB migration·영속 FTS 생성은 수행하지 않습니다.
+SearchService는 검증된 SnapshotRepository의 snapshot-scoped 스트리밍 읽기를 이용해 메모리의 재생성 가능한 SQL projection을 만듭니다. 검색 경로에서 파서·게임 파일·네트워크·모델을 실행하지 않으며 FTS5는 실행 환경에서 지원 여부만 검사하는 선택적 기능이며, 현재 같은 LIKE 후보를 중복하는 FTS query branch를 제거했으므로 검색 가속 성능은 검증되거나 주장되지 않습니다. 한 query의 active snapshot 선택은 고정되고 result limit은 SQL에서 적용합니다. DB migration·영속 FTS 생성은 수행하지 않습니다.
 
 ## 스냅샷과 정합성
 

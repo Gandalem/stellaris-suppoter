@@ -291,7 +291,8 @@
         "Exact IDs, Korean names, short queries and query metacharacters are handled."
       ],
       "evidence": [
-        "harness/evidence/TASK-011-retrieval.md"
+        "harness/evidence/TASK-011-retrieval.md",
+        "harness/evidence/TASK-011-review-followup.md"
       ]
     },
     {

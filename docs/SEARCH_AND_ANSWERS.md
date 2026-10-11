@@ -6,7 +6,7 @@
 
 동점은 kind, game_id, 상대 경로, node occurrence로 안정적으로 정렬합니다. match_reason을 표시하며 범주·언어 필터를 질의 계약에 포함합니다. 별칭은 실제 표현과 테스트를 바탕으로 명시 관리합니다.
 
-**TASK-011 구현 경계:** `SearchService.search(Query)`는 호출 시 active 또는 명시 snapshot을 한 번 고정하고, immutable SQLite v1 레코드로부터 세션 내 재생성 가능한 메모리 projection을 구성합니다. 최초 구축은 `fetchmany(128)`으로 제한된 배치 읽기이며 매 질의마다 `SnapshotRepository.entities()` 전체 조회를 하지 않습니다. Projection은 별도 영속 DB schema 또는 migration이 아니며, 한도가 초과되면 명시적으로 실패합니다. 정확한 별칭은 직접 등록되고 원문 SourceRef 원시 bytes에 존재할 때만 사용합니다. FTS5가 없거나 문법 오류가 발생해도 매개변수 바인딩된 LIKE 검색을 유지합니다. 검색 결과는 인용용 SourceRef만 제공하며 완성된 답변/CLI는 후속입니다.
+**TASK-011 구현 경계:** `SearchService.search(Query)`는 호출 시 active 또는 명시 snapshot을 한 번 고정하고, immutable SQLite v1 레코드로부터 세션 내 재생성 가능한 메모리 projection을 구성합니다. 최초 구축은 `fetchmany(128)`으로 제한된 배치 읽기이며 매 질의마다 `SnapshotRepository.entities()` 전체 조회를 하지 않습니다. Projection은 별도 영속 DB schema 또는 migration이 아니며, 한도가 초과되면 명시적으로 실패합니다. 정확한 별칭은 명시 등록과 source bytes 존재뿐 아니라 대상 entity_key의 정확한 정의 SourceRef 또는 중복 없는 같은 game ID의 localisation entry/value SourceRef 관계까지 확인한 경우에만 사용합니다. 동적/보호 문자열(색상 §, 아이콘 £, bracket, 미해결 $reference$, 미지원 escape)은 검증된 이름·설명으로 승격하지 않습니다. 정적 참조가 완전히 해석된 이름은 원본 번역 및 각 참조의 SourceRef와 선택 언어를 검색 결과에 함께 반환합니다. FTS5를 탐지하지만 기존 FTS+LIKE 중복 분기로 성능 향상을 주장하지 않으며 FTS5 지원 유무와 무관하게 parameterized LIKE 검색을 유지합니다. 검색 결과는 인용용 SourceRef만 제공하며 완성된 답변/CLI는 후속입니다.
 
 ## 한국어·SQLite
 

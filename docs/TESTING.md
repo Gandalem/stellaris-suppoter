@@ -46,3 +46,6 @@ python scripts/generate_synthetic_corpus.py --output ./tmp-synthetic
 수정한 기능의 실패 재현 → 관련 unit/integration → 전체 회귀 → 인용/안전/버전 평가 → 패키지 스모크 순서입니다. 한도·보안·unknown 처리의 회귀는 필수입니다. coverage는 참고 지표이며 100% 숫자만으로 정확성을 보장하지 않습니다. v0.1 전체 합성 필수 평가가 통과하기 전 verified로 바꾸지 않습니다.
 
 실패한 테스트를 삭제·skip하거나 broad exception으로 숨겨 통과시키지 않습니다. flaky test는 seed와 원인을 기록하고 수정합니다. 미실행·환경상 불가·실제 실패를 각각 not_run/blocked/fail로 구분합니다.
+
+
+PR #21 R1~R3 follow-up은 합성 테스트에서 dynamic §/£/bracket/escaped dollar, 정적 다단계/영어 참조의 전체 SourceRef, 중복·순환·누락 참조의 partial 반환, 다른 entity/key/snapshot 출처의 별칭 위조와 조작된 byte span을 평가합니다. 기존 E-020~022와 34개 검색 테스트를 그대로 유지하고 추가 테스트를 양 OS Package CI에 포함합니다. R4 FTS 탐지/중복 SQL 제거는 검색 가속을 증명하지 않으며, 초기 SQL-only microbenchmark는 FTS on/off E2E 비교가 아닙니다. 독립 리뷰 및 실제 병합 이전에 TASK-011 done/F-008 verified를 선언하지 않습니다.

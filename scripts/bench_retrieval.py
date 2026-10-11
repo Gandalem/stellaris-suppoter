@@ -27,7 +27,7 @@ def measure(size: int) -> dict[str, object]:
             korean TEXT,korean_ref TEXT,english TEXT,english_ref TEXT,
             chosen_resolution TEXT,warning TEXT
         );
-        CREATE TABLE names (entity_key TEXT,language TEXT,normalized TEXT,source_ref TEXT);
+        CREATE TABLE names (entity_key TEXT,language TEXT,normalized TEXT,source_ref TEXT,ref_selections TEXT);
         CREATE TABLE descriptions (entity_key TEXT,normalized TEXT,source_ref TEXT);
         CREATE TABLE aliases (entity_key TEXT,normalized TEXT,source_ref TEXT);
         CREATE INDEX name_exact ON names(normalized,language,entity_key);
@@ -48,11 +48,11 @@ def measure(size: int) -> dict[str, object]:
             "{}", "raw_definition", ko, "{}", en, "{}",
             "resolved", None,
         ))
-        names.extend(((key, "korean", ko.casefold(), "{}"),
-                      (key, "english", en.casefold(), "{}")))
+        names.extend(((key, "korean", ko.casefold(), "{}", "[]"),
+                      (key, "english", en.casefold(), "{}", "[]")))
         descriptions.append((key, f"research in alloy fields {i:05d}", "{}"))
     db.executemany("INSERT INTO projection VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
-    db.executemany("INSERT INTO names VALUES(?,?,?,?)", names)
+    db.executemany("INSERT INTO names VALUES(?,?,?,?,?)", names)
     db.executemany("INSERT INTO descriptions VALUES(?,?,?)", descriptions)
     db.commit()
     results: dict[str, dict[str, object]] = {}
