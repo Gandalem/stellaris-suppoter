@@ -516,3 +516,26 @@ def test_reader_does_not_cut_quoted_hash_and_trailing_comment() -> None:
     assert document.entries[0].raw_value == "#not-a-comment"
     assert len(document.comments) == 1
     assert document.comments[0].raw == "# real comment"
+
+
+
+def test_many_escapes_are_decoded_without_losing_original_span() -> None:
+    source = b'l_english:\n demo_escapes:0 "' + (b'\\"\\\\' * 50000) + b'"\n'
+    document = _doc(source)
+    assert document.ok
+    entry = document.entries[0]
+    assert entry._source is source
+    assert entry.raw_value == ('\\"\\\\' * 50000)
+    assert entry.display_value == ('"\\' * 50000)
+    assert len(entry.value_source_ref.raw_bytes(source)) == 200000
+
+
+def test_resolver_diagnostic_limit_marks_truncated_partial() -> None:
+    source = b'l_english:\n demo_a:0 "' + b"$not_present$" * 30 + b'"\n'
+    result = resolve_localisation(
+        _catalog(_doc(source)), "demo_a", max_diagnostics=3
+    )
+    assert result.resolution == "partial"
+    assert result.truncated
+    assert len(result.diagnostics) <= 3
+    assert result.diagnostics[-1].code == "LIMIT_EXCEEDED"
