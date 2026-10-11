@@ -653,6 +653,81 @@ class SnapshotRepository:
                     yield dict(row)
             conn.execute("ROLLBACK")
 
+    def answer_snapshot_context(self, snapshot_id: str) -> dict[str, Any]:
+        """Get pinned version/branch evidence without consulting the active pointer."""
+        with self._connection(read_only=True) as conn:
+            row = self._ensure_ready(conn, snapshot_id)
+            return {
+                key: row[key] for key in (
+                    "snapshot_id", "status", "checked_at", "game_version",
+                    "game_version_source", "branch", "context_kind", "mod_state",
+                )
+            }
+
+    def answer_entity(self, snapshot_id: str, entity_key: str) -> dict[str, Any]:
+        """Read one immutable candidate by (snapshot, entity_key), never a table scan."""
+        if (not isinstance(entity_key, str) or len(entity_key) != 64
+                or any(ch not in "0123456789abcdef" for ch in entity_key)):
+            raise SnapshotError("QUERY_INVALID", "Entity key must be a SHA-256 ID.")
+        with self._connection(read_only=True) as conn:
+            self._ensure_ready(conn, snapshot_id)
+            row = conn.execute(
+                "SELECT game_id,kind,resolution,candidate_json,localisation_json "
+                "FROM entities WHERE snapshot_id=? AND entity_key=? LIMIT 1",
+                (snapshot_id, entity_key),
+            ).fetchone()
+            if row is None:
+                raise SnapshotError("SOURCE_CHANGED", "Entity is not in the pinned snapshot.")
+            return {
+                "snapshot_id": snapshot_id, "entity_key": entity_key,
+                "game_id": row["game_id"], "kind": row["kind"],
+                "resolution": row["resolution"],
+                "candidate": json.loads(row["candidate_json"]),
+                "localisation": (
+                    None if row["localisation_json"] is None
+                    else json.loads(row["localisation_json"])
+                ),
+            }
+
+    def citation_bytes(self, ref: SourceRef) -> bytes:
+        """Read an exact cached span and validate *original* byte and line positions.
+
+        Unlike a file-level hash alone, this rejects forged line numbers, interior
+        UTF-8 offsets, impossible ranges and misplaced trailing newline spans.
+        The entire cache blob is rehashed by BlobCache.read before citation.
+        """
+        if (not isinstance(ref, SourceRef)
+                or any(isinstance(x, bool) or not isinstance(x, int) for x in (
+                    ref.byte_start, ref.byte_end, ref.line_start, ref.line_end
+                ))):
+            raise SnapshotError("SOURCE_CHANGED", "Citation has invalid offsets.")
+        with self._connection(read_only=True) as conn:
+            self._ensure_ready(conn, ref.snapshot_id)
+            row = conn.execute(
+                "SELECT file_sha256,cache_sha256,byte_size FROM source_files "
+                "WHERE snapshot_id=? AND source_kind=? AND source_id=? AND relative_path=?",
+                (ref.snapshot_id, ref.source_kind, ref.source_id, ref.relative_path),
+            ).fetchone()
+            if row is None or (ref.file_sha256 != row["file_sha256"]
+                               or row["cache_sha256"] != row["file_sha256"]):
+                raise SnapshotError("SOURCE_CHANGED", "Citation source/cache identity is invalid.")
+            if (ref.byte_start < 0 or ref.byte_end <= ref.byte_start
+                    or ref.byte_end > row["byte_size"]):
+                raise SnapshotError("SOURCE_CHANGED", "Citation byte range is invalid.")
+            data = self.cache.read(row["cache_sha256"], row["byte_size"])
+            line_start = data.count(b"\n", 0, ref.byte_start) + 1
+            line_end = data.count(b"\n", 0, ref.byte_end - 1) + 1
+            if (ref.line_start != line_start or ref.line_end != line_end):
+                raise SnapshotError("SOURCE_CHANGED", "Citation line positions differ from source.")
+            span = data[ref.byte_start:ref.byte_end]
+            try:
+                span.decode("utf-8", errors="strict")
+            except UnicodeError as exc:
+                raise SnapshotError(
+                    "SOURCE_CHANGED", "Citation cuts a UTF-8 codepoint."
+                ) from exc
+            return span
+
     def entities(self, snapshot_id: str | None = None) -> list[dict[str, Any]]:
         with self._connection(read_only=True) as conn:
             sid = self._snapshot_for_query(conn, snapshot_id)
