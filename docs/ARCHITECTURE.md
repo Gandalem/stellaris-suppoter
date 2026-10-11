@@ -45,6 +45,8 @@ TASK-010에서는 `stellaris_supporter.storage`의 `identity`, `schema`, `cache`
 
 SearchService는 검증된 SnapshotRepository의 snapshot-scoped 스트리밍 읽기를 이용해 메모리의 재생성 가능한 SQL projection을 만듭니다. 검색 경로에서 파서·게임 파일·네트워크·모델을 실행하지 않으며 FTS5는 실행 환경에서 지원 여부만 검사하는 선택적 기능이며, 현재 같은 LIKE 후보를 중복하는 FTS query branch를 제거했으므로 검색 가속 성능은 검증되거나 주장되지 않습니다. 한 query의 active snapshot 선택은 고정되고 result limit은 SQL에서 적용합니다. DB migration·영속 FTS 생성은 수행하지 않습니다.
 
+TASK-012의 `answers.py`는 검색→정적 formatter와 출처 검증의 메모리 계층이며 UI/CLI/LLM을 포함하지 않습니다. Repository는 `answer_entity(snapshot_id,entity_key)`의 bounded point lookup과 `citation_bytes(SourceRef)`의 hash/byte/UTF-8/line 검증을 제공하고, 변하는 active pointer를 답변 중 다시 조회하지 않습니다. 조회된 raw 필드는 원문 그대로만 보여 주며 중복 정의를 병합하지 않고 번역의 root/dependency 참조는 별도로 유지합니다.
+
 ## 스냅샷과 정합성
 
 파일 해시는 원본 bytes 기준입니다. 같은 내용의 캐시 재사용은 가능하지만 서로 다른 상대 경로의 출처를 합치지 않습니다. 동일 corpus·분석 정책·문맥의 snapshot_id는 안정적이어야 합니다. 수집 시각·개인 절대 경로는 콘텐츠 지문에서 제외합니다.

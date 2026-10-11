@@ -50,6 +50,8 @@ Query: text, snapshot_id, kind|null, language, limit. 질의 최대 512문자, l
 
 AnswerEnvelope: schema_version, status, query, context, results, diagnostics, truncated. status는 ok|partial|not_found|unsupported|error입니다. context는 snapshot_id, kind, game_version, checked_at을 갖습니다. results 원소는 entity_key, game_id, kind, display_name, match_reason, facts, source_refs를 갖습니다. facts마다 실제 필드를 포함한 근거가 필요합니다. 결과 없음은 빈 results이며 사실을 생성하지 않습니다.
 
+**TASK-012 메모리 답변 구현 계약:** `AnswerService.answer(Query, field: str|null)`는 한 번 호출한 검색 응답의 snapshot ID를 고정한 `AnswerEnvelope(schema_version,status,query,context,results,diagnostics,truncated)`를 반환합니다. `AnswerResult`는 snapshot/entity/game ID, kind, display_name, match_reason, facts, source_refs, definition_source_ref, localisation_source_ref, ordered localisation_reference_selections, resolution/fallback/warnings를 갖습니다. `AnswerFact(field_name,occurrence,operator,raw_expression,value_kind,support_status,source_ref,value_source_ref,diagnostics)`에서 source_ref는 필드 전체의 실제 원문 span, value_source_ref는 해당 값의 더 좁은 실제 span이며 null 값과 `0`을 혼동하지 않습니다. `raw_literal` 표시는 script lexical literal이지 실제 게임에서 평가·적용된 수치가 아닙니다. 동적 표현식은 `raw_expression`으로만 보존하고 `unsupported_expression`으로 표시합니다. SourceRef의 cache SHA, Unicode 경계, 원문 line/byte 및 동일 snapshot을 읽기 때 재검증합니다. 기술 정의·필드·번역 root·번역 종속 출처는 별개 인용입니다. 부분/중복/모호성은 완전 성공으로 승격하지 않습니다. SQLite v1 물리 schema는 불변입니다.
+
 ## 저장 구조
 
 논리 테이블: snapshots, source_files, entities, localisation_entries, relations, search_documents, diagnostics, settings. 모든 관계·조회는 snapshot 경계를 적용합니다. 원문 bytes는 개인 content-addressed cache에 보존하고 DB가 해시를 참조합니다. FTS는 재생성 가능한 보조 색인입니다.

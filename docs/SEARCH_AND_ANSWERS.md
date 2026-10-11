@@ -22,6 +22,8 @@ facts마다 실제 필드를 포함하는 SourceRef가 필요합니다. 관련 �
 
 예: '이 정의에는 비용 표현식 @demo_cost가 있습니다. 해당 변수의 적용값은 이 조회에서 확정하지 않았습니다.' 이는 실제 게임 비용이 아닙니다.
 
+**TASK-012 결정적 formatter 구현:** 검색을 다시 구현하지 않고 `SearchService.search(Query)`의 결과를 사용합니다. 한 답변의 snapshot ID는 검색 종료 직후 고정하고 `SnapshotRepository.answer_entity(snapshot_id,entity_key)`로 개별 엔티티만 읽습니다. `citation_bytes`에서 field/value 원문 bytes와 UTF-8/행 정보를 검증합니다. 정적 raw literal은 실제 엔진 비용·조건 평가·결과를 의미하지 않으며 `@reference`·block 표현식은 그대로 남겨 partial로 처리합니다. 모든 번역 이름의 최초 root와 정적 참조 근거·언어가 기술 정의 및 사실별 근거와 분리됩니다. 사용자 계산 요청은 unsupported, 검색 결과 없음은 not_found, 손상된 원문·인용은 error입니다. fact 64개·citation 256개·raw value 512 bytes 등 제한을 적용합니다.
+
 ## 보류 기준
 
 | 상황 | 동작 |
