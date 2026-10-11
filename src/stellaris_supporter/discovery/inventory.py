@@ -258,6 +258,7 @@ def _collect_candidates(
     *,
     allowed_root: Path,
     limits: Limits,
+    include_suffixes: tuple[str, ...] | None = None,
 ) -> tuple[list[_Candidate], int]:
     candidates: list[_Candidate] = []
     declared_total = 0
@@ -309,6 +310,12 @@ def _collect_candidates(
                             "PATH_REJECTED",
                             "Inventory encountered an unsupported filesystem object.",
                         )
+
+                    # Inspect every path/link but charge budgets and hash only
+                    # supported extensions. Directory traversal is still bounded.
+                    if (include_suffixes is not None
+                            and not relative_path.casefold().endswith(include_suffixes)):
+                        continue
 
                     if entry_stat.st_size > limits.file_bytes:
                         raise _fail(
@@ -499,6 +506,7 @@ def scan_inventory(
     *,
     limits: Limits,
     allowed_root: Path | None = None,
+    include_suffixes: tuple[str, ...] | None = None,
 ) -> InventoryResult:
     """Scan regular files without following links or writing to the source tree.\n\n    When ``allowed_root`` is explicit, its resolved directory is the trust boundary and\n    every lexical component from that boundary to ``root`` is checked before resolve.\n    When omitted, the resolved ``root`` itself becomes the trust boundary; parent\n    components above that caller-selected root are not inspected.\n    """
 
@@ -518,6 +526,7 @@ def scan_inventory(
             scan_root,
             allowed_root=allowed,
             limits=limits,
+            include_suffixes=include_suffixes,
         )
         files_list: list[InventoryFile] = []
         actual_total = 0

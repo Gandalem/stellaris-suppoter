@@ -70,13 +70,13 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("text")
     search.add_argument("--kind", default=None)
     search.add_argument("--snapshot", default=None)
-    search.add_argument("--limit", type=int, default=20)
+    search.add_argument("--limit", type=int, default=None)
     show = sub.add_parser("show", help="Show verified facts for an exact game ID.")
     _add_common(show, subcommand=True)
     show.add_argument("game_id")
     show.add_argument("--kind", default="technology")
     show.add_argument("--snapshot", default=None)
-    show.add_argument("--limit", type=int, default=100)
+    show.add_argument("--limit", type=int, default=None)
     snaps = sub.add_parser("snapshots", help="List snapshot statuses and active pointer.")
     _add_common(snaps, subcommand=True)
     snaps.add_argument("--limit", type=int, default=100)
@@ -104,6 +104,23 @@ def _bounded_json(payload: dict) -> str:
     return "".join(parts)
 
 
+def _safe_terminal_line(line: str) -> str:
+    """Escape all nonprinting control/format characters on human text only."""
+    pieces: list[str] = []
+    for character in line:
+        if character.isprintable():
+            pieces.append(character)
+        else:
+            code = ord(character)
+            if code <= 0xFF:
+                pieces.append(f"\\x{code:02x}")
+            elif code <= 0xFFFF:
+                pieces.append(f"\\u{code:04x}")
+            else:
+                pieces.append(f"\\U{code:08x}")
+    return "".join(pieces)
+
+
 def _format_doctor_text(report: DoctorReport) -> str:
     settings = report.settings
     runtime = report.runtime
@@ -125,7 +142,7 @@ def _format_doctor_text(report: DoctorReport) -> str:
         if item.remediation:
             line += f" remediation={item.remediation}"
         lines.append(line)
-    return "\n".join(lines) + "\n"
+    return "\n".join(_safe_terminal_line(line) for line in lines) + "\n"
 
 
 def _doctor_from_args(args: argparse.Namespace) -> int:
@@ -185,6 +202,27 @@ def _failed(command: str | None, code: str, *, exit_code: int | None = None) -> 
 
 
 def _emit_text(payload: dict) -> None:
+    if payload.get("command") == "snapshots":
+        lines = [
+            "command: snapshots", f"status: {payload.get('status')}",
+            f"limit: {payload.get('limit', 100)}",
+            f"offset: {payload.get('offset', 0)}",
+            f"truncated: {str(bool(payload.get('truncated'))).lower()}",
+        ]
+        for item in payload.get("results", []):
+            lines.append(f"- snapshot_id: {item['snapshot_id']}")
+            for key in ("active", "status", "context_kind", "branch",
+                        "game_version", "created_at", "checked_at"):
+                value = item.get(key)
+                if isinstance(value, bool):
+                    value = str(value).lower()
+                elif value is None:
+                    value = "unknown"
+                lines.append(f"  {key}: {value}")
+        for diagnostic in payload.get("diagnostics", []):
+            lines.append(f"- {diagnostic['code']}: {diagnostic['message']}")
+        print("\n".join(_safe_terminal_line(line) for line in lines))
+        return
     context = payload.get("context") or {}
     lines = [f"command: {payload.get('command')}",
              f"status: {payload.get('status')}",
@@ -216,7 +254,7 @@ def _emit_text(payload: dict) -> None:
                          f"({item['support_status']})")
     for diagnostic in payload.get("diagnostics", []):
         lines.append(f"- {diagnostic['code']}: {diagnostic['message']}")
-    print("\n".join(lines))
+    print("\n".join(_safe_terminal_line(line) for line in lines))
 
 
 def _guard_original_config_paths(args: argparse.Namespace) -> None:
@@ -276,6 +314,17 @@ def _response_code(payload: dict) -> int:
     return _code_exit(code)
 
 
+def _bounded_query_limit(text: str, requested: int | None, *, settings, default: int) -> int:
+    """Validate API ceiling first (invalid query=2), configured budget second (4)."""
+    limit = min(default, settings.limits.max_results, 100) if requested is None else requested
+    if (not isinstance(text, str) or not text.strip()
+            or len(text) > 512 or not 1 <= limit <= 100):
+        raise SnapshotError("QUERY_INVALID", "Query is outside the service contract.")
+    if len(text) > settings.limits.query_chars or limit > settings.limits.max_results:
+        raise SnapshotError("LIMIT_EXCEEDED", "Configured search budget exceeded.")
+    return limit
+
+
 def _run_command(args: argparse.Namespace) -> tuple[int, dict]:
     command = args.command
     if command == "init":
@@ -285,6 +334,13 @@ def _run_command(args: argparse.Namespace) -> tuple[int, dict]:
         )
         return 0, payload
     settings = _load_checked(args)
+    selected_limit = None
+    if command in {"search", "show"}:
+        selected = args.text if command == "search" else args.game_id
+        selected_limit = _bounded_query_limit(
+            selected, args.limit, settings=settings,
+            default=20 if command == "search" else 100,
+        )
     repo = SnapshotRepository(settings.data_dir, game_root=settings.game_root)
     if command == "index":
         answer = index_technologies(repo, settings, allow_partial=args.allow_partial)
@@ -294,20 +350,21 @@ def _run_command(args: argparse.Namespace) -> tuple[int, dict]:
         return 0, {
             "schema_version": 1, "command": command, "status": "ok",
             "results": list(rows), "truncated": truncated, "diagnostics": [],
+            "limit": args.limit, "offset": args.offset,
         }
     service = SearchService(repo)
     try:
         if command == "search":
             result = service.search(Query(
                 args.text, snapshot_id=args.snapshot, kind=args.kind,
-                language=_language(settings.language), limit=args.limit,
+                language=_language(settings.language), limit=selected_limit,
             ))
             payload = {"command": command, **asdict(result)}
             return _response_code(payload), payload
         if command == "show":
             response = AnswerService(service, repo).answer(
                 Query(args.game_id, snapshot_id=args.snapshot, kind=args.kind,
-                      language=_language(settings.language), limit=args.limit),
+                      language=_language(settings.language), limit=selected_limit),
                 exact_game_id=True,
             )
             payload = {"command": command, **asdict(response)}

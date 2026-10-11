@@ -711,13 +711,17 @@ def test_review_r3_configured_query_char_boundary_search(
     assert query(config, "index")[0] == 0
     code, result, _ = query(config, "search", text)
     assert code == rc
-    assert result["status"] == ("error" if rc else "ok")
+    assert result["status"] == ("error" if rc else "not_found")
 
 
 def test_review_r3_configured_result_default_and_explicit_limit(tmp_path: Path) -> None:
     game, _, config = initialised(tmp_path)
     source = game / "common/technology/demo.txt"
     source.write_bytes(source.read_bytes() + b"demo_other = { tier = 9 }\n")
+    for name, lang in (("korean", "korean"), ("english", "english")):
+        loc = game / f"localisation/{name}/demo_l_{lang}.yml"
+        loc.write_text(loc.read_text(encoding="utf-8") +
+                       f' demo_other:0 "Other Tech"\n', encoding="utf-8")
     with config.open("a", encoding="utf-8") as stream:
         stream.write("\n[limits]\nmax_results = 1\n")
     assert query(config, "index")[0] == 0

@@ -34,6 +34,17 @@ _INDEX_ROOTS = (
     ("localisation/english", ".yml"),
 )
 _POLICY_VERSION = "cli-technology-localisation-v1"
+_RESOURCE_LIMIT_CODES = frozenset({
+    "LIMIT_EXCEEDED", "PARSE_DEPTH_LIMIT", "PARSE_NODE_LIMIT",
+    "PARSE_DIAGNOSTIC_LIMIT",
+})
+
+
+def _reject_resource_limits(diagnostics) -> None:
+    """Resource exhaustion is never user-consent partial, even with no candidates."""
+    if any(item.code in _RESOURCE_LIMIT_CODES for item in diagnostics):
+        raise SnapshotError("LIMIT_EXCEEDED", "Source parser/resolver resource limit reached.")
+
 
 
 def _language(value: str) -> str:
@@ -62,7 +73,10 @@ def _inventory_sources(settings: Settings) -> tuple[SourceFileInput, ...]:
             if prefix == "common/technology":
                 raise SnapshotError("GAME_ROOT_MISSING", "Supported technology directory is absent.")
             continue
-        result = scan_inventory(folder, limits=settings.limits, allowed_root=root)
+        result = scan_inventory(
+            folder, limits=settings.limits, allowed_root=root,
+            include_suffixes=(suffix,),
+        )
         if not result.ok or result.inventory is None:
             diagnostic = next(
                 (x for x in result.diagnostics if x.severity == "error"), None
@@ -158,15 +172,17 @@ def index_technologies(
     if existing is not None:
         if existing.status not in {"ready", "partial"}:
             raise SnapshotError("SNAPSHOT_EXISTS", "Unfinished or failed snapshot cannot be reused.")
-        # Explicit source tuple rechecks exact root-relative physical path and SHA.
-        repository.activate(sid, sources=sources, allow_partial=allow_partial)
-        return {
-            "snapshot_id": sid, "status": "partial" if existing.status == "partial" else "ok",
-            "snapshot_status": existing.status,
-            "activated": True, "reused": True, "previous_active": previous,
-            "source_count": len(sources), "context_kind": "base_install",
-            "game_version": None, "branch": "unknown", "diagnostics": [],
-        }
+        if existing.status == "ready":
+            # A ready snapshot cannot contain a resource-bound partial diagnostic.
+            repository.activate(sid, sources=sources, allow_partial=allow_partial)
+            return {
+                "snapshot_id": sid, "status": "ok", "snapshot_status": "ready",
+                "activated": True, "reused": True, "previous_active": previous,
+                "source_count": len(sources), "context_kind": "base_install",
+                "game_version": None, "branch": "unknown", "diagnostics": [],
+            }
+        # Re-evaluate partial snapshots before consenting to activation. This
+        # also rejects old partial snapshots staged before the resource guard.
 
     technology_results = []
     documents = []
@@ -179,6 +195,7 @@ def index_technologies(
             adapted = adapt_technologies(
                 parse_bytes(source.data), source.data, context,
             )
+            _reject_resource_limits(adapted.diagnostics)
             _verify_adapted_ids(source, adapted)
             technology_results.append(adapted)
         else:
@@ -197,6 +214,20 @@ def index_technologies(
         resolve_technology_name(candidate, catalog, requested_language=_language(settings.language))
         for result in technology_results for candidate in result.candidates
     )
+    for name in names:
+        _reject_resource_limits(name.localisation.diagnostics)
+        if name.localisation.truncated:
+            raise SnapshotError("LIMIT_EXCEEDED", "Localisation expansion was truncated.")
+    if existing is not None:
+        # Existing partial was just rechecked for hard limits; normal parser
+        # partials still require explicit --allow-partial consent.
+        repository.activate(sid, sources=sources, allow_partial=allow_partial)
+        return {
+            "snapshot_id": sid, "status": "partial", "snapshot_status": "partial",
+            "activated": True, "reused": True, "previous_active": previous,
+            "source_count": len(sources), "context_kind": "base_install",
+            "game_version": None, "branch": "unknown", "diagnostics": [],
+        }
     summary = repository.stage_from_results(
         sources, policy, technology_results=tuple(technology_results),
         localisation_documents=tuple(documents), localised_names=names,
