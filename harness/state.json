@@ -2,9 +2,9 @@
   "schema_version": 1,
   "phase": "implementation",
   "product_implemented": false,
-  "active_task": "TASK-009",
-  "next_task": "TASK-009",
-  "last_session": "harness/sessions/2026-10-11-task-009-review-followup.md",
+  "active_task": null,
+  "next_task": "TASK-010",
+  "last_session": "harness/sessions/2026-10-11-task-009-main-closure.md",
   "latest_game_version": null,
   "updated_on": "2026-10-11",
   "notes": [
@@ -15,6 +15,7 @@
     "F-006 and F-005 remain in_progress until all related acceptance conditions and main integration are met.",
     "latest_game_version remains null; no real Stellaris installation has been inspected.",
     "PR #17 R1-R4 follow-up: code/test/docs head 10dd9b721e13819cfa764ab30d6fe26e15ac2499; test-merge 889ef8b85321a45ebcb68a39fc48f1f0f24429e3, Package PR CI 38126968416 and Documentation CI 38126968353 success on both OS. 38 additional regression cases passed alongside existing 50 localisation tests. Follow-up evidence at harness/evidence/TASK-009-review-followup.md. PR remains unmerged; TASK-010 not started.",
-    "PR #17 R5/P2 follow-up: DATA_CONTRACTS.md duplicate/broken localisation contract repaired, 11 normative documentation integrity tests added and passing alongside R1-R4. Code/test candidate eb5b68b377e7ba6566173543faf0a784de575b21; PR CI test-merge 03718d748bda4ba12ba708d3268a5c142cd4c53d; Package run 38128348984 Ubuntu 279 passed / Windows 276 passed + 3 existing skips, Ruff/harness success; Documentation run 38128348992 both OS success. Evidence harness/evidence/TASK-009-r5-document-integrity.md. Review and real main merge still pending; TASK-010 not started."
+    "PR #17 R5/P2 follow-up: DATA_CONTRACTS.md duplicate/broken localisation contract repaired, 11 normative documentation integrity tests added and passing alongside R1-R4. Code/test candidate eb5b68b377e7ba6566173543faf0a784de575b21; PR CI test-merge 03718d748bda4ba12ba708d3268a5c142cd4c53d; Package run 38128348984 Ubuntu 279 passed / Windows 276 passed + 3 existing skips, Ruff/harness success; Documentation run 38128348992 both OS success. Evidence harness/evidence/TASK-009-r5-document-integrity.md. Review and real main merge still pending; TASK-010 not started.",
+    "PR #17 actually merged to main as f9638850dfd514790cf90c194f9ff062e7819f12 from reviewed head c4842aaae6f88216f33711d6a95b141074e2dad5. main push Package 38128971447 Ubuntu 279/Windows 276+3 success and Documentation 38128971437 success both. R1-R5 reviewed; E-015/016/017 synthetic pass preserved. This separate closure PR proposes TASK-009 done, F-006 synthetic-verified, active_task null, next_task TASK-010. Main retains previous ledger statuses until closure PR actually merges and its own main CI succeeds; TASK-010 implementation not started. latest_game_version null, product_implemented false."
   ]
 }
