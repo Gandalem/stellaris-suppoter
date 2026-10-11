@@ -345,7 +345,9 @@ class SnapshotRepository:
                 "SELECT 1 FROM snapshots WHERE snapshot_id=?", (sid,)
             ).fetchone():
                 raise SnapshotError("SNAPSHOT_EXISTS", "Snapshot ID already exists; no overwrite.")
-            fields = policy.identity_fields()
+            # Commit the exact bounded policy that was hashed, not a second
+            # read of caller-owned mutable Mapping fields.
+            fields = json.loads(identity.policy_json)
             conn.execute(
                 "INSERT INTO snapshots("
                 "snapshot_id,content_hash,schema_version,parser_version,adapter_version,"
