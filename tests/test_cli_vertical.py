@@ -590,3 +590,208 @@ def test_e026_large_search_payload_abstains_without_partial_json(
     assert result["diagnostics"][0]["code"] == "LIMIT_EXCEEDED"
     assert len(stdout.encode("utf-8")) < 1024
 
+
+
+
+# TASK-013 R1-R5: authored synthetic regression cases (never game files).
+
+@pytest.mark.parametrize("code", [
+    "LIMIT_EXCEEDED", "PARSE_DEPTH_LIMIT", "PARSE_NODE_LIMIT", "PARSE_DIAGNOSTIC_LIMIT",
+])
+def test_review_r1_technology_bound_is_not_partial_consent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, code: str,
+) -> None:
+    from dataclasses import replace
+    import stellaris_supporter.cli_index as pipeline
+    from stellaris_supporter.config import load_settings
+    from stellaris_supporter.domain import TechnologyDiagnostic
+    from stellaris_supporter.storage import SnapshotError, SnapshotRepository
+
+    game, data, config = initialised(tmp_path)
+    repo = SnapshotRepository(data, game_root=game)
+    settings = load_settings(config).settings
+    original_active = pipeline.index_technologies(repo, settings)["snapshot_id"]
+    target = game / "common/technology/demo.txt"
+    target.write_bytes(target.read_bytes().replace(b"tier = 2", b"tier = 3"))
+    adapter = pipeline.adapt_technologies
+
+    def resource_diagnostic(*args, **kwargs):
+        result = adapter(*args, **kwargs)
+        diagnostic = TechnologyDiagnostic(
+            code, "error", "Synthetic parser or lexer bound.",
+            result.candidates[0].source_ref, origin="parser",
+        )
+        return replace(result, diagnostics=(*result.diagnostics, diagnostic),
+                       complete=False)
+
+    monkeypatch.setattr(pipeline, "adapt_technologies", resource_diagnostic)
+    with pytest.raises(SnapshotError) as exc:
+        pipeline.index_technologies(repo, settings, allow_partial=True)
+    assert exc.value.code == "LIMIT_EXCEEDED"
+    assert repo.active_snapshot_id() == original_active
+
+
+def test_review_r1_deep_static_localisation_reference_is_never_activated(
+    tmp_path: Path,
+) -> None:
+    game, _, config = initialised(tmp_path)
+    active = query(config, "index")[1]["snapshot_id"]
+    chain = [
+        f' layer_{index}:0 "$layer_{index + 1}$"'
+        for index in range(68)
+    ]
+    (game / "localisation/korean/demo_l_korean.yml").write_text(
+        'l_korean:\n demo_tech:0 "$layer_0$"\n' +
+        "\n".join(chain) + '\n layer_68:0 "끝"\n', encoding="utf-8"
+    )
+    for args in ((), ("--allow-partial",)):
+        rc, failed, _ = query(config, "index", *args)
+        assert rc == 4 and failed["status"] == "error"
+        assert failed["diagnostics"][0]["code"] == "LIMIT_EXCEEDED"
+        assert next(x for x in query(config, "snapshots")[1]["results"]
+                    if x["active"])["snapshot_id"] == active
+
+
+def test_review_r2_non_target_file_size_does_not_consume_budget(tmp_path: Path) -> None:
+    game, _, config = initialised(tmp_path)
+    (game / "common/technology/unrelated.bin").write_bytes(b"x" * 1024)
+    with config.open("a", encoding="utf-8") as stream:
+        stream.write("\n[limits]\nfile_bytes = 200\n")
+    rc, result, _ = query(config, "index")
+    assert rc == 0 and result["activated"]
+
+
+def test_review_r2_non_target_file_count_does_not_consume_budget(tmp_path: Path) -> None:
+    game, _, config = initialised(tmp_path)
+    for n in range(6):
+        (game / "common/technology" / f"unrelated_{n}.bin").write_bytes(b"ignored")
+    with config.open("a", encoding="utf-8") as stream:
+        stream.write("\n[limits]\nmax_files = 3\n")
+    rc, result, _ = query(config, "index")
+    assert rc == 0 and result["source_count"] == 3
+
+
+def test_review_r2_target_budget_and_cross_root_aggregate(tmp_path: Path) -> None:
+    game, _, config = initialised(tmp_path)
+    (game / "common/technology/excess.txt").write_bytes(b"X" * 256)
+    with config.open("a", encoding="utf-8") as stream:
+        stream.write("\n[limits]\nfile_bytes = 200\n")
+    assert query(config, "index")[0] == 4
+    (game / "common/technology/excess.txt").unlink()
+    config.write_text(config.read_text().replace("file_bytes = 200", "max_files = 2"),
+                      encoding="utf-8")
+    rc, result, _ = query(config, "index")
+    assert rc == 4 and result["diagnostics"][0]["code"] == "LIMIT_EXCEEDED"
+
+
+def test_review_r2_supported_symlink_remains_rejected(tmp_path: Path) -> None:
+    game, _, config = initialised(tmp_path)
+    target = tmp_path / "elsewhere.txt"
+    target.write_text("never index", encoding="utf-8")
+    path = game / "common/technology/unsafe.txt"
+    try:
+        path.symlink_to(target)
+    except (OSError, NotImplementedError):
+        from stellaris_supporter.storage.cache import live_source_relative_path
+        from stellaris_supporter.storage import SnapshotError
+        with pytest.raises(SnapshotError):
+            live_source_relative_path(target, game)
+    else:
+        rc, result, _ = query(config, "index", "--allow-partial")
+        assert rc == 4 and result["diagnostics"][0]["code"] == "PATH_REJECTED"
+
+
+@pytest.mark.parametrize("text,rc", [("demo", 0), ("demos", 4)])
+def test_review_r3_configured_query_char_boundary_search(
+    tmp_path: Path, text: str, rc: int,
+) -> None:
+    _, _, config = initialised(tmp_path)
+    with config.open("a", encoding="utf-8") as stream:
+        stream.write("\n[limits]\nquery_chars = 4\n")
+    assert query(config, "index")[0] == 0
+    code, result, _ = query(config, "search", text)
+    assert code == rc
+    assert result["status"] == ("error" if rc else "ok")
+
+
+def test_review_r3_configured_result_default_and_explicit_limit(tmp_path: Path) -> None:
+    game, _, config = initialised(tmp_path)
+    source = game / "common/technology/demo.txt"
+    source.write_bytes(source.read_bytes() + b"demo_other = { tier = 9 }\n")
+    with config.open("a", encoding="utf-8") as stream:
+        stream.write("\n[limits]\nmax_results = 1\n")
+    assert query(config, "index")[0] == 0
+    for command, identifier in (("search", "demo_tech"), ("show", "demo_tech")):
+        code, found, _ = query(config, command, identifier)
+        assert code == 0 and len(found["results"]) == 1
+        code, found, _ = query(config, command, identifier, "--limit", "1")
+        assert code == 0
+        code, failed, _ = query(config, command, identifier, "--limit", "2")
+        assert code == 4 and failed["diagnostics"][0]["code"] == "LIMIT_EXCEEDED"
+    assert query(config, "search", "demo_tech", "--limit", "0")[0] == 2
+
+
+def test_review_r3_show_applies_configured_query_chars(tmp_path: Path) -> None:
+    _, _, config = initialised(tmp_path)
+    with config.open("a", encoding="utf-8") as stream:
+        stream.write("\n[limits]\nquery_chars = 4\n")
+    assert query(config, "index")[0] == 0
+    code, answer, _ = query(config, "show", "demo_tech")
+    assert code == 4 and answer["status"] == "error"
+    assert answer["diagnostics"][0]["code"] == "LIMIT_EXCEEDED"
+
+
+def test_review_r4_snapshot_text_contains_full_row_metadata(tmp_path: Path) -> None:
+    game, _, config = initialised(tmp_path)
+    assert query(config, "index")[0] == 0
+    script = game / "common/technology/demo.txt"
+    script.write_bytes(script.read_bytes().replace(b"tier = 2", b"tier = 3"))
+    assert query(config, "index")[0] == 0
+    _, rows, _ = query(config, "snapshots")
+    assert len(rows["results"]) >= 2
+    active = next(x for x in rows["results"] if x["active"])
+    other = next(x for x in rows["results"] if not x["active"])
+    result = subprocess.run(
+        [sys.executable, "-m", "stellaris_supporter", "--config", str(config),
+         "snapshots"], capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0
+    assert active["snapshot_id"] in result.stdout
+    assert other["snapshot_id"] in result.stdout
+    for item in (active, other):
+        expected = "true" if item["active"] else "false"
+        assert f"active: {expected}" in result.stdout
+        assert f"status: {item['status']}" in result.stdout
+        for field in ("context_kind", "branch", "created_at", "checked_at"):
+            assert f"{field}: {item[field]}" in result.stdout
+        assert "game_version: unknown" in result.stdout
+    paged = subprocess.run(
+        [sys.executable, "-m", "stellaris_supporter", "--config", str(config),
+         "snapshots", "--limit", "1", "--offset", "1"],
+        capture_output=True, text=True, check=False,
+    )
+    assert paged.returncode == 0
+    assert "limit: 1" in paged.stdout and "offset: 1" in paged.stdout
+
+
+def test_review_r5_terminal_controls_escaped_only_in_text(tmp_path: Path) -> None:
+    import stellaris_supporter.cli as cli
+
+    unsafe = "합금\x1bc\r\b\u202e Research"
+    payload = {
+        "command": "search", "status": "ok", "schema_version": 1,
+        "results": [{"game_id": "demo_tech", "display_name": unsafe, "status": "ok"}],
+        "diagnostics": [{"code": "DEMO", "message": unsafe}],
+    }
+    from io import StringIO
+    from contextlib import redirect_stdout
+    output = StringIO()
+    with redirect_stdout(output):
+        cli._emit_text(payload)
+    text = output.getvalue()
+    assert "\x1b" not in text and "\r" not in text and "\b" not in text
+    assert "\u202e" not in text
+    assert "\\x1b" in text and "\\r" in text and "\\b" in text
+    assert "\\u202e" in text
+    assert "합금" in text and "Research" in text
+    assert json.loads(cli._bounded_json(payload))["results"][0]["display_name"] == unsafe
