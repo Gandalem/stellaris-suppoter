@@ -57,6 +57,9 @@ jobs:
         run: python -m ruff check .
       - name: Validate harness ledgers and links
         run: python scripts/check_harness.py
+      - name: Measure synthetic retrieval SQL baseline (non-gating)
+        run: python scripts/bench_retrieval.py
+        continue-on-error: true
       - name: Measure synthetic SQLite read preflight (non-gating)
         run: python scripts/bench_storage_schema.py
         continue-on-error: true
