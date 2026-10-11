@@ -5,6 +5,7 @@ snapshot switching. A searched entity is read by its exact immutable key.
 """
 from __future__ import annotations
 
+import hashlib
 import re
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -14,6 +15,8 @@ from stellaris_supporter.localisation import LocalisationReferenceSelection
 from stellaris_supporter.parsing import BlockNode, PairNode, parse_bytes
 from stellaris_supporter.retrieval import Query, SearchHit, SearchService
 from stellaris_supporter.storage import SnapshotError, SnapshotRepository
+from stellaris_supporter.storage.identity import storage_json
+from stellaris_supporter.storage.repository import MAX_JSON_BYTES
 
 AnswerStatus = Literal["ok", "partial", "not_found", "unsupported", "error"]
 MAX_FACTS = 64
@@ -137,7 +140,7 @@ def _span(ref: SourceRef, offset: int) -> tuple[int, int]:
 
 
 def _field_structure(
-    definition: SourceRef, original: bytes, fields: list[Any]
+    definition: SourceRef, original: bytes, fields: list[Any], game_id: str,
 ) -> None:
     """Compare persisted fields with the parser's ordered, direct child pairs.
 
@@ -152,6 +155,8 @@ def _field_structure(
     root = parsed.document.items[0]
     if not isinstance(root, PairNode) or not isinstance(root.value, BlockNode):
         raise SnapshotError("SOURCE_CHANGED", "Definition is not a parsed key and block.")
+    if root.key_text != game_id:
+        raise SnapshotError("SOURCE_CHANGED", "Root technology ID differs from stored identity.")
     actual = [item for item in root.value.items if isinstance(item, PairNode)]
     if len(actual) != len(fields):
         raise SnapshotError("SOURCE_CHANGED", "Stored fields differ from original structure.")
@@ -203,15 +208,31 @@ class AnswerService:
         definition = _ref(candidate["source_ref"])
         if (
             stored["game_id"] != hit.game_id
+            or candidate["game_id"] != hit.game_id
             or stored["kind"] != hit.kind
+            or candidate["kind"] != hit.kind
+            or hit.kind != "technology"
             or definition != hit.definition_source_ref
+            or (definition.source_kind, definition.source_id,
+                definition.relative_path, definition.byte_start, definition.byte_end)
+            != (stored["source_kind"], stored["source_id"],
+                stored["relative_path"], stored["byte_start"], stored["byte_end"])
+            or isinstance(stored["occurrence"], bool)
+            or not isinstance(stored["occurrence"], int)
+            or stored["occurrence"] < 1
         ):
             raise SnapshotError("SOURCE_CHANGED", "Search result differs from candidate.")
+        expected_key = hashlib.sha256(storage_json({
+            "kind": stored["kind"], "game_id": stored["game_id"],
+            "source": definition.to_dict(), "occurrence": stored["occurrence"],
+        }, max_bytes=MAX_JSON_BYTES)).hexdigest()
+        if expected_key != hit.entity_key:
+            raise SnapshotError("SOURCE_CHANGED", "Entity key does not match source identity.")
         original = reader.read(definition)
         fields = candidate["fields"]
         if not isinstance(fields, list):
             raise SnapshotError("SOURCE_CHANGED", "Candidate fields are malformed.")
-        _field_structure(definition, original, fields)
+        _field_structure(definition, original, fields, hit.game_id)
         if not budget.charge(output=len(hit.display_name.encode("utf-8"))):
             return None
         citations: list[SourceRef] = [
