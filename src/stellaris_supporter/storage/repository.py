@@ -41,7 +41,6 @@ from stellaris_supporter.storage.identity import (
     SnapshotPolicy,
     SourceDescriptor,
     SourceFileInput,
-    canonical_json,
     snapshot_identity,
     storage_json,
 )
@@ -210,7 +209,7 @@ class SnapshotRepository:
         except SnapshotError:
             raise
         try:
-            check_schema(conn)
+            check_schema(conn, full_integrity=not read_only)
             yield conn
         except sqlite3.DatabaseError as exc:
             raise _db_error(exc) from exc
