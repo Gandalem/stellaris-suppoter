@@ -82,10 +82,7 @@ def _immediate(conn: sqlite3.Connection):
 
 
 def _as_json(obj: Any) -> str:
-    encoded = canonical_json(obj)
-    if len(encoded) > MAX_JSON_BYTES:
-        raise SnapshotError("LIMIT_EXCEEDED", "Record JSON exceeds serialization budget.")
-    return encoded.decode("utf-8")
+    return canonical_json(obj, max_bytes=MAX_JSON_BYTES).decode("utf-8")
 
 
 def _validate_ref(
@@ -184,7 +181,6 @@ class SnapshotRepository:
                 raise SnapshotError("PATH_REJECTED", "Game root is a link.")
         _ensure_directory(self.data_dir)
         self.db_path = self.data_dir / "snapshots.sqlite3"
-        self.cache = BlobCache(self.data_dir / "cache")
         self._ensure_db_paths()
         exists = self.db_path.exists()
         if exists:
@@ -194,6 +190,7 @@ class SnapshotRepository:
                 check_schema(conn)
         with closing(connect(self.db_path)) as conn:
             initialise_schema(conn, new_db=not exists)
+        self.cache = BlobCache(self.data_dir / "cache")
         # Do not automatically invalidate an active build owned by another process.
         # recover_interrupted() is an explicit, lock-protected operator action.
 
