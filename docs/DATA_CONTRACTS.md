@@ -38,7 +38,7 @@ LocalisationDocument: entries(ordered), headers, comments, unknown_spans, diagno
 
 LocalisationCatalog: 동일 snapshot의 여러 문서를 순서대로 보존합니다. 같은 (language,key)의 정의가 둘 이상이면 ambiguous이고 어떤 값도 조용히 선택하지 않습니다.
 
-LocalisationResolution: key, language_requested, language_used(string|null), display_value, source_ref(선택한 번역|null), reference_source_refs(확장 참조의 번역 출처 목록), fallback(none|english|id), resolution(resolved|partial|unresolved|ambiguous), diagnostics, visits, scanned_bytes, output_bytes, truncated. fallback은 **요청 언어 → 영어 → 원래 ID**이고, 누락·중복·순환·동적 scope/formatting·한도 초과를 구별합니다. 동적 표현식은 실행하지 않습니다. partial은 일부 해석·보존은 됐으나 완전한 정적 확정이 불가능한 경우입니다; unresolved는 번역이 양 언어에 없을 때, ambiguous는 중복 정의의 우선순위가 불명인 경우입니다.
+LocalisationResolution: key, language_requested, language_used(string|null), display_value, source_ref(선택한 번역|null), reference_source_refs(확장 참조의 번역 출처 목록), reference_selections(참조 key·실제 선택 언어·SourceRef의 순서 있는 목록), fallback(none|english|id), resolution(resolved|partial|unresolved|ambiguous), diagnostics, visits, scanned_bytes, output_bytes, truncated. fallback은 **요청 언어 → 영어 → 원래 ID**이고, 누락·중복·순환·동적 scope/formatting·한도 초과를 구별합니다. 동적 표현식은 실행하지 않습니다. partial은 일부 해석·보존은 됐으나 완전한 정적 확정이 불가능한 경우입니다; unresolved는 번역이 양 언어에 없을 때, ambiguous는 중복 정의의 우선순위가 불명인 경우입니다.
 
 TechnologyLocalisedName: 기존 immutable TechnologyCandidate와 별도의 LocalisationResolution을 조합합니다. 기술 정의·필드 SourceRef를 번역 SourceRef로 덮어쓰지 않습니다. 이는 TASK-010 DB persistence schema가 아니라 순수 메모리 연결 계약입니다.
 
