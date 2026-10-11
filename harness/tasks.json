@@ -212,7 +212,7 @@
     {
       "id": "TASK-009",
       "title": "Localisation reader",
-      "status": "todo",
+      "status": "doing",
       "feature_ids": [
         "F-006"
       ],
@@ -231,7 +231,11 @@
       "acceptance": [
         "Fallback, references, cycles and duplicates have explicit outcomes."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-009-localisation-reader-resolver.md",
+        "harness/evidence/TASK-009-review-followup.md",
+        "harness/evidence/TASK-009-r5-document-integrity.md"
+      ]
     },
     {
       "id": "TASK-010",

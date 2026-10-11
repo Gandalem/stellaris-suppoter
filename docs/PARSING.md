@@ -35,9 +35,17 @@ potential, allow, prerequisites, weight, modifier 등의 이름만 보고 전체
 
 ## 현지화
 
-일반 YAML reader로 무조건 처리하지 않습니다. 언어 header, key, 선택적 숫자 marker, quoted value, comment를 corpus로 검증하는 전용 reader를 만듭니다. marker는 metadata이며 게임 패치 버전이 아닙니다.
+TASK-009 전용 localisation reader는 일반 YAML parser를 사용하지 않습니다. UTF-8 strict/BOM, CRLF/LF, 언어 header, key, 선택적 숫자 marker, quoted value, lexical `\"`/`\\` escape, comment, 순서·중복 정의와 원본 byte span을 보존합니다. marker는 문자열 metadata이며 게임 패치 버전이 아닙니다. 잘못된 header, 미종결 값, 미지원 문법, 인코딩 오류는 정상 항목으로 만들지 않고 unknown span과 diagnostic으로 남깁니다.
 
-한국어 → 영어 → ID fallback과 각 출처를 기록합니다. 정적 치환은 깊이·방문 key 제한으로 순환을 차단합니다. 동적 scope, 아이콘·색상 태그, escape는 raw와 표시값을 분리하며 실행하지 않습니다. 번역 출처가 기술 정의 출처를 덮어쓰지 않습니다.
+resolver는 **요청 언어 → 영어 → 원래 ID** fallback을 적용하고 실제 사용한 언어 및 번역 SourceRef를 기록합니다. 검증되지 않은 중복 정의 우선순위는 `ambiguous`로 표시하고 마지막 값을 임의 선택하지 않습니다. **`$KEY$` 형태의 정적 참조만** 안전하게 확장하며, 참조별 key·선택 언어·SourceRef를 별도로 보존합니다. 누락 참조, 자기 참조, 다중 key 순환은 명시적 diagnostic과 `partial` 상태로 표시합니다.
+
+미지원 동적 scope(`[Root.GetName]`, `[Root.$KEY$]`), 아이콘(`£`)·색상(`§`) 태그 및 미지원 escape(`\$KEY$` 등)는 정적 참조를 찾기 **전에** 보호 영역으로 분류합니다. 해당 영역 안의 `$KEY$`를 확장하지 않고 원문을 그대로 유지하며 `LOC_DYNAMIC_UNSUPPORTED` 또는 `LOC_UNSUPPORTED_ESCAPE` 진단을 남깁니다. 보호 영역 밖의 정상 정적 참조는 계속 확장합니다. 엔진의 동적 표현식은 실행하거나 의미를 추측하지 않습니다.
+
+reader 기본 자원 한도는 파일당 16 MiB, 한 행당 1 MiB, 항목/전체 기록(header·comment·unknown 포함) 각 100,000개, 진단 1,000개입니다. entry prefix는 선택적 숫자 marker와 whitespace를 서로 겹치지 않는 순방향 스캔으로 처리합니다. 각 기록을 추가하기 **직전** record budget을 검사하고, 정확히 한도에 도달한 파일 종료는 성공, 다음 기록 추가는 `LIMIT_EXCEEDED`와 `complete=False`를 반환합니다.
+
+resolver 기본·지원 최대 참조 depth는 64, visits는 4,096, 누적 source scan은 8 MiB, 확장 출력은 UTF-8 1 MiB, diagnostics는 100입니다. 한도 초과를 무한 탐색·조용한 성공으로 바꾸지 않습니다. 원본 bytes·SHA-256·안전한 상대 경로·snapshot 일치가 검증된 입력 문맥으로 SourceRef를 생성하며, technology 정의·필드 출처와 localisation entry·정적 확장 출처는 섞지 않습니다.
+
+현재 수용 근거는 프로젝트 직접 작성 합성 fixture뿐입니다. 실제 게임 설치 파일과 게임 엔진 의미, 로드 우선순위, TASK-010 SQLite persistence는 아직 검증·구현되지 않았습니다.
 
 ## 로컬 조사 보고
 
