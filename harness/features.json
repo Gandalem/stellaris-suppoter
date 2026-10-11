@@ -84,7 +84,7 @@
       "id": "F-006",
       "title": "Localisation resolution",
       "milestone": "v0.1",
-      "status": "in_progress",
+      "status": "verified",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/PARSING.md"
@@ -93,7 +93,8 @@
         "harness/evidence/TASK-002-synthetic-corpus.md",
         "harness/evidence/TASK-009-localisation-reader-resolver.md",
         "harness/evidence/TASK-009-review-followup.md",
-        "harness/evidence/TASK-009-r5-document-integrity.md"
+        "harness/evidence/TASK-009-r5-document-integrity.md",
+        "harness/evidence/TASK-009-main-integration.md"
       ]
     },
     {

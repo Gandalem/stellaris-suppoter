@@ -72,3 +72,19 @@ Package run `38128348984`: Ubuntu 279 passed, Windows 276 passed + original 3 sk
 R5 evidence: [TASK-009 R5 documentation review follow-up](../evidence/TASK-009-r5-document-integrity.md). Historical prior evidence/CI remains unchanged. Final evidence/ledger head requires its own PR CI before requesting independent re-review.
 
 TASK-009 remains `doing`, F-005 and F-006 `in_progress`, E-015/E-016/E-017 `pass`, TASK-010 `todo`, latest_game_version `null`. PR is not merged; no threads were resolved.
+
+
+## Actual main integration and proposed official closure (2026-10-11)
+
+PR #17 was **actually merged** into protected `main`:
+- final implementation head `c4842aaae6f88216f33711d6a95b141074e2dad5`
+- merge commit `f9638850dfd514790cf90c194f9ff062e7819f12`
+- technical follow-up [R1–R5 review](https://github.com/Gandalem/stellaris-suppoter/pull/17#pullrequestreview-5482768133) was recorded as `COMMENTED` (technical hold lifted; not a formal APPROVED event)
+- actual `main` Package push run [38128971447](https://github.com/Gandalem/stellaris-suppoter/actions/runs/38128971447) on the merge commit: Ubuntu Python 3.11.17 **279 passed**, Windows Python 3.13.15 **276 passed + three existing POSIX-only skips**. Ruff and `scripts/check_harness.py` succeeded on both OS.
+- actual `main` Documentation harness push run [38128971437](https://github.com/Gandalem/stellaris-suppoter/actions/runs/38128971437): Ubuntu/Windows succeeded.
+
+TASK-002 synthetic corpus and TASK-007 prerequisites are done; E-015/E-016/E-017 stay `pass`. F-006 requirements (Korean→English→ID, explicit missing/cycles, dynamic expression non-execution) are satisfied **for synthetic-supported behaviour**. Historical R1–R5 evidence is preserved. [Actual main integration evidence](../evidence/TASK-009-main-integration.md) was added.
+
+This **separate closure PR branch** proposes TASK-009=`done`, F-006=`verified`, active_task=`null`, next_task=`TASK-010`. The official base main still carries the pre-closure state **until the closure PR is independently reviewed and actually merged with main CI**. F-005 remains `in_progress`, TASK-010 `todo`, F-007 `planned`, E-018/E-019 `not_run`, latest_game_version `null`, product_implemented `false`.
+
+Scope remains project-authored **synthetic fixtures only**; real game engine/load order/install compatibility is **not verified**. No SQLite schema/repository implementation or TASK-010 development was started.
