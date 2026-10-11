@@ -1,7 +1,6 @@
 """E-026: installed/module CLI end-to-end on authored technology fixtures only."""
 from __future__ import annotations
 
-import hashlib
 import json
 import subprocess
 import sys
@@ -216,7 +215,7 @@ def test_e026_symlink_component_rejected_where_supported(tmp_path: Path) -> None
         assert rc == 4 and obj["status"] == "error"
         return
     # This validates the path guard on platforms that cannot create links.
-    from stellaris_supporter.storage.cache import live_source_relative_path
     from stellaris_supporter.storage import SnapshotError
+    from stellaris_supporter.storage.cache import live_source_relative_path
     with pytest.raises(SnapshotError):
         live_source_relative_path(other / "foreign.txt", game)

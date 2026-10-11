@@ -68,7 +68,7 @@ def initialise_config(
         f"data_dir = {json.dumps(str(private), ensure_ascii=False)}\n"
         f"language = {json.dumps((language or 'ko').lower())}\n"
         "[network]\nenabled = false\n"
-    ).encode("utf-8")
+    ).encode()
 
     temporary: str | None = None
     published = False

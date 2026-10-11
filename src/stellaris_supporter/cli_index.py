@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
-from pathlib import Path
 
 from stellaris_supporter.config import Settings
 from stellaris_supporter.discovery.inventory import scan_inventory
