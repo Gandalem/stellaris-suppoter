@@ -4,6 +4,8 @@
 
 PR #19 보완 합성 회귀는 R1에서 원본/복제 동일 bytes 경로 바꿔치기·루트 변경·source ID 충돌·symlink, R2에서 NFC 한국어/분해형 한글 자모/Latin combining/BOM/CRLF/원문 byte 위치, R3에서 정책 JSON 1MiB 정확 경계·초과·중첩·노드 수, R4에서 DB cache pointer 위조와 과거 정상 snapshot 읽기를 검증합니다. R5는 ADR 테이블 행 연속성과 합성 DB 크기별 `PRAGMA quick_check` 대비 read-only schema preflight 비용을 별도 **비차단** 방식으로 측정합니다. 실게임 검색 warm p95나 실제 파일시스템 공격 완전 방어를 이 측정 결과로 보장하지 않습니다. 현지화 reader/resolver의 합성 E-015~017 검증은 유지되며 TASK-010은 SQLite 저장소와 스냅샷 원자성에 대한 별도 E-018/E-019 부정·경계 회귀를 추가합니다. 이는 DB Repository 단위 검증으로, DB를 포함한 검색·인용/CLI 종단 연결이나 실제 게임 설치본 검증 완료를 뜻하지 않습니다. [평가 사례](../harness/evals.jsonl)는 실행 근거가 있는 항목만 pass로 기록합니다.
 
+TASK-011 검색 후보에는 `tests/test_retrieval.py`의 합성 E-020/021/022 정답·정규화·FTS 비활성·SQL 메타문자·스냅샷 격리 및 cache SHA 검사가 추가됩니다. 검색 PR의 Ubuntu/Windows 합성 회귀 통과 및 평가 결과는 `harness/evidence/TASK-011-retrieval.md`에 기록합니다. 실제 기능 종료는 별도 독립 리뷰·실제 main 병합·main push CI 이후에만 판단합니다. 실게임 검색 검증이나 공식 p95 보장은 아닙니다.
+
 ## 테스트 계층
 
 | 계층 | 검증 대상 | 데이터 |
@@ -44,3 +46,6 @@ python scripts/generate_synthetic_corpus.py --output ./tmp-synthetic
 수정한 기능의 실패 재현 → 관련 unit/integration → 전체 회귀 → 인용/안전/버전 평가 → 패키지 스모크 순서입니다. 한도·보안·unknown 처리의 회귀는 필수입니다. coverage는 참고 지표이며 100% 숫자만으로 정확성을 보장하지 않습니다. v0.1 전체 합성 필수 평가가 통과하기 전 verified로 바꾸지 않습니다.
 
 실패한 테스트를 삭제·skip하거나 broad exception으로 숨겨 통과시키지 않습니다. flaky test는 seed와 원인을 기록하고 수정합니다. 미실행·환경상 불가·실제 실패를 각각 not_run/blocked/fail로 구분합니다.
+
+
+PR #21 R1~R3 follow-up은 합성 테스트에서 dynamic §/£/bracket/escaped dollar, 정적 다단계/영어 참조의 전체 SourceRef, 중복·순환·누락 참조의 partial 반환, 다른 entity/key/snapshot 출처의 별칭 위조와 조작된 byte span을 평가합니다. 기존 E-020~022와 34개 검색 테스트를 그대로 유지하고 추가 테스트를 양 OS Package CI에 포함합니다. R4 FTS 탐지/중복 SQL 제거는 검색 가속을 증명하지 않으며, 초기 SQL-only microbenchmark는 FTS on/off E2E 비교가 아닙니다. 독립 리뷰 및 실제 병합 이전에 TASK-011 done/F-008 verified를 선언하지 않습니다.

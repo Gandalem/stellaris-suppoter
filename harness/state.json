@@ -2,9 +2,9 @@
   "schema_version": 1,
   "phase": "implementation",
   "product_implemented": false,
-  "active_task": null,
+  "active_task": "TASK-011",
   "next_task": "TASK-011",
-  "last_session": "harness/sessions/2026-10-11-task-010-main-closure.md",
+  "last_session": "harness/sessions/2026-10-11-task-011-retrieval.md",
   "latest_game_version": null,
   "updated_on": "2026-10-11",
   "notes": [
@@ -20,6 +20,9 @@
     "TASK-010 implementation began from main d2be6af6795f7bf2b5e5e2ae1be4672f00d6618c after PR #18 actual merge and successful main Package 38130135720 and Documentation harness 38130135692. TASK-010 doing; F-007 in_progress; E-018/E-019 not_run until tests. No real game files used.",
     "TASK-010 synthetic E-018/E-019 implementation candidate 7a72588dad8b298a4c3b52befef964484baedc10: PR Package run 38131453597 on test-merge 8df521765fd6b81b3c15f4fd492ff22dc8181614 Ubuntu Python 3.11.17 SQLite 3.45.1 337 passed and Windows Python 3.13.15 SQLite 3.50.4 334 passed + 3 existing skips. Ruff and harness passed both; Documentation run 38131453587 both OS success. Evidence harness/evidence/TASK-010-sqlite-snapshots.md. TASK-010 remains doing, F-007 in_progress pending PR #19 independent review/actual merge/main CI; real game unverified, latest_game_version null, product_implemented false.",
     "PR #19 R1-R5 review follow-up: synthetic negative regressions +22 cases. Code candidate e3c598b92de53a54baa2bb0bf708a60f457dba9f PR test-merge 9d4fcdaf77226687dd1f033fb5f4b5eb52e339cb; Package 38133251652 Ubuntu 359 passed Windows 356 passed + existing 3 skips, Ruff/harness pass; Docs 38133251707 both pass; push CI 38133247585 success. R5 timing measured synthetic DB only. Evidence harness/evidence/TASK-010-review-followup.md. TASK-010 doing/F-007 in_progress; main merge approval withheld pending independent re-review.",
-    "PR #19 reviewed head 1e42ba768e358796006f62052da6eca043d48c85 actually merged to main as 0eee7f42ab7d580c89b99aa3b9aa5912bfae10a6. Main push Package 38133902254 (Ubuntu 359 passed; Windows 356 passed, 3 existing skips; Ruff/harness success) and Documentation harness 38133902283 (both OS success). R1-R5 final COMMENTED technical review cleared. Separate closure PR proposes TASK-010 done/F-007 verified for synthetic snapshot scope only; TASK-011 remains todo until that closure PR actually merges and main CI succeeds. See harness/evidence/TASK-010-main-integration.md."
+    "PR #19 reviewed head 1e42ba768e358796006f62052da6eca043d48c85 actually merged to main as 0eee7f42ab7d580c89b99aa3b9aa5912bfae10a6. Main push Package 38133902254 (Ubuntu 359 passed; Windows 356 passed, 3 existing skips; Ruff/harness success) and Documentation harness 38133902283 (both OS success). R1-R5 final COMMENTED technical review cleared. Separate closure PR proposes TASK-010 done/F-007 verified for synthetic snapshot scope only; TASK-011 remains todo until that closure PR actually merges and main CI succeeds. See harness/evidence/TASK-010-main-integration.md.",
+    "TASK-011 retrieval implementation starts from PR #20 actual main merge 458743fb189edcd4aeeda4e51c72204071801c31 after Package 38134576804 / Docs 38134576805 succeeded on both OS. TASK-011 doing, F-008 in_progress. E-020..022 remain not_run pending actual tests; see harness/evidence/TASK-011-retrieval.md. No real game files or natural-language answer/CLI search implemented.",
+    "TASK-011 PR #21 verified code/test candidate 7d6ccd580ae56ba07327ba2bbea09e2cc3a7d78a / test-merge 8b0eddcaab6d7db716bb10a5334080e968d1ef80; Package 38135547105 Ubuntu 393 passed / Windows 390 passed + 3 prior skips; Ruff/harness and Documentation 38135547080 both OS success. E-020/021/022 pass on synthetic. Remains doing/F-008 in_progress pending independent review/real merge/main CI.",
+    "PR #21 R1-R4 correction branch preserves TASK-011 doing/F-008 in_progress and E-020..022 synthetic pass evidence. R1 dynamic markup no verified promotion; R2 alias SourceRef/entity binding; R3 nested static reference provenance; R4 redundant FTS+LIKE branch removed, no acceleration claim. New 16 synthetic regression cases added; full two-OS final CI/evidence listed in TASK-011-review-followup.md; no game data, merge, protection or review thread changes."
   ]
 }
