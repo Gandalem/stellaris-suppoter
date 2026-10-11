@@ -568,23 +568,25 @@ def test_e026_pre_stage_technology_root_id_validation(tmp_path: Path) -> None:
 
 
 def test_e026_large_search_payload_abstains_without_partial_json(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    game, _, config = initialised(tmp_path)
-    technology = game / "common/technology/demo.txt"
-    definitions = "".join(f"demo_{i:03d} = {{ tier = 2 }}\n" for i in range(8))
-    technology.write_bytes(definitions.encode())
-    korean = game / "localisation/korean/demo_l_korean.yml"
-    long_name = "합금" * 30_000
-    korean.write_text(
-        "l_korean:\n" + "".join(
-            f' demo_{i:03d}:0 "{long_name}{i}"\n' for i in range(8)
-        ), encoding="utf-8",
-    )
-    rc, indexed, _ = query(config, "index")
-    assert rc == 0, indexed
-    rc, output, stderr = query(config, "search", "demo_", "--limit", "10")
-    assert rc == 4
-    assert output["status"] == "error" and output["results"] == []
-    assert output["diagnostics"][0]["code"] == "LIMIT_EXCEEDED"
-    assert "Traceback" not in stderr
+    import stellaris_supporter.cli as cli
+
+    # A synthetic retrieval payload with an oversized static display value.
+    # Existing E-026 subprocess tests separately prove normal search service
+    # integration; this case isolates the complete stdout serialization gate.
+    huge = {
+        "schema_version": 1, "command": "search", "status": "ok",
+        "results": [{"display_name": "합금" * 400_000}],
+        "diagnostics": [],
+    }
+    monkeypatch.setattr(cli, "_run_command", lambda _args: (0, huge))
+    rc = cli.main(["--format", "json", "search", "demo_tech"])
+    stdout = capsys.readouterr().out
+    result = json.loads(stdout)
+    assert rc == 4 and result["status"] == "error"
+    assert result["results"] == []
+    assert result["diagnostics"][0]["code"] == "LIMIT_EXCEEDED"
+    assert len(stdout.encode("utf-8")) < 1024
+
