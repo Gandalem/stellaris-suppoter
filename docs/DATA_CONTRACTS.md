@@ -32,7 +32,17 @@ fields 각각은 name, raw_value, normalized_value, value_type, source_ref를 �
 
 Relation: from_entity_key, relation_kind, target_game_id, target_entity_key|null, source_ref, status(resolved|unresolved|ambiguous), conditions_raw|null. prerequisite, event_reference, script_reference는 정적으로 확인한 관계만 의미하며 실행을 보장하지 않습니다.
 
-LocalisationEntry: key, language, raw_value, display_value, source_ref, references, resolution. 중복을 보존합니다. fallback은 요청 언어 → 영어 → ID입니다. 정적 치환은 깊이/순환 제한을 두고 동적 표현식은 실행하지 않습니다.
+LocalisationEntry: key, language, marker(string|null), occurrence, source_ref, value_source_ref, quoted_value_source_ref, column_start, column_end, value_column_start, raw_value(원본 quotes 내부), display_value(정적 lexical escape 처리만), has_unsupported_escape. 원본 bytes는 immutable source와 SourceRef span으로 참조하고 entry마다 중첩 raw 문자열을 복제하지 않습니다. BOM·CRLF 및 멀티바이트 값에도 0-based half-open byte span과 1-based column을 유지합니다. 지원되지 않은 행은 unknown_spans와 diagnostic으로 유지합니다.
+
+LocalisationDocument: entries(ordered), headers, comments, unknown_spans, diagnostics, complete, context. SourceContext의 snapshot/source ID·상대 경로·SHA-256과 원본 bytes 일치 여부를 입구에서 검증합니다. 불일치·디코딩 오류는 원문을 임의 재해석하지 않는 명시적 오류입니다.
+
+LocalisationCatalog: 동일 snapshot의 여러 문서를 순서대로 보존합니다. 같은 (language,key)의 정의가 둘 이상이면 ambiguous이고 어떤 값도 조용히 선택하지 않습니다.
+
+LocalisationResolution: key, language_requested, language_used(string|null), display_value, source_ref(선택한 번역|null), reference_source_refs(확장 참조의 번역 출처 목록), fallback(none|english|id), resolution(resolved|partial|unresolved|ambiguous), diagnostics, visits, scanned_bytes, output_bytes, truncated. fallback은 **요청 언어 → 영어 → 원래 ID**이고, 누락·중복·순환·동적 scope/formatting·한도 초과를 구별합니다. 동적 표현식은 실행하지 않습니다. partial은 일부 해석·보존은 됐으나 완전한 정적 확정이 불가능한 경우입니다; unresolved는 번역이 양 언어에 없을 때, ambiguous는 중복 정의의 우선순위가 불명인 경우입니다.
+
+TechnologyLocalisedName: 기존 immutable TechnologyCandidate와 별도의 LocalisationResolution을 조합합니다. 기술 정의·필드 SourceRef를 번역 SourceRef로 덮어쓰지 않습니다. 이는 TASK-010 DB persistence schema가 아니라 순수 메모리 연결 계약입니다.
+
+reader 기본 한도: 파일 16 MiB, 행 1 MiB, entry 100,000, 모든 기록(header/comment/unknown 포함) 100,000, diagnostic 1,000. resolver 기본 한도: reference depth 64(지원 설정 최대도 64), visits 4,096, scanned source bytes 8 MiB, expanded UTF-8 output 1 MiB, diagnostics 100. 한도 초과는 LIMIT_EXCEEDED와 partial/complete=false로 표시하며 숨겨진 truncate-success를 만들지 않습니다.
 
 ## 질의·답변
 
