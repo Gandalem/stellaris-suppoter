@@ -412,13 +412,13 @@ class SearchService:
               FROM aliases a WHERE a.normalized=?
             UNION ALL
             SELECT n.entity_key,4,'name_prefix',n.language,n.source_ref
-              FROM names n WHERE n.normalized LIKE ? ESCAPE '\' AND n.language IN ({languages})
+              FROM names n WHERE n.normalized LIKE ? ESCAPE char(92) AND n.language IN ({languages})
             UNION ALL
             SELECT n.entity_key,5,'name_substring',n.language,n.source_ref
-              FROM names n WHERE n.normalized LIKE ? ESCAPE '\' AND n.language IN ({languages})
+              FROM names n WHERE n.normalized LIKE ? ESCAPE char(92) AND n.language IN ({languages})
             UNION ALL
             SELECT d.entity_key,6,'description_lexical','',d.source_ref
-              FROM descriptions d WHERE d.normalized LIKE ? ESCAPE '\'
+              FROM descriptions d WHERE d.normalized LIKE ? ESCAPE char(92)
         """
         lang_sql = "?,?" if query.language == "korean" else "?"
         # Only constant SQL fragments are interpolated, never an input term,
@@ -434,7 +434,7 @@ class SearchService:
                 SELECT d.entity_key,6,'description_lexical','',d.source_ref
                 FROM descriptions_fts
                 JOIN descriptions d ON d.entity_key=descriptions_fts.entity_key
-                WHERE descriptions_fts MATCH ? AND d.normalized LIKE ? ESCAPE '\'
+                WHERE descriptions_fts MATCH ? AND d.normalized LIKE ? ESCAPE char(92)
             """)
             params.extend(['"' + term.replace('"', '""') + '"', substring])
         kind_filter = "" if query.kind is None else "WHERE p.kind=?"
