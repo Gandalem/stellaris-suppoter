@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -275,3 +276,76 @@ def test_force_preserves_unmanaged_empty_directory(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     assert unmanaged.is_dir()
+
+
+
+def _output_tree_snapshot(root: Path) -> dict[str, tuple[str, bytes | str | None, int]]:
+    """Capture file contents, link targets and directory/file modification times."""
+
+    state: dict[str, tuple[str, bytes | str | None, int]] = {
+        ".": ("directory", None, root.lstat().st_mtime_ns)
+    }
+    for path in sorted(root.rglob("*")):
+        relative = path.relative_to(root).as_posix()
+        modified_at = path.lstat().st_mtime_ns
+        if path.is_symlink():
+            state[relative] = ("symlink", os.readlink(path), modified_at)
+        elif path.is_file():
+            state[relative] = ("file", path.read_bytes(), modified_at)
+        elif path.is_dir():
+            state[relative] = ("directory", None, modified_at)
+        else:
+            raise AssertionError(f"unexpected output entry type: {relative}")
+    return state
+
+
+@pytest.mark.parametrize(
+    "manifest_json",
+    ["[]", "null", '"text"', "123", "true"],
+    ids=["array", "null", "string", "number", "boolean"],
+)
+def test_force_rejects_non_object_manifest_without_mutating_output(
+    tmp_path: Path,
+    manifest_json: str,
+) -> None:
+    output = tmp_path / "owned"
+    assert run_generator(output).returncode == 0
+
+    (output / "manifest.json").write_text(manifest_json, encoding="utf-8")
+    (output / "unmanaged.txt").write_bytes(b"keep unmanaged content")
+    (output / "unmanaged-empty").mkdir()
+
+    external = tmp_path / "outside.txt"
+    external.write_bytes(b"external sentinel")
+    link = output / "unmanaged-link"
+    try:
+        link.symlink_to(external)
+    except (OSError, NotImplementedError):
+        # The core case runs on every OS; link targets are checked when available.
+        pass
+
+    before = _output_tree_snapshot(output)
+    result = run_generator(output, "--force")
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr.strip() == "error: existing synthetic manifest must be a JSON object"
+    assert "Traceback" not in result.stderr
+    assert _output_tree_snapshot(output) == before
+    assert external.read_bytes() == b"external sentinel"
+
+
+def test_force_refresh_keeps_committed_manifest_and_fixture_bytes_deterministic(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "owned"
+    assert run_generator(output).returncode == 0
+    expected_paths = ["manifest.json", *(str(entry["path"]) for entry in manifest_files())]
+    initial_bytes = {relative: (output / relative).read_bytes() for relative in expected_paths}
+
+    result = run_generator(output, "--force")
+
+    assert result.returncode == 0, result.stderr
+    for relative in expected_paths:
+        assert (output / relative).read_bytes() == initial_bytes[relative]
+        assert (output / relative).read_bytes() == (ROOT / relative).read_bytes()
