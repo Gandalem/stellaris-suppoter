@@ -20,8 +20,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from stellaris_supporter.domain import SourceRef, TechnologyCandidate
-from stellaris_supporter.localisation import LocalisationEntry, TechnologyLocalisedName
+from stellaris_supporter.domain import SourceRef, TechnologyAdaptResult, TechnologyCandidate
+from stellaris_supporter.localisation import (
+    LocalisationDocument,
+    LocalisationEntry,
+    TechnologyLocalisedName,
+)
 from stellaris_supporter.storage.cache import (
     BlobCache,
     _ensure_directory,
@@ -237,6 +241,56 @@ class SnapshotRepository:
             raise SnapshotError("PATH_REJECTED", "Live sources require an explicit game root.")
         verify_live_source(
             source.live_path, self.game_root, descriptor.file_sha256, descriptor.size
+        )
+
+    def stage_from_results(
+        self,
+        sources: tuple[SourceFileInput, ...],
+        policy: SnapshotPolicy,
+        *,
+        technology_results: tuple[TechnologyAdaptResult, ...] = (),
+        localisation_documents: tuple[LocalisationDocument, ...] = (),
+        localised_names: tuple[TechnologyLocalisedName, ...] = (),
+        cancel: _CANCEL | None = None,
+    ) -> SnapshotIdentity:
+        """Safe adapter/reader boundary: preserve original diagnostics/completeness.
+
+        The low-level stage() accepts pre-validated records. This entrypoint
+        accepts full ParseResult-derived and LocalisationDocument-derived
+        products so an encoding/limit/unknown error cannot become an
+        unexplained successful empty snapshot merely by dropping diagnostics.
+        """
+        expected = snapshot_identity(sources, policy)
+        descriptions = {d.key: d for d in expected.sources}
+        original = {s.descriptor().key: s.data for s in sources}
+        for doc in localisation_documents:
+            context = doc.context
+            key = (context.source_kind, context.source_id, context.relative_path)
+            descriptor = descriptions.get(key)
+            if (
+                context.snapshot_id != expected.snapshot_id or descriptor is None
+                or descriptor.file_sha256 != context.file_sha256
+                or doc._source != original.get(key)
+            ):
+                raise SnapshotError(
+                    "SOURCE_CHANGED", "Localisation document and input manifest differ."
+                )
+        candidates = tuple(c for result in technology_results for c in result.candidates)
+        entries = tuple(entry for doc in localisation_documents for entry in doc.entries)
+        diagnostics = tuple(
+            diagnostic
+            for result in technology_results for diagnostic in result.diagnostics
+        ) + tuple(
+            diagnostic for doc in localisation_documents for diagnostic in doc.diagnostics
+        )
+        partial = (
+            any(not result.complete or not result.ok for result in technology_results)
+            or any(not doc.complete or not doc.ok for doc in localisation_documents)
+        )
+        return self.stage(
+            sources, policy, candidates=candidates, entries=entries,
+            localised_names=localised_names, diagnostics=diagnostics,
+            partial=partial, cancel=cancel,
         )
 
     def stage(
