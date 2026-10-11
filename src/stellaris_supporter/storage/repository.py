@@ -313,13 +313,12 @@ class SnapshotRepository:
             raise SnapshotError("SCHEMA_VERSION_UNSUPPORTED", "Repository cannot write this schema.")
         sid = identity.snapshot_id
         by_key = {d.key: d for d in identity.sources}
-        bytes_by_key = {
-            item.descriptor().key: item.data for item in sources
-        }
+        source_by_key = {item.descriptor().key: item for item in sources}
+        bytes_by_key = {key: item.data for key, item in source_by_key.items()}
         if len(candidates) + len(entries) > MAX_RECORDS or len(diagnostics) > MAX_DIAGNOSTICS:
             raise SnapshotError("LIMIT_EXCEEDED", "Indexed record count exceeds budget.")
-        for source in sources:
-            self._check_live(source, by_key[source.descriptor().key])
+        for key, source in source_by_key.items():
+            self._check_live(source, by_key[key])
         if cancel is not None and cancel():
             raise SnapshotError("CANCELLED", "Staging was cancelled before starting.")
 
@@ -348,11 +347,10 @@ class SnapshotRepository:
 
         try:
             with self._connection() as conn, _immediate(conn):
-                for source in sources:
+                for key, source in source_by_key.items():
                     if cancel is not None and cancel():
                         raise SnapshotError("CANCELLED", "Staging was cancelled.")
-                    desc = by_key[source.descriptor().key]
-                    self.cache.put(source.data, desc.file_sha256)
+                    self.cache.put(source.data, by_key[key].file_sha256)
                 for desc in identity.sources:
                     self.cache.verify(desc.file_sha256, desc.size)
                 if before_ready is not None:
@@ -361,7 +359,7 @@ class SnapshotRepository:
                     raise SnapshotError("CANCELLED", "Staging was cancelled.")
 
                 for d in identity.sources:
-                    original = next(src for src in sources if src.descriptor().key == d.key)
+                    original = source_by_key[d.key]
                     self._check_live(original, d)
                     conn.execute(
                         "INSERT INTO source_files(snapshot_id,source_kind,source_id,"
