@@ -10,12 +10,12 @@ from __future__ import annotations
 import json
 import sqlite3
 import sys
+from collections.abc import Callable
 from contextlib import closing
 from pathlib import Path
 from statistics import median
 from tempfile import TemporaryDirectory
 from time import perf_counter_ns
-from typing import Callable
 
 from stellaris_supporter.storage import SnapshotPolicy, SnapshotRepository
 from stellaris_supporter.storage.schema import check_schema, connect
