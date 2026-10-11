@@ -62,6 +62,6 @@ TASK-012의 `answers.py`는 검색→정적 formatter와 출처 검증의 메모
 
 저장소 손상·중단·스키마 불일치는 [운영·복구](OPERATIONS.md)를 따릅니다. 성능 개선은 기준선 측정 뒤 추가하며 재현성과 출처 보존을 희생하지 않습니다.
 
-## TASK-013 실제 CLI 수직 연결 (후속 검증 후보)
+**TASK-013 실제 CLI 수직 연결 (후속 검증 후보)**
 
 `cli.py`는 argparse 전역·subcommand 옵션과 JSON/text·종료 코드를 관리합니다. `cli_setup.py`는 기존 설정의 무단 덮어쓰기를 막고 private 설정만 생성합니다. `cli_index.py`는 game_root의 지원되는 3개 하위 경로만 `scan_inventory`하고 live 원본을 no-follow read, SHA/size/relative identity로 재검증합니다. `SnapshotPolicy`에는 개인 절대 경로나 시각을 넣지 않으며 parser/adapter/localisation을 `stage_from_results`에 결합합니다. `activate(...,sources=...)`가 live manifest/캐시를 다시 확인하고 active를 원자적으로 교체합니다. search는 `SearchService`, show는 `AnswerService.answer(exact_game_id=True)`, snapshots는 bounded repo API로 연결합니다. SQLite v1 및 SourceRef identity는 변경하지 않습니다.

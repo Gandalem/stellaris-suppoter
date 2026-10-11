@@ -54,6 +54,6 @@ TASK-012 E-023–025는 `tests/test_answers.py`의 저작 합성 원본으로 fi
 
 TASK-012 R1–R5 재검토 합성 회귀는 `tests/test_answers.py`에 서로 다른 파일로부터 대여한 Field/Value SourceRef, 저장 JSON의 필드 구문/occurrence 위조, Combat Computers/Chance Discovery 정확 검색과 미지원 의도, Query 유효성 우선순위, 100건 공통 예산·cache.read 호출 수, raw value 512/513 bytes를 포함합니다. 후속 재평가 근거는 `harness/evidence/TASK-012-review-followup.md`를 참고합니다.
 
-## TASK-013 E-026 CLI contract
+**TASK-013 E-026 CLI contract**
 
 `tests/test_cli_vertical.py`는 실제 `python -m stellaris_supporter` 하위 프로세스를 통해 합성 game root에서 init→doctor→index→한국어·영어·ID 검색→exact ID show→개별 SourceRef 원문 span→snapshots→동일 index 재사용을 검사합니다. 설정 덮어쓰기·중첩 data_dir·symlink·없는 snapshot·잘못된 Query·인코딩 partial·실제 원본 read-only 및 stdout JSON 파싱을 부정 회귀로 검사합니다. R1–R6 기존 448 Ubuntu/445 Windows +3 skips 회귀는 변경하거나 skip하지 않습니다. CLI 실제 CI 결과와 미검증 취소/동시 writer/OS TOCTOU 범위는 [evidence](../harness/evidence/TASK-013-cli-vertical-slice.md)에 구분 기록합니다.
