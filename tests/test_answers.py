@@ -434,9 +434,9 @@ def test_r4_request_global_fact_limit_and_cache_reuse(
     assert result.status == "partial" and result.truncated
     assert sum(len(hit.facts) for hit in result.results) <= 64
     assert all(len(hit.source_refs) <= 256 for hit in result.results)
-    # A single cached technology file is rehashed once, not per citation.
+    # One search provenance check + one answer reader verification, never per citation.
     assert sum(1 for digest, _ in reads if digest == hashlib.sha256(
-        technology.encode()).hexdigest()) == 1
+        technology.encode()).hexdigest()) == 2
     assert service(repo).answer(Query("demo_001")).results
 
 
