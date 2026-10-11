@@ -442,3 +442,77 @@ def test_reader_resolver_bad_limits_are_not_accepted() -> None:
         resolve_localisation(_catalog(_doc(source)), "demo", max_visits=0)
     with pytest.raises(ValueError):
         resolve_localisation(_catalog(_doc(source)), "demo", max_output_bytes=-1)
+
+
+
+def test_invalid_header_clears_previous_language_before_following_entries() -> None:
+    source = (
+        b'l_english:\n demo_ok:0 "ok"\n'
+        b'l_broken header\n demo_after:0 "not english"\n'
+    )
+    document = _doc(source)
+    assert [e.key for e in document.entries] == ["demo_ok"]
+    assert [d.code for d in document.diagnostics] == [
+        "LOC_INVALID_HEADER",
+        "LOC_MISSING_HEADER",
+    ]
+    assert len(document.unknown_spans) == 2
+
+
+def test_l_prefix_in_regular_key_is_not_mistaken_for_header() -> None:
+    document = _doc(b'l_english:\n l_some_key:0 "supported"\n')
+    assert document.ok
+    assert document.entries[0].key == "l_some_key"
+
+
+def test_reader_bounds_non_entry_records_before_large_comment_collection() -> None:
+    source = b"l_english:\n" + b"# synthetic comment\n" * 50
+    document = _doc(source, max_records=8)
+    assert len(document.comments) + len(document.headers) <= 8
+    assert not document.complete
+    assert "LIMIT_EXCEEDED" in [item.code for item in document.diagnostics]
+
+
+def test_catalog_limits_combined_diagnostics_and_entries() -> None:
+    document = _doc(b'l_english:\n demo_a:0 "a"\n demo_b:0 "b"\n')
+    limited = build_localisation_catalog((document,), max_entries=1)
+    assert not limited.complete and not limited.entries
+    assert limited.diagnostics[-1].code == "LIMIT_EXCEEDED"
+
+    broken = _doc(b'l_english:\n' + b"malformed input\n" * 20)
+    capped = build_localisation_catalog((broken,), max_diagnostics=3)
+    assert not capped.complete and not capped.entries
+    assert len(capped.diagnostics) <= 3
+    assert capped.diagnostics[-1].code == "LIMIT_EXCEEDED"
+
+
+def test_fallback_id_itself_must_obey_output_budget() -> None:
+    document = _doc(b"l_english:\n")
+    result = resolve_localisation(_catalog(document), "demo_untranslated", max_output_bytes=4)
+    assert result.resolution == "partial"
+    assert result.truncated
+    assert result.display_value == ""
+    assert result.output_bytes == 0
+    assert result.diagnostics[0].code == "LIMIT_EXCEEDED"
+
+
+def test_caller_cannot_configure_unsafe_recursive_reference_depth() -> None:
+    with pytest.raises(ValueError, match="supported max_depth"):
+        resolve_localisation(_catalog(_doc(b"l_english:\n")), "demo", max_depth=200)
+
+
+def test_unmatched_dollar_expression_is_preserved_and_diagnosed() -> None:
+    document = _doc(b'l_english:\n demo_a:0 "Price $ 123"\n')
+    result = resolve_localisation(_catalog(document), "demo_a")
+    assert result.resolution == "partial"
+    assert result.display_value == "Price $ 123"
+    assert result.diagnostics[0].code == "LOC_DYNAMIC_UNSUPPORTED"
+
+
+def test_reader_does_not_cut_quoted_hash_and_trailing_comment() -> None:
+    source = b'l_english:\n demo_a:0 "#not-a-comment" # real comment\n'
+    document = _doc(source)
+    assert document.ok
+    assert document.entries[0].raw_value == "#not-a-comment"
+    assert len(document.comments) == 1
+    assert document.comments[0].raw == "# real comment"
