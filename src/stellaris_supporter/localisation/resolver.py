@@ -258,9 +258,10 @@ def resolve_localisation(
 
     def emit(code: str, severity: Literal["warning", "error"], message: str,
              ref: SourceRef | None = None) -> None:
-        nonlocal partial, stopped
+        nonlocal partial, stopped, truncated
         partial = True
         if len(diagnostics_list) >= max_diagnostics - 1:
+            truncated = True
             if not any(d.code == "LIMIT_EXCEEDED" for d in diagnostics_list):
                 diagnostics_list.append(
                     LocalisationDiagnostic(
