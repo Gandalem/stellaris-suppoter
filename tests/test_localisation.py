@@ -539,3 +539,24 @@ def test_resolver_diagnostic_limit_marks_truncated_partial() -> None:
     assert result.truncated
     assert len(result.diagnostics) <= 3
     assert result.diagnostics[-1].code == "LIMIT_EXCEEDED"
+
+
+
+def test_reference_provenance_records_language_specific_fallback() -> None:
+    korean = _doc(
+        b'l_korean:\n demo_root:0 "Korean $demo_only_en$"\n',
+        "localisation/korean/root.yml",
+    )
+    english = _doc(
+        b'l_english:\n demo_only_en:0 "English target"\n',
+        "localisation/english/target.yml",
+    )
+    result = resolve_localisation(_catalog(korean, english), "demo_root", "korean")
+    assert result.display_value == "Korean English target"
+    assert result.language_used == "korean"
+    assert len(result.reference_selections) == 1
+    choice = result.reference_selections[0]
+    assert choice.key == "demo_only_en"
+    assert choice.language_used == "english"
+    assert choice.source_ref.relative_path == "localisation/english/target.yml"
+    assert result.to_dict()["reference_selections"][0]["language_used"] == "english"
