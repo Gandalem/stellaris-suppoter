@@ -190,7 +190,8 @@ class SnapshotRepository:
                 check_schema(conn)
         with closing(connect(self.db_path)) as conn:
             initialise_schema(conn, new_db=not exists)
-        self._recover_interrupted()
+        # Do not automatically invalidate an active build owned by another process.
+        # recover_interrupted() is an explicit, lock-protected operator action.
 
     def _ensure_db_paths(self) -> None:
         for path in (self.db_path, Path(str(self.db_path) + "-wal"),
@@ -213,14 +214,19 @@ class SnapshotRepository:
         finally:
             conn.close()
 
-    def _recover_interrupted(self) -> None:
+    def recover_interrupted(self) -> tuple[str, ...]:
         with self._connection() as conn, _immediate(conn):
+            rows = conn.execute(
+                "SELECT snapshot_id FROM snapshots WHERE status='building' "
+                "ORDER BY snapshot_id"
+            ).fetchall()
             conn.execute(
                 "UPDATE snapshots SET status='failed', diagnostics_json=? "
                 "WHERE status='building'",
                 ('[{"code":"INTERRUPTED_BUILD","severity":"error",'
                  '"message":"Previous staging did not complete."}]',),
             )
+            return tuple(row[0] for row in rows)
 
     def _check_live(self, source: SourceFileInput, descriptor: SourceDescriptor) -> None:
         if source.live_path is None:
@@ -586,8 +592,9 @@ class SnapshotRepository:
             raise SnapshotError("SOURCE_UNVERIFIED", "Current live inventory is required.")
         if sources is None:
             return
-        supplied = sorted((s.descriptor(), s) for s in sources,
-                          key=lambda x: x[0].key)
+        supplied = sorted(
+            ((s.descriptor(), s) for s in sources), key=lambda item: item[0].key
+        )
         if len(supplied) != len(rows):
             raise SnapshotError("SOURCE_CHANGED", "Source inventory changed after staging.")
         for row, (descriptor, original) in zip(rows, supplied, strict=True):
