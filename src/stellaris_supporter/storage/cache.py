@@ -87,6 +87,8 @@ class BlobCache:
         if size < 0 or size > MAX_SOURCE_BYTES:
             raise SnapshotError("LIMIT_EXCEEDED", "Source byte size is out of bounds.")
         path = self._path(digest)
+        if not path.parent.is_dir():
+            raise SnapshotError("CACHE_MISSING", "Required source cache blob is missing.")
         if _is_unsafe_link(self.root) or _is_unsafe_link(path.parent):
             raise SnapshotError("PATH_REJECTED", "Cache directory is unsafe.")
         return _read_verified_file(path, expected_hash=digest, expected_size=size)
