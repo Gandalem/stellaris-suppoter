@@ -21,9 +21,52 @@ MAX_LOCALISATION_ENTRIES = 100_000
 MAX_LOCALISATION_DIAGNOSTICS = 1_000
 
 _HEADER = re.compile(r"[ \t]*l_([a-z][a-z0-9_]*):[ \t]*(?:#.*)?\Z")
-_ENTRY_PREFIX = re.compile(
-    r'[ \t]*([A-Za-z_][A-Za-z0-9_.-]*)[ \t]*:[ \t]*(\d+)?[ \t]*"'
-)
+_KEY_INITIAL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
+_KEY_REST = _KEY_INITIAL + "0123456789.-"
+
+
+@dataclass(frozen=True, slots=True)
+class _EntryPrefix:
+    key: str
+    marker: str | None
+    key_start: int
+    opening: int
+
+
+def _scan_entry_prefix(line: str) -> _EntryPrefix | None:
+    """Scan once left-to-right; no overlapping optional whitespace branches.
+
+    Each index only moves forward. Even a very long malformed no-quote line
+    requires at most len(line) + a constant number of indexed character reads.
+    """
+
+    i = 0
+    length = len(line)
+    while i < length and line[i] in " \t":
+        i += 1
+    key_start = i
+    if i >= length or line[i] not in _KEY_INITIAL:
+        return None
+    i += 1
+    while i < length and line[i] in _KEY_REST:
+        i += 1
+    key_end = i
+    while i < length and line[i] in " \t":
+        i += 1
+    if i >= length or line[i] != ":":
+        return None
+    i += 1
+    while i < length and line[i] in " \t":
+        i += 1
+    marker_start = i
+    while i < length and "0" <= line[i] <= "9":
+        i += 1
+    marker = line[marker_start:i] if i > marker_start else None
+    while i < length and line[i] in " \t":
+        i += 1
+    if i >= length or line[i] != '"':
+        return None
+    return _EntryPrefix(line[key_start:key_end], marker, key_start, i)
 Severity = Literal["info", "warning", "error"]
 
 
@@ -284,6 +327,14 @@ def parse_localisation(
             complete = False
         return True
 
+    def reserve_record(span: SourceRef) -> bool:
+        """A physical line can produce two records: charge before each append."""
+
+        if len(entries) + len(headers) + len(comments) + len(unknown) >= max_records:
+            emit("LIMIT_EXCEEDED", "error", "Localisation record count limit exceeded.", span)
+            return False
+        return True
+
     if len(source) > max_bytes:
         emit("LIMIT_EXCEEDED", "error", "Localisation input byte limit exceeded.")
         return make_result()
@@ -314,9 +365,6 @@ def parse_localisation(
     start = 0
     line_no = 1
     while start < len(source):
-        if len(entries) + len(headers) + len(comments) + len(unknown) >= max_records:
-            emit("LIMIT_EXCEEDED", "error", "Localisation record count limit exceeded.")
-            break
         lf = source.find(b"\n", start)
         next_start = len(source) if lf < 0 else lf + 1
         physical_end = len(source) if lf < 0 else lf
@@ -326,6 +374,8 @@ def parse_localisation(
         body_start = start + base
         line_ref = _ref(context, body_start, physical_end, line_no)
         if physical_end - start > max_line_bytes:
+            if not reserve_record(line_ref):
+                break
             unknown.append(line_ref)
             emit("LIMIT_EXCEEDED", "error", "Localisation line byte limit exceeded.", line_ref)
             break
@@ -337,6 +387,8 @@ def parse_localisation(
             continue
 
         if stripped.startswith("#"):
+            if not reserve_record(line_ref):
+                break
             pos = text.index("#")
             comments.append(
                 LocalisationComment(
@@ -350,6 +402,8 @@ def parse_localisation(
 
         header = _HEADER.fullmatch(text)
         if header is not None:
+            if not reserve_record(line_ref):
+                break
             language = header.group(1)
             header_end = text.find("#") if "#" in text else len(text)
             header_start = len(text) - len(text.lstrip(" \t"))
@@ -367,6 +421,8 @@ def parse_localisation(
                 )
             )
             if "#" in text:
+                if not reserve_record(line_ref):
+                    break
                 pos = text.index("#")
                 comments.append(
                     LocalisationComment(
@@ -378,16 +434,20 @@ def parse_localisation(
             start, line_no = next_start, line_no + 1
             continue
 
-        if stripped.startswith("l_") and _ENTRY_PREFIX.match(text) is None:
+        match = _scan_entry_prefix(text)
+        if stripped.startswith("l_") and match is None:
             language = None
+            if not reserve_record(line_ref):
+                break
             unknown.append(line_ref)
             if not emit("LOC_INVALID_HEADER", "error", "Invalid localisation language header.", line_ref):
                 break
             start, line_no = next_start, line_no + 1
             continue
 
-        match = _ENTRY_PREFIX.match(text)
         if match is None:
+            if not reserve_record(line_ref):
+                break
             unknown.append(line_ref)
             code = "LOC_MISSING_HEADER" if language is None else "LOC_UNSUPPORTED_SYNTAX"
             if not emit(code, "error", "Unsupported localisation entry syntax.", line_ref):
@@ -396,15 +456,19 @@ def parse_localisation(
             continue
 
         if language is None:
+            if not reserve_record(line_ref):
+                break
             unknown.append(line_ref)
             if not emit("LOC_MISSING_HEADER", "error", "Entry precedes a language header.", line_ref):
                 break
             start, line_no = next_start, line_no + 1
             continue
 
-        opening = match.end() - 1
+        opening = match.opening
         closing, unsupported_escape = _end_of_quote(text, opening)
         if closing is None:
+            if not reserve_record(line_ref):
+                break
             unknown.append(line_ref)
             if not emit("LOC_UNCLOSED_STRING", "error", "Unterminated localisation quoted value.", line_ref):
                 break
@@ -413,6 +477,8 @@ def parse_localisation(
 
         trailing = text[closing + 1 :].lstrip(" \t")
         if trailing and not trailing.startswith("#"):
+            if not reserve_record(line_ref):
+                break
             unknown.append(line_ref)
             if not emit("LOC_TRAILING_SYNTAX", "error", "Unsupported syntax after quoted value.", line_ref):
                 break
@@ -423,7 +489,9 @@ def parse_localisation(
             emit("LIMIT_EXCEEDED", "error", "Localisation entry count limit exceeded.", line_ref)
             break
 
-        key = match.group(1)
+        if not reserve_record(line_ref):
+            break
+        key = match.key
         occurrence_key = (language, key)
         occurrence = occurrences.get(occurrence_key, 0) + 1
         occurrences[occurrence_key] = occurrence
@@ -431,7 +499,7 @@ def parse_localisation(
         def byte_at(index: int) -> int:
             return body_start + len(text[:index].encode("utf-8"))
 
-        key_start = match.start(1)
+        key_start = match.key_start
         entry_ref = _ref(context, byte_at(key_start), byte_at(closing + 1), line_no)
         value_ref = _ref(context, byte_at(opening + 1), byte_at(closing), line_no)
         quoted_ref = _ref(context, byte_at(opening), byte_at(closing + 1), line_no)
@@ -439,7 +507,7 @@ def parse_localisation(
             LocalisationEntry(
                 key=key,
                 language=language,
-                marker=match.group(2),
+                marker=match.marker,
                 occurrence=occurrence,
                 source_ref=entry_ref,
                 value_source_ref=value_ref,
@@ -468,6 +536,8 @@ def parse_localisation(
         ):
             break
         if trailing.startswith("#"):
+            if not reserve_record(line_ref):
+                break
             pos = text.index("#", closing + 1)
             comments.append(
                 LocalisationComment(
