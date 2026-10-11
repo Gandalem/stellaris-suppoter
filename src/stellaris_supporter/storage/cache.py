@@ -45,6 +45,9 @@ def _read_verified_file(path: Path, *, expected_hash: str, expected_size: int) -
         flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
         descriptor = os.open(path, flags)
         try:
+            opened = os.fstat(descriptor)
+            if not stat.S_ISREG(opened.st_mode) or opened.st_size != expected_size:
+                raise SnapshotError("SOURCE_CHANGED", "Source is not a regular file of expected size.")
             with os.fdopen(descriptor, "rb") as reader:
                 descriptor = -1
                 chunks: list[bytes] = []
@@ -122,6 +125,16 @@ class BlobCache:
                 os.replace(temporary, path)
                 temporary = None
                 self.verify(digest, len(data))
+                if os.name == "posix":
+                    # Ensure the published directory entry survives process
+                    # termination/power failure where the filesystem supports
+                    # directory fsync. Windows uses atomic same-dir replacement.
+                    dir_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+                    directory_fd = os.open(path.parent, dir_flags)
+                    try:
+                        os.fsync(directory_fd)
+                    finally:
+                        os.close(directory_fd)
         except SnapshotError:
             raise
         except OSError as exc:
