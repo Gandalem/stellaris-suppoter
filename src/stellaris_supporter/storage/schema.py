@@ -171,7 +171,7 @@ def connect(db_path: Path, *, read_only: bool = False, timeout: float = 0.25) ->
         raise SnapshotError("SQLITE_ERROR", "Could not open the snapshot database.") from exc
 
 
-def check_schema(connection: sqlite3.Connection) -> None:
+def check_schema(connection: sqlite3.Connection, *, full_integrity: bool = True) -> None:
     try:
         version = connection.execute("PRAGMA user_version").fetchone()[0]
         if version != SCHEMA_VERSION:
@@ -198,7 +198,9 @@ def check_schema(connection: sqlite3.Connection) -> None:
             raise SnapshotError("SCHEMA_VERSION_UNSUPPORTED", "Schema metadata does not match.")
         if connection.execute("PRAGMA foreign_keys").fetchone()[0] != 1:
             raise SnapshotError("SCHEMA_ERROR", "Foreign keys are disabled.")
-        if connection.execute("PRAGMA quick_check").fetchone()[0] != "ok":
+        # Full-page integrity work belongs to initialisation, writes and backup.
+        # Read-only queries still verify schema/version/foreign-key configuration.
+        if full_integrity and connection.execute("PRAGMA quick_check").fetchone()[0] != "ok":
             raise SnapshotError("SCHEMA_ERROR", "Database integrity check failed.")
     except sqlite3.DatabaseError as exc:
         raise SnapshotError("SCHEMA_ERROR", "Database schema or integrity is invalid.") from exc
