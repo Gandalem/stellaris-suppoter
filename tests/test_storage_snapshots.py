@@ -471,3 +471,111 @@ def test_e018_different_schema_identity_is_not_implicitly_supported_by_db(tmp_pa
     with pytest.raises(SnapshotError) as exc:
         repo.stage(_sources(), _policy(schema_version=2))
     assert exc.value.code == "SCHEMA_VERSION_UNSUPPORTED"
+
+
+
+def test_e019_active_remains_readable_while_staging_holds_writer_lock(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    old = _seed_active(repo)
+    competing = SnapshotRepository(tmp_path / "data")
+    def during_stage() -> None:
+        assert competing.active_snapshot_id() == old
+        assert len(competing.entities()) == 1
+        with pytest.raises(SnapshotError) as blocked:
+            competing.stage(
+                (SourceFileInput("synthetic", "demo", "concurrent.txt", b"other"),), _policy()
+            )
+        assert blocked.value.code == "SQLITE_BUSY"
+    staged = repo.stage(
+        (SourceFileInput("synthetic", "demo", "new.txt", b"new"),),
+        _policy(),
+        before_ready=during_stage,
+    ).snapshot_id
+    assert repo.snapshot(staged).status == "ready"
+    assert repo.active_snapshot_id() == old
+
+
+def test_e019_injected_cache_write_failure_does_not_replace_active(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    old = _seed_active(repo)
+    new = (SourceFileInput("synthetic", "demo", "cache_failed.txt", b"new"),)
+    sid = snapshot_identity(new, _policy()).snapshot_id
+    def disk_full(_data: bytes, _digest: str) -> None:
+        raise OSError("synthetic disk-full injection")
+    monkeypatch.setattr(repo.cache, "put", disk_full)
+    with pytest.raises(SnapshotError) as exc:
+        repo.stage(new, _policy())
+    assert exc.value.code == "SQLITE_WRITE_ERROR"
+    assert repo.active_snapshot_id() == old
+    assert repo.snapshot(sid).status == "failed"
+    assert len(repo.entities()) == 1
+
+
+def test_e018_reader_diagnostic_is_not_lost_through_safe_storage_boundary(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    invalid = SourceFileInput("synthetic", "demo", "localisation/bad.yml", b"\xff\xfe")
+    policy = _policy()
+    sid = snapshot_identity((invalid,), policy).snapshot_id
+    document = parse_localisation(invalid.data, _context(invalid, sid))
+    assert not document.complete and document.diagnostics
+    repo.stage_from_results(
+        (invalid,), policy, localisation_documents=(document,),
+    )
+    assert repo.snapshot(sid).status == "partial"
+    with sqlite3.connect(repo.db_path) as conn:
+        row = conn.execute("SELECT code FROM diagnostics WHERE snapshot_id=?", (sid,)).fetchone()
+        assert row is not None
+        assert row[0] == document.diagnostics[0].code
+    with pytest.raises(SnapshotError):
+        repo.activate(sid)
+    repo.activate(sid, allow_partial=True)
+    assert repo.active_snapshot_id() == sid
+
+
+def test_e018_stage_from_results_rejects_cross_document_source_bytes(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    input_source = SourceFileInput(
+        "synthetic", "demo", "localisation/demo.yml", b'l_english:\n demo:0 "ok"\n'
+    )
+    policy = _policy()
+    sid = snapshot_identity((input_source,), policy).snapshot_id
+    doc = parse_localisation(input_source.data, _context(input_source, sid))
+    forged = replace(doc, _source=b'wrong')
+    with pytest.raises(SnapshotError) as exc:
+        repo.stage_from_results(
+            (input_source,), policy, localisation_documents=(forged,),
+        )
+    assert exc.value.code == "SOURCE_CHANGED"
+    assert repo.active_snapshot_id() is None
+
+
+def test_e018_identity_stable_across_two_private_data_roots(tmp_path: Path) -> None:
+    src = (SourceFileInput("synthetic", "demo", "a.txt", b"same"),)
+    one = SnapshotRepository(tmp_path / "first")
+    two = SnapshotRepository(tmp_path / "second")
+    left = one.stage(src, _policy())
+    right = two.stage(src, _policy())
+    assert left == right
+    one.activate(left.snapshot_id)
+    two.activate(right.snapshot_id)
+    assert one.active_snapshot_id() == two.active_snapshot_id()
+
+
+def test_e018_canonical_json_budget_rejects_before_large_output_copy() -> None:
+    with pytest.raises(SnapshotError) as exc:
+        canonical_json({"raw": "x" * 10_000}, max_bytes=200)
+    assert exc.value.code == "LIMIT_EXCEEDED"
+
+
+def test_e019_future_schema_db_rejected_without_initialising_cache(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    with sqlite3.connect(repo.db_path) as conn:
+        conn.execute("PRAGMA user_version=2")
+    # Prove the constructor does not create/cache anything on a future DB.
+    old_cache = repo.data_dir / "cache"
+    assert old_cache.is_dir()
+    with pytest.raises(SnapshotError) as exc:
+        SnapshotRepository(repo.data_dir)
+    assert exc.value.code == "SCHEMA_VERSION_UNSUPPORTED"
