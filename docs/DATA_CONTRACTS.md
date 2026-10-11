@@ -38,11 +38,51 @@ LocalisationDocument: entries(ordered), headers, comments, unknown_spans, diagno
 
 LocalisationCatalog: 동일 snapshot의 여러 문서를 순서대로 보존합니다. 같은 (language,key)의 정의가 둘 이상이면 ambiguous이고 어떤 값도 조용히 선택하지 않습니다.
 
-LocalisationResolution: key, language_requested, language_used(string|null), display_value, source_ref(선택한 번역|null), reference_source_refs(확장 참조의 번역 출처 목록), reference_selections(참조 key·실제 선택 언어·SourceRef의 순서 있는 목록), fallback(none|english|id), resolution(resolved|partial|unresolved|ambiguous), diagnostics, visits, scanned_bytes, output_bytes, truncated. fallback은 **요청 언어 → 영어 → 원래 ID**이고, 누락·중복·순환·동적 scope/formatting·한도 초과를 구별합니다. 동적 표현식은 실행하지 않습니다. partial은 일부 해석·보존은 됐으나 완전한 정적 확정이 불가능한 경우입니다; unresolved는 번역이 양 언어에 없을 때, ambiguous는 중복 정의의 우선순위가 불명인 경우입니다.
+LocalisationResolution: key, language_requested, language_used(string|null), display_value, source_ref(선택한 번역|null), reference_source_refs(확장 참조의 번역 출처 목록), reference_selections(참조 key·실제 선택 언어·SourceRef의 순서 있는 목록), fallback(none|english|id), resolution(resolved|partial|unresolved|ambiguous), diagnostics, visits, scanned_bytes, output_bytes, truncated. fallback은 **요청 언어 → 영어 → 원래 ID**이고, 누락·중복·순환·동적 scope/formatting·한도 초과를 구별합니다. 동적 표현식은 실행하지 않습니다. 원본 value를 먼저 순방향 스캔해 bracket scope·icon/colour 태그·지원되지 않은 escape를 보호 영역으로 분류한 뒤에만 영역 **밖의** `$KEY# 데이터 계약 v1
+
+이 문서는 구현 규범입니다. 실제 타입·DB migration·JSON Schema는 TASK-010에서 만듭니다. null(알 수 없음)은 0, false, 빈 목록과 구별합니다. 시간은 UTC ISO 8601입니다.
+
+## 출처
+
+SourceRef: snapshot_id, source_kind, source_id, relative_path, file_sha256, byte_start, byte_end, line_start, line_end.
+
+source_kind는 synthetic|base|mod|official|wiki|community입니다. 웹 출처는 F-015에서 URL·article_id·section·retrieved_at 계약으로 확장하며 가짜 파일 위치를 만들지 않습니다. byte 범위는 원본에서 0-based [start,end), 행은 1-based 양끝 포함입니다. BOM·CRLF를 포함한 원본에 대응해야 합니다. 화면에는 상대 경로만 표시합니다. 과거 스냅샷 인용을 수정된 현재 파일인 것처럼 표시하지 않습니다.
+
+## 스냅샷
+
+Snapshot: id, content_hash, schema_version, parser_version, adapter_version, policy_hash, context_kind, game_version, game_version_source, build_id, branch, dlc_state, mod_state, created_at, checked_at, status, diagnostics.
+
+context_kind는 synthetic|base_install|effective이며 마지막 값은 모드 검증 후에만 사용합니다. game_version은 string|null, 근거는 metadata|user_reported|unknown입니다. build_id를 패치 버전으로 변환하지 않습니다. branch는 stable|beta|unknown입니다. 선택 결과와 별도로 VersionObservation(field, source, raw_value, normalized_value, disposition)을 보존하며, 미지원 metadata branch가 존재하면 user-reported branch로 fallback하지 않고 branch=unknown을 유지합니다. status는 building|ready|partial|failed이며 building은 조회하지 않습니다. partial 활성화는 명시 승인이 필요합니다.
+
+DLC의 installed, owned, enabled는 각각 true|false|null이고 별도 근거를 갖습니다. 각 필드는 value, source, evidence를 가지며 source는 filesystem|platform|launcher|user_reported|unknown입니다. 알려진 true/false 상태를 source=unknown으로 저장하지 않습니다. mod_state는 none_reported|detected_unresolved|resolved|unknown입니다. 설치 폴더만 보고 모드 없음으로 단정하지 않습니다.
+
+content_hash는 상대 경로·원문 해시·출처 종류/ID의 정렬된 목록으로 계산합니다. snapshot_id는 content_hash와 스키마·파서·adapter·정책·분석 문맥의 canonical JSON SHA-256입니다. 시간과 절대 경로는 제외합니다. 직렬화 규칙은 fixture로 고정합니다.
+
+## AST·진단
+
+Node: node_id, kind, span, raw, children. kind는 document|assignment|block|scalar|comment|unknown입니다. assignment는 key, operator, value를 추가합니다. children은 순서 있는 목록이며 중복 키도 별도 occurrence입니다. raw와 span을 보존합니다. 원문 숫자·변수·조건을 임의로 0이나 bool로 바꾸지 않습니다.
+
+Diagnostic: code, severity(info|warning|error), message, source_ref|null, remediation|null. 최소 코드: VERSION_UNKNOWN, SOURCE_CHANGED, PARSE_UNSUPPORTED, PARSE_ERROR, LOC_MISSING, LOC_CYCLE, COLLISION_UNRESOLVED, PARTIAL_INDEX, LIMIT_EXCEEDED, PATH_REJECTED, BASE_ONLY.
+
+## 엔티티·관계·현지화
+
+Entity: entity_key, game_id, kind, snapshot_id, name, description, language_used, fields, conditions, source_refs, resolution, diagnostics. entity_key는 snapshot·파일·노드 occurrence에 연결합니다. game_id만 기본키로 쓰지 않습니다. resolution은 raw_definition|resolved|ambiguous|partial입니다.
+
+fields 각각은 name, raw_value, normalized_value, value_type, source_ref를 갖습니다. 조건은 부모 구조·순서·원문을 보존합니다. 번역 이름/설명도 별도 출처와 fallback 상태를 갖습니다. 미지원 필드는 raw 영역에 남깁니다.
+
+Relation: from_entity_key, relation_kind, target_game_id, target_entity_key|null, source_ref, status(resolved|unresolved|ambiguous), conditions_raw|null. prerequisite, event_reference, script_reference는 정적으로 확인한 관계만 의미하며 실행을 보장하지 않습니다.
+
+LocalisationEntry: key, language, marker(string|null), occurrence, source_ref, value_source_ref, quoted_value_source_ref, column_start, column_end, value_column_start, raw_value(원본 quotes 내부), display_value(정적 lexical escape 처리만), has_unsupported_escape. 원본 bytes는 immutable source와 SourceRef span으로 참조하고 entry마다 중첩 raw 문자열을 복제하지 않습니다. BOM·CRLF 및 멀티바이트 값에도 0-based half-open byte span과 1-based column을 유지합니다. 지원되지 않은 행은 unknown_spans와 diagnostic으로 유지합니다.
+
+LocalisationDocument: entries(ordered), headers, comments, unknown_spans, diagnostics, complete, context. SourceContext의 snapshot/source ID·상대 경로·SHA-256과 원본 bytes 일치 여부를 입구에서 검증합니다. 불일치·디코딩 오류는 원문을 임의 재해석하지 않는 명시적 오류입니다.
+
+LocalisationCatalog: 동일 snapshot의 여러 문서를 순서대로 보존합니다. 같은 (language,key)의 정의가 둘 이상이면 ambiguous이고 어떤 값도 조용히 선택하지 않습니다.
+
+LocalisationResolution: key, language_requested, language_used(string|null), display_value, source_ref(선택한 번역|null), reference_source_refs(확장 참조의 번역 출처 목록), reference_selections(참조 key·실제 선택 언어·SourceRef의 순서 있는 목록), fallback(none|english|id), resolution(resolved|partial|unresolved|ambiguous), diagnostics, visits, scanned_bytes, output_bytes, truncated. fallback은 **요청 언어 → 영어 → 원래 ID**이고, 누락·중복·순환·동적 scope/formatting·한도 초과를 구별합니다.  정적 참조를 확장합니다. 보호 영역 내부의 dollar 구문은 치환되지 않습니다. partial은 일부 해석·보존은 됐으나 완전한 정적 확정이 불가능한 경우입니다; unresolved는 번역이 양 언어에 없을 때, ambiguous는 중복 정의의 우선순위가 불명인 경우입니다.
 
 TechnologyLocalisedName: 기존 immutable TechnologyCandidate와 별도의 LocalisationResolution을 조합합니다. 기술 정의·필드 SourceRef를 번역 SourceRef로 덮어쓰지 않습니다. 이는 TASK-010 DB persistence schema가 아니라 순수 메모리 연결 계약입니다.
 
-reader 기본 한도: 파일 16 MiB, 행 1 MiB, entry 100,000, 모든 기록(header/comment/unknown 포함) 100,000, diagnostic 1,000. resolver 기본 한도: reference depth 64(지원 설정 최대도 64), visits 4,096, scanned source bytes 8 MiB, expanded UTF-8 output 1 MiB, diagnostics 100. 한도 초과는 LIMIT_EXCEEDED와 partial/complete=false로 표시하며 숨겨진 truncate-success를 만들지 않습니다.
+reader 기본 한도: 파일 16 MiB, 행 1 MiB, entry 100,000, 모든 기록(header/comment/unknown 포함) 100,000, diagnostic 1,000. entry prefix의 key·marker·공백은 중복 반복 정규식 대신 단조 증가하는 인덱스로 처리하며, header+comment 또는 entry+comment 같은 복수 기록도 각 append 직전에 기록 한도를 검증합니다. resolver 기본 한도: reference depth 64(지원 설정 최대도 64), visits 4,096, scanned source bytes 8 MiB, expanded UTF-8 output 1 MiB, diagnostics 100. 한도 초과는 LIMIT_EXCEEDED와 partial/complete=false로 표시하며 숨겨진 truncate-success를 만들지 않습니다.
 
 ## 질의·답변
 
