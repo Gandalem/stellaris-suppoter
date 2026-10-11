@@ -4,7 +4,7 @@
   "product_implemented": false,
   "active_task": "TASK-009",
   "next_task": "TASK-009",
-  "last_session": "harness/sessions/2026-10-11-task-009-start.md",
+  "last_session": "harness/sessions/2026-10-11-task-009-review-followup.md",
   "latest_game_version": null,
   "updated_on": "2026-10-11",
   "notes": [
@@ -13,6 +13,7 @@
     "E-015/E-016/E-017 are pass on verified synthetic PR candidate test-merge 83a0444: Ubuntu 230 passed; Windows 227 passed plus 3 existing intentional skips.",
     "E-015/E-016/E-017 evidence is harness/evidence/TASK-009-localisation-reader-resolver.md.",
     "F-006 and F-005 remain in_progress until all related acceptance conditions and main integration are met.",
-    "latest_game_version remains null; no real Stellaris installation has been inspected."
+    "latest_game_version remains null; no real Stellaris installation has been inspected.",
+    "PR #17 R1-R4 follow-up: code/test/docs head 10dd9b721e13819cfa764ab30d6fe26e15ac2499; test-merge 889ef8b85321a45ebcb68a39fc48f1f0f24429e3, Package PR CI 38126968416 and Documentation CI 38126968353 success on both OS. 38 additional regression cases passed alongside existing 50 localisation tests. Follow-up evidence at harness/evidence/TASK-009-review-followup.md. PR remains unmerged; TASK-010 not started."
   ]
 }
