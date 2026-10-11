@@ -31,8 +31,8 @@ def _build(
     repo: SnapshotRepository,
     *,
     source_text: str = "demo_alloy = { cost = 0 }\n",
-    korean: str = "합금 연구",
-    english: str = "Alloy Research",
+    korean: str | None = "합금 연구",
+    english: str | None = "Alloy Research",
     extra_technology: str = "",
     activate: bool = True,
 ) -> str:
@@ -43,11 +43,11 @@ def _build(
         ),
         SourceFileInput(
             "synthetic", "demo", "localisation/korean/demo.yml",
-            ('l_korean:\n demo_alloy:0 "' + korean + '"\n').encode(),
+            ('l_korean:\n' + ('' if korean is None else ' demo_alloy:0 "' + korean + '"\n')).encode(),
         ),
         SourceFileInput(
             "synthetic", "demo", "localisation/english/demo.yml",
-            ('l_english:\n demo_alloy:0 "' + english + '"\n').encode(),
+            ('l_english:\n' + ('' if english is None else ' demo_alloy:0 "' + english + '"\n')).encode(),
         ),
     )
     sid = snapshot_identity(sources, POLICY).snapshot_id
@@ -218,16 +218,19 @@ def test_e022_cache_integrity_failure_is_error_not_stale_quote(tmp_path: Path) -
 
 def test_e021_english_and_id_display_fallback(tmp_path: Path) -> None:
     repo = SnapshotRepository(tmp_path / "db")
-    sid = _build(repo, korean="합금 연구", english="Alloy Research")
-    with sqlite3.connect(repo.db_path) as conn:
-        # The service must not invent translations; a version with absent
-        # translations is represented as a separately staged snapshot instead.
-        assert conn.execute(
-            "SELECT count(*) FROM localisation_entries WHERE snapshot_id=?", (sid,)
-        ).fetchone()[0] == 2
-    result = SearchService(repo).search(Query("Alloy Research", language="korean"))
-    assert result.results[0].fallback == "none"  # Korean display is present
-    assert result.results[0].language_used == "korean"
+    sid_english = _build(repo, korean=None, english="Alloy Research")
+    result = SearchService(repo).search(Query("Alloy Research", snapshot_id=sid_english))
+    assert result.results
+    assert result.results[0].fallback == "english"
+    assert result.results[0].language_used == "english"
+    assert result.results[0].display_name == "Alloy Research"
+    assert result.results[0].localisation_source_ref is not None
+    sid_id = _build(repo, korean=None, english=None)
+    result_id = SearchService(repo).search(Query("demo_alloy", snapshot_id=sid_id))
+    assert result_id.results
+    assert result_id.results[0].fallback == "id"
+    assert result_id.results[0].display_name == "demo_alloy"
+    assert result_id.results[0].localisation_source_ref is None
 
 
 def test_e022_exact_512_boundary_and_boolean_limit(tmp_path: Path) -> None:
