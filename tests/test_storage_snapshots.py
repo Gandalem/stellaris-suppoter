@@ -895,7 +895,7 @@ def test_r2_lossless_localisation_codepoints_bom_crlf_and_source_spans(
     from stellaris_supporter.domain import SourceRef
 
     source_bytes = (
-        b"\xef\xbb\xbf" + f'l_{language}:\r\n demo:0 "{value}"\r\n'.encode("utf-8")
+        b"\xef\xbb\xbf" + f'l_{language}:\r\n demo:0 "{value}"\r\n'.encode()
     )
     source = SourceFileInput(
         "synthetic", "demo", f"localisation/{language}/demo.yml", source_bytes
@@ -929,7 +929,7 @@ def test_r2_raw_and_display_are_distinct_without_normalising_combining_marks(
 
     raw = 'e\u0301\\"quoted'
     display = 'e\u0301"quoted'
-    data = (f'l_english:\r\n demo:0 "{raw}"\r\n').encode("utf-8")
+    data = (f'l_english:\r\n demo:0 "{raw}"\r\n').encode()
     src = SourceFileInput("synthetic", "demo", "localisation/english/demo.yml", data)
     repo = SnapshotRepository(tmp_path / "data")
     sid = snapshot_identity((src,), _policy()).snapshot_id
