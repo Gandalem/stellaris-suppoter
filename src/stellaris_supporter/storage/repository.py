@@ -348,19 +348,19 @@ class SnapshotRepository:
             )
 
         try:
-            for source in sources:
+            with self._connection() as conn, _immediate(conn):
+                for source in sources:
+                    if cancel is not None and cancel():
+                        raise SnapshotError("CANCELLED", "Staging was cancelled.")
+                    desc = by_key[source.descriptor().key]
+                    self.cache.put(source.data, desc.file_sha256)
+                for desc in identity.sources:
+                    self.cache.verify(desc.file_sha256, desc.size)
+                if before_ready is not None:
+                    before_ready()
                 if cancel is not None and cancel():
                     raise SnapshotError("CANCELLED", "Staging was cancelled.")
-                desc = by_key[source.descriptor().key]
-                self.cache.put(source.data, desc.file_sha256)
-            for desc in identity.sources:
-                self.cache.verify(desc.file_sha256, desc.size)
-            if before_ready is not None:
-                before_ready()
-            if cancel is not None and cancel():
-                raise SnapshotError("CANCELLED", "Staging was cancelled.")
 
-            with self._connection() as conn, _immediate(conn):
                 for d in identity.sources:
                     original = next(src for src in sources if src.descriptor().key == d.key)
                     self._check_live(original, d)
