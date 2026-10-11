@@ -772,7 +772,7 @@ class SnapshotRepository:
         with self._connection(read_only=True) as conn:
             self._ensure_ready(conn, snapshot_id)
             row = conn.execute(
-                "SELECT game_id,kind,resolution,candidate_json,localisation_json "
+                "SELECT game_id,kind,occurrence,source_kind,source_id,relative_path,byte_start,byte_end,resolution,candidate_json,localisation_json "
                 "FROM entities WHERE snapshot_id=? AND entity_key=? LIMIT 1",
                 (snapshot_id, entity_key),
             ).fetchone()
@@ -781,6 +781,10 @@ class SnapshotRepository:
             return {
                 "snapshot_id": snapshot_id, "entity_key": entity_key,
                 "game_id": row["game_id"], "kind": row["kind"],
+                "occurrence": row["occurrence"],
+                "source_kind": row["source_kind"], "source_id": row["source_id"],
+                "relative_path": row["relative_path"],
+                "byte_start": row["byte_start"], "byte_end": row["byte_end"],
                 "resolution": row["resolution"],
                 "candidate": json.loads(row["candidate_json"]),
                 "localisation": (
