@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 
-from stellaris_supporter.cli import main
 
 
 def invoke(*args: str) -> tuple[int, dict, str]:
@@ -176,7 +175,12 @@ def test_e026_cli_version_help_and_console_entrypoint() -> None:
     assert all(name in build_parser().format_help() for name in (
         "init", "doctor", "index", "search", "show", "snapshots"
     ))
-    assert main(["--version"]) == 0
+    proc = subprocess.run(
+        [sys.executable, "-m", "stellaris_supporter", "--version"],
+        text=True, capture_output=True, check=False,
+    )
+    assert proc.returncode == 0
+    assert proc.stdout.strip() == "stellaris-supporter 0.0.1"
 
 
 def test_e026_init_language_and_format_before_after_conflict(tmp_path: Path) -> None:

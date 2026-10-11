@@ -161,7 +161,8 @@ def index_technologies(
         # Explicit source tuple rechecks exact root-relative physical path and SHA.
         repository.activate(sid, sources=sources, allow_partial=allow_partial)
         return {
-            "snapshot_id": sid, "status": existing.status,
+            "snapshot_id": sid, "status": "partial" if existing.status == "partial" else "ok",
+            "snapshot_status": existing.status,
             "activated": True, "reused": True, "previous_active": previous,
             "source_count": len(sources), "context_kind": "base_install",
             "game_version": None, "branch": "unknown", "diagnostics": [],
@@ -201,7 +202,9 @@ def index_technologies(
     # Requires caller consent for partial, never bypassing manifest/cache protection.
     repository.activate(sid, sources=sources, allow_partial=allow_partial)
     return {
-        "snapshot_id": summary.snapshot_id, "status": stored.status,
+        "snapshot_id": summary.snapshot_id,
+        "status": "partial" if stored.status == "partial" else "ok",
+        "snapshot_status": stored.status,
         "activated": True, "reused": False, "previous_active": previous,
         "source_count": len(sources), "context_kind": "base_install",
         "game_version": None, "branch": "unknown",

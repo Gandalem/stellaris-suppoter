@@ -19,10 +19,12 @@ def test_package_import_exposes_installed_version() -> None:
     assert stellaris_supporter.__version__ == "0.0.1"
 
 
-def test_module_help_advertises_only_implemented_product_command() -> None:
+def test_module_help_advertises_implemented_product_commands_only() -> None:
     result = run_module("--help")
     assert result.returncode == 0
-    assert "{doctor}" in result.stdout
+    assert "{init,doctor,index,search,show,snapshots}" in result.stdout
+    assert "refs" not in result.stdout
+    assert "diff" not in result.stdout
 
 
 def test_module_version_succeeds() -> None:

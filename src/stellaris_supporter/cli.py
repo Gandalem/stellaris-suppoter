@@ -111,6 +111,7 @@ def _code_exit(code: str) -> int:
     if code in {
         "CONFIG_MISSING", "CONFIG_DEFAULT_MISSING", "GAME_ROOT_REQUIRED",
         "GAME_ROOT_MISSING", "SNAPSHOT_MISSING", "SNAPSHOT_NOT_FOUND",
+        "SNAPSHOT_NOT_READY",
         "FILESYSTEM_ERROR", "CONFIG_UNREADABLE", "DATA_DIR_MISSING",
     }:
         return 3
