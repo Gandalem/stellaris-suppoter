@@ -327,7 +327,7 @@
     {
       "id": "TASK-013",
       "title": "CLI vertical slice",
-      "status": "todo",
+      "status": "doing",
       "feature_ids": [
         "F-011"
       ],
@@ -345,7 +345,10 @@
       "acceptance": [
         "Synthetic index to search/show and JSON/error behavior match the command contract."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-013-cli-vertical-slice.md",
+        "harness/evidence/TASK-013-review-followup.md"
+      ]
     },
     {
       "id": "TASK-014",

@@ -2,7 +2,7 @@
 
 사용자가 설치한 Stellaris 데이터에 근거하여 한국어로 검색하고 설명하는 로컬 우선 도우미.
 
-> **개발 상태:** 설정·doctor, 안전한 파일 inventory·버전/DLC 증거 처리, 보존형 lexer/ordered AST parser, 합성 technology adapter가 구현돼 테스트되었습니다. 현지화 reader/resolver, SQLite snapshot, 검색·인용 통합은 아직 개발 단계입니다. 실제 게임 설치본 호환성은 검증되지 않았습니다.
+> **개발 상태:** Python API의 안전한 inventory·parser·Technology adapter·한국어/영어 현지화·SQLite snapshot·검색·정적 인용은 합성 회귀로 검증했습니다. TASK-013 브랜치에서 CLI `init/doctor/index/search/show/snapshots`의 합성 E-026 CI가 통과했습니다. 독립 리뷰와 실제 main 통합 전에는 완료된 제품으로 취급하지 않습니다. 실제 게임 설치본 호환성은 아직 검증되지 않았습니다.
 > 정확한 작업·기능·평가 상태는 각각 [작업](harness/tasks.json)·[기능](harness/features.json)·[평가](harness/evals.jsonl) 원장을 확인하세요.
 > 저장소 이름 `stellaris-suppoter`는 기존 이름을 유지합니다. Python 패키지명은 `stellaris_supporter`, 예정 CLI는 `stellaris-supporter`입니다.
 
@@ -45,7 +45,17 @@ python scripts/check_harness.py
 python scripts/generate_synthetic_corpus.py --output ./tmp-synthetic
 ```
 
-현재 `stellaris-supporter` CLI는 help/version과 `doctor`를 제공합니다. `doctor`는 설정, game/data 경로 경계, Python/SQLite/FTS5, network off 상태만 확인하며 게임 파일을 스캔하지 않습니다. 안전한 inventory, lexer·parser, technology adapter는 **Python 라이브러리 구현**으로 존재하며 [합성 corpus](tests/fixtures/synthetic/README.md)로 검증합니다. 반면 inventory/index/search CLI 흐름, localisation resolver, DB 저장·검색과 실제 게임 설치본 검증은 아직 완료되지 않았습니다. 합성 fixture는 실제 게임 데이터가 아닙니다.
+TASK-003 `doctor`는 전체 파일을 스캔하지 않습니다. TASK-004~012 Python API는 inventory → 보존형 AST → Technology·번역 → SQLite snapshot → 안전한 검색·인용 기능을 구현하고 합성 테스트로 검증했습니다. TASK-013 작업 브랜치에서는 아래 여섯 CLI 명령을 연결하고 E-026 검증 중입니다. `refs`/`diff`/AI/실제 게임 엔진 계산은 미구현이며 합성 fixture는 실제 게임 데이터가 아닙니다.
+
+```sh
+stellaris-supporter --config ./config.toml init --game-root '<GAME_ROOT>' --data-dir '<DATA_DIR>'
+stellaris-supporter --config ./config.toml index
+stellaris-supporter --config ./config.toml search demo_tech --kind technology
+stellaris-supporter --config ./config.toml --format json show demo_tech
+stellaris-supporter --config ./config.toml snapshots
+```
+
+실제 Windows·Ubuntu CI 검증 결과와 주의 사항은 [CLI 계약](docs/CLI.md), [TASK-013 evidence](harness/evidence/TASK-013-cli-vertical-slice.md)를 확인하세요.
 
 ## 프로젝트 상태 관리
 

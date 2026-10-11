@@ -157,12 +157,15 @@
       "id": "F-011",
       "title": "CLI workflow",
       "milestone": "v0.1",
-      "status": "planned",
+      "status": "in_progress",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/CLI.md"
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-013-cli-vertical-slice.md",
+        "harness/evidence/TASK-013-review-followup.md"
+      ]
     },
     {
       "id": "F-012",

@@ -34,7 +34,7 @@ python -m unittest discover -s tests_harness -v
 
 ## 구현된 개발 환경
 
-TASK-001에서 아래 흐름을 실제 CI로 검증했습니다. 현재 CLI는 help/version과 TASK-003의 `doctor`만 제공합니다. 게임 inventory/parser/search 기능은 아직 없습니다.
+TASK-001에서 아래 흐름을 실제 CI로 검증했습니다. Python API의 inventory, lexer/ordered parser, localisation, SQLite SearchService 및 AnswerService는 합성 테스트로 구현·검증됐습니다. TASK-013 브랜치는 `init/doctor/index/search/show/snapshots` CLI를 수직 연결 중이며 E-026 합성 후보 CI는 통과했지만 독립 리뷰와 실제 main 통합 전까지 개발 후보입니다. 실제 게임 호환성은 검증되지 않았습니다.
 
 ```sh
 python -m venv .venv
@@ -56,3 +56,7 @@ TASK-003에서 stdlib `tomllib` 기반 설정과 `doctor`를 구현했습니다.
 `network.enabled=false`만 허용합니다. `game_root`와 `data_dir`가 같거나 어느 한쪽이 다른 쪽의 부모/자식이면 거부합니다. 실제 게임 폴더는 읽기 권한만 확인하고 쓰기 권한은 요구하지 않습니다. `data_dir`는 읽기·쓰기 가능해야 합니다.
 
 예시는 [config.example.toml](../config.example.toml)에 있습니다. 로컬 doctor 출력은 사용자가 요청한 절대 경로를 보여줄 수 있지만, 공개 evidence 직렬화는 `<CONFIG_PATH>`, `<GAME_ROOT>`, `<DATA_DIR>`로 치환할 수 있습니다.
+
+## TASK-013 안전한 CLI 워크플로 후보
+
+`init`은 명시 game_root와 게임 밖 private data_dir를 이용해 network.enabled=false인 TOML을 원자적·배타적으로 만듭니다. 기본 config 경로는 OS별 위 위치를 사용합니다. 이미 존재하는 설정을 덮어쓰지 않습니다. `index`는 기술 스크립트와 한·영 현지화 하위 경로만 읽어 원본 SHA를 두 번 검증하고 SQLite snapshot과 cache를 private data_dir에 저장합니다. `doctor`는 기존 설정/runtime 검사만 수행합니다. 기존 Python API와 CLI가 연결된 대상·미구현 refs/diff는 [CLI 계약](CLI.md)으로 구분합니다.

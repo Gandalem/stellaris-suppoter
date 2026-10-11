@@ -670,6 +670,38 @@ class SnapshotRepository:
             ).fetchone()
             return None if row is None else self._summary(row)
 
+    def list_snapshots(
+        self, *, limit: int = 100, offset: int = 0
+    ) -> tuple[tuple[dict[str, Any], ...], bool]:
+        """Bounded, repeatably ordered read-only listing including non-ready states."""
+        if (isinstance(limit, bool) or not isinstance(limit, int)
+                or not 1 <= limit <= 100
+                or isinstance(offset, bool) or not isinstance(offset, int)
+                or not 0 <= offset <= 100_000):
+            raise SnapshotError("QUERY_INVALID", "Snapshot page is out of bounds.")
+        with self._connection(read_only=True) as conn:
+            conn.execute("BEGIN")
+            row = conn.execute(
+                "SELECT value FROM settings WHERE key='active_snapshot'"
+            ).fetchone()
+            active = None if row is None else str(row[0])
+            rows = conn.execute(
+                "SELECT snapshot_id,status,context_kind,branch,game_version,"
+                "created_at,checked_at FROM snapshots "
+                "ORDER BY created_at DESC,snapshot_id "
+                "LIMIT ? OFFSET ?",
+                (limit + 1, offset),
+            ).fetchall()
+            records = tuple({
+                "snapshot_id": r["snapshot_id"], "status": r["status"],
+                "active": r["snapshot_id"] == active,
+                "context_kind": r["context_kind"], "branch": r["branch"],
+                "game_version": r["game_version"], "created_at": r["created_at"],
+                "checked_at": r["checked_at"],
+            } for r in rows[:limit])
+            conn.execute("ROLLBACK")
+            return records, len(rows) > limit
+
     def active_snapshot_id(self) -> str | None:
         with self._connection(read_only=True) as conn:
             row = conn.execute(
