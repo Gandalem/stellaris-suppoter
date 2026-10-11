@@ -2,11 +2,11 @@
   "schema_version": 1,
   "phase": "implementation",
   "product_implemented": false,
-  "active_task": "TASK-013",
-  "next_task": "TASK-013",
-  "last_session": "harness/sessions/2026-10-11-task-013-cli.md",
+  "active_task": null,
+  "next_task": "TASK-014",
+  "last_session": "harness/sessions/2026-10-12-task-013-main-closure.md",
   "latest_game_version": null,
-  "updated_on": "2026-10-11",
+  "updated_on": "2026-10-12",
   "notes": [
     "PR #16 merged to main as e49ab75153d695b92614b2db3a0e54136f148e37; main Package run 38125171893 and Documentation harness 38125171970 succeeded on Ubuntu/Windows; Issue #9 closed.",
     "TASK-009 is doing on dedicated branch; reader and resolver implementation has not merged to main.",
@@ -32,6 +32,7 @@
     "TASK-012 official closure proposed separately following PR #23 actual merge ec9d4d2b7bd77bb5ff4839a738c1cf79967ff2d1 from reviewed head 7d95a50a22d29d6cbea2f2af24aecd78321ff444. Real main push Package 38143205499 Ubuntu 448 passed Windows 445 passed + existing 3 skips and Ruff/harness success; Docs 38143205537 Ubuntu/Windows success. R1-R6 COMMENTED technical hold lifted (not formal APPROVED). Closure PR proposes TASK-012 done/F-009 verified for authored synthetic scope, E-023..025 pass retained; active_task null and next_task TASK-013, but TASK-013 todo/F-011 planned/E-026 not_run until owner merges closure and new real main CI succeeds. No game files, product_implemented false, latest_game_version null.",
     "TASK-013 started from verified PR #24 actual main merge 422f6aa06849b2c210905d75bfe47a32e62f0bf4, Package 38144498887/Documentation 38144498941 both OS passed (Ubuntu 448, Windows 445+3 skips). Implement six command local CLI and synthetic E-026, no TASK-014 or game files, F-011 in_progress (refs/diff future), E-026 not_run until real CI.",
     "TASK-013 E-026 authored synthetic pass from code head e65a9cac1d05ef7a55b3d7510ef66a4fce3322a2 PR test-merge 38b6bb2f177d134e0346993c7904fcf764982bbc; Package 38146789624 Ubuntu 486 passed/Windows 483 passed plus original 3 skips, Ruff/harness both success; Docs 38146789613 both success; exact-head push 38146786512 both success. 38 new regression cases, no new skips. TASK-013 doing and F-011 in_progress; latest_game_version null, product_implemented false; no game installation tested.",
-    "TASK-013 PR #25 R1-R5 CLI synthetic hard-limit/inventory/query/text follow-up: code candidate d4338eb032367c568ffebe92c8b117009169203d, exact PR test-merge b123359c6c04908c6dbc4582f12b6b57cc1cd2e3, PR Package 38149318668 Ubuntu 509 passed Windows 506 passed + 3 existing skips, Ruff/harness both successful, Docs 38149318757 both OS successful, exact head push 38149315850 both successful. 23 new synthetic tests; E-026 synthetic pass remains, TASK-013 doing/F-011 in_progress. Evidence linking commit needs its own final CI check; no real game data or merge."
+    "TASK-013 PR #25 R1-R5 CLI synthetic hard-limit/inventory/query/text follow-up: code candidate d4338eb032367c568ffebe92c8b117009169203d, exact PR test-merge b123359c6c04908c6dbc4582f12b6b57cc1cd2e3, PR Package 38149318668 Ubuntu 509 passed Windows 506 passed + 3 existing skips, Ruff/harness both successful, Docs 38149318757 both OS successful, exact head push 38149315850 both successful. 23 new synthetic tests; E-026 synthetic pass remains, TASK-013 doing/F-011 in_progress. Evidence linking commit needs its own final CI check; no real game data or merge.",
+    "TASK-013 official closeout proposed on separate PR after PR #25 actual merge 8d77794c95d3fe39e3b66f0a8e402efec5a10966 from reviewed head 381c667ffd3246e0ebc2e6ec8ec1bfb2463f30f0. Real main push Package 38150169069 Ubuntu 509 passed, Windows 506 passed + existing 3 skipped, Ruff and harness both OS success; Documentation harness 38150169206 both OS success, exact main checkout confirmed in all four jobs. E-026 synthetic pass retained; TASK-013 done only proposed on closure PR, F-011 remains in_progress pending TASK-015 refs and TASK-016 diff. active_task null / next_task TASK-014 proposed, but TASK-014 remains todo until owner merges closure and new main CI succeeds. No real game data, latest_game_version null and product_implemented false."
   ]
 }
