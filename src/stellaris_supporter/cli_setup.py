@@ -14,6 +14,8 @@ from stellaris_supporter.storage.cache import _ensure_directory
 
 def _check_components(path: Path) -> None:
     """Reject symlink and Windows reparse components without resolving them away."""
+    if "\x00" in os.fspath(path):
+        raise SnapshotError("PATH_REJECTED", "Configuration path contains NUL.")
     absolute = Path(os.path.abspath(path.expanduser()))
     for component in (*reversed(absolute.parents), absolute):
         try:

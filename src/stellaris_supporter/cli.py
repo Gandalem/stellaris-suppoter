@@ -165,7 +165,9 @@ def _emit_text(payload: dict) -> None:
     lines = [f"command: {payload.get('command')}",
              f"status: {payload.get('status')}",
              f"snapshot: {payload.get('snapshot_id') or context.get('snapshot_id') or 'unknown'}",
-             f"version: {context.get('game_version') or payload.get('game_version') or 'unknown'}"]
+             f"version: {context.get('game_version') or payload.get('game_version') or 'unknown'}",
+             f"context_kind: {context.get('context_kind') or payload.get('context_kind') or 'unknown'}",
+             f"branch: {context.get('branch') or payload.get('branch') or 'unknown'}"]
     if payload.get("reused") is not None:
         lines.append(f"reused: {str(payload['reused']).lower()}")
     if payload.get("activated") is not None:
@@ -177,6 +179,12 @@ def _emit_text(payload: dict) -> None:
                      f"{hit.get('display_name', '')} ({hit.get('status', '')})")
         if hit.get("fallback") is not None:
             lines.append(f"  fallback: {hit['fallback']}")
+        definition = hit.get("definition_source_ref")
+        if definition is not None:
+            lines.append(
+                f"  definition: {definition['relative_path']}:"
+                f"{definition['line_start']}-{definition['line_end']}"
+            )
         for item in hit.get("facts", []):
             span = item["value_source_ref"] or item["source_ref"]
             lines.append(f"  {item['field_name']} = {item['raw_expression']!r} "
