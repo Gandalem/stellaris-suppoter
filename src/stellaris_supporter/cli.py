@@ -1,33 +1,66 @@
-"""Command-line entry point for implemented Stellaris Supporter features."""
-
+"""Deterministic offline technology CLI. All facts come from existing services."""
 from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 from collections.abc import Sequence
+from dataclasses import asdict
 from pathlib import Path
 
 from stellaris_supporter import __version__
-from stellaris_supporter.config import load_settings
+from stellaris_supporter.answers import AnswerService
+from stellaris_supporter.cli_index import _language, index_technologies
+from stellaris_supporter.cli_setup import initialise_config
+from stellaris_supporter.config import load_settings, validate_paths
 from stellaris_supporter.doctor import DoctorReport, run_doctor
+from stellaris_supporter.retrieval import Query, SearchService
+from stellaris_supporter.storage import SnapshotError, SnapshotRepository
+
+
+def _add_common(parser: argparse.ArgumentParser, *, subcommand: bool = False) -> None:
+    # SUPPRESS prevents absent subcommand options from erasing global values.
+    kw = {"default": argparse.SUPPRESS} if subcommand else {}
+    parser.add_argument("--config", type=Path, help="TOML configuration path.", **kw)
+    parser.add_argument("--format", choices=("text", "json"),
+                        help="Output format.", **({**kw, "default": "text"} if not subcommand else kw))
+    parser.add_argument("--game-root", help="Explicit game root; never discovered.", **kw)
+    parser.add_argument("--data-dir", help="Private data directory.", **kw)
+    parser.add_argument("--language", help="ko/en or korean/english.", **kw)
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="stellaris-supporter",
-        description="Local-first Stellaris data assistant under incremental development.",
+        description="Offline technology indexing, search, and verified static citations.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
-    parser.add_argument("--config", type=Path, help="TOML configuration path.")
-    parser.add_argument("--format", choices=("text", "json"), default="text")
-    parser.add_argument("--game-root", help="Explicit game root override; no auto-discovery.")
-    parser.add_argument("--data-dir", help="Explicit private data directory override.")
-    parser.add_argument("--language", help="Language code override, for example ko or en.")
-    subparsers = parser.add_subparsers(dest="command")
-    subparsers.add_parser(
-        "doctor",
-        help="Validate configuration, paths, and local runtime capabilities.",
-    )
+    _add_common(parser)
+    sub = parser.add_subparsers(dest="command")
+    init = sub.add_parser("init", help="Create private, offline TOML configuration once.")
+    _add_common(init, subcommand=True)
+    doctor = sub.add_parser("doctor", help="Inspect configuration and local runtime only.")
+    _add_common(doctor, subcommand=True)
+    index = sub.add_parser("index", help="Safely index technology and Korean/English localisation.")
+    _add_common(index, subcommand=True)
+    index.add_argument("--allow-partial", action="store_true",
+                       help="Explicitly activate parsed-but-partial snapshot; never bypass security.")
+    search = sub.add_parser("search", help="Search IDs and Korean/English names.")
+    _add_common(search, subcommand=True)
+    search.add_argument("text")
+    search.add_argument("--kind", default=None)
+    search.add_argument("--snapshot", default=None)
+    search.add_argument("--limit", type=int, default=20)
+    show = sub.add_parser("show", help="Show verified facts for an exact game ID.")
+    _add_common(show, subcommand=True)
+    show.add_argument("game_id")
+    show.add_argument("--kind", default="technology")
+    show.add_argument("--snapshot", default=None)
+    show.add_argument("--limit", type=int, default=100)
+    snaps = sub.add_parser("snapshots", help="List snapshot statuses and active pointer.")
+    _add_common(snaps, subcommand=True)
+    snaps.add_argument("--limit", type=int, default=100)
+    snaps.add_argument("--offset", type=int, default=0)
     return parser
 
 
@@ -72,10 +105,154 @@ def _doctor_from_args(args: argparse.Namespace) -> int:
     return report.exit_code
 
 
+def _code_exit(code: str) -> int:
+    if code in {"QUERY_INVALID", "CONFIG_INVALID_LANGUAGE"}:
+        return 2
+    if code in {
+        "CONFIG_MISSING", "CONFIG_DEFAULT_MISSING", "GAME_ROOT_REQUIRED",
+        "GAME_ROOT_MISSING", "SNAPSHOT_MISSING", "SNAPSHOT_NOT_FOUND",
+        "FILESYSTEM_ERROR", "CONFIG_UNREADABLE", "DATA_DIR_MISSING",
+    }:
+        return 3
+    if code in {
+        "CONFIG_EXISTS", "PATH_REJECTED", "LIMIT_EXCEEDED",
+        "NETWORK_REJECTED", "SOURCE_UNVERIFIED", "COLLISION_UNRESOLVED",
+    }:
+        return 4
+    if code in {
+        "SOURCE_CHANGED", "PARTIAL_INDEX", "ADAPTER_PARSE_ERROR",
+        "ENCODING_ERROR", "PARSER_INVALID",
+    }:
+        return 5
+    if code == "CANCELLED":
+        return 130
+    return 6
+
+
+def _failed(command: str | None, code: str, *, exit_code: int | None = None) -> tuple[int, dict]:
+    return (
+        _code_exit(code) if exit_code is None else exit_code,
+        {"schema_version": 1, "command": command,
+         "status": "error", "results": [],
+         "diagnostics": [{"code": code, "severity": "error",
+                          "message": f"Request failed: {code}."}]},
+    )
+
+
+def _emit_text(payload: dict) -> None:
+    context = payload.get("context") or {}
+    lines = [f"command: {payload.get('command')}",
+             f"status: {payload.get('status')}",
+             f"snapshot: {payload.get('snapshot_id') or context.get('snapshot_id') or 'unknown'}",
+             f"version: {context.get('game_version') or payload.get('game_version') or 'unknown'}"]
+    if payload.get("reused") is not None:
+        lines.append(f"reused: {str(payload['reused']).lower()}")
+    if payload.get("activated") is not None:
+        lines.append(f"activated: {str(payload['activated']).lower()}")
+    if payload.get("truncated"):
+        lines.append("truncated: true")
+    for hit in payload.get("results", []):
+        lines.append(f"- {hit.get('game_id', hit.get('snapshot_id', ''))} "
+                     f"{hit.get('display_name', '')} ({hit.get('status', '')})")
+        if hit.get("fallback") is not None:
+            lines.append(f"  fallback: {hit['fallback']}")
+        for item in hit.get("facts", []):
+            span = item["value_source_ref"] or item["source_ref"]
+            lines.append(f"  {item['field_name']} = {item['raw_expression']!r} "
+                         f"[{span['relative_path']}:{span['line_start']}-{span['line_end']}] "
+                         f"({item['support_status']})")
+    for diagnostic in payload.get("diagnostics", []):
+        lines.append(f"- {diagnostic['code']}: {diagnostic['message']}")
+    print("\n".join(lines))
+
+
+def _load_checked(args: argparse.Namespace):
+    config = load_settings(
+        args.config,
+        overrides={"game_root": args.game_root,
+                   "data_dir": args.data_dir,
+                   "language": args.language},
+    )
+    errors = [d for d in (*config.diagnostics, *validate_paths(config.settings))
+              if d.severity == "error"]
+    if errors:
+        code = next((d.code for d in errors if _code_exit(d.code) == 4), errors[0].code)
+        raise SnapshotError(code, "Configuration or path validation failed.")
+    _language(config.settings.language)
+    return config.settings
+
+
+def _response_code(payload: dict) -> int:
+    if payload["status"] != "error":
+        return 0
+    diagnostics = payload.get("diagnostics") or []
+    code = diagnostics[0].get("code", "SQLITE_ERROR") if diagnostics else "SQLITE_ERROR"
+    return _code_exit(code)
+
+
+def _run_command(args: argparse.Namespace) -> tuple[int, dict]:
+    command = args.command
+    if command == "init":
+        payload = initialise_config(
+            config=args.config, game_root=args.game_root, data_dir=args.data_dir,
+            language=args.language,
+        )
+        return 0, payload
+    settings = _load_checked(args)
+    repo = SnapshotRepository(settings.data_dir, game_root=settings.game_root)
+    if command == "index":
+        answer = index_technologies(repo, settings, allow_partial=args.allow_partial)
+        return 0, {"schema_version": 1, "command": command, **answer}
+    if command == "snapshots":
+        rows, truncated = repo.list_snapshots(limit=args.limit, offset=args.offset)
+        return 0, {
+            "schema_version": 1, "command": command, "status": "ok",
+            "results": list(rows), "truncated": truncated, "diagnostics": [],
+        }
+    service = SearchService(repo)
+    try:
+        if command == "search":
+            result = service.search(Query(
+                args.text, snapshot_id=args.snapshot, kind=args.kind,
+                language=_language(settings.language), limit=args.limit,
+            ))
+            payload = {"command": command, **asdict(result)}
+            return _response_code(payload), payload
+        if command == "show":
+            response = AnswerService(service, repo).answer(
+                Query(args.game_id, snapshot_id=args.snapshot, kind=args.kind,
+                      language=_language(settings.language), limit=args.limit),
+                exact_game_id=True,
+            )
+            payload = {"command": command, **asdict(response)}
+            return _response_code(payload), payload
+        raise SnapshotError("QUERY_INVALID", "Unsupported CLI command.")
+    finally:
+        service.close()
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command is None:
+        parser.print_help()
+        return 0
     if args.command == "doctor":
         return _doctor_from_args(args)
-    parser.print_help()
-    return 0
+    try:
+        rc, payload = _run_command(args)
+    except KeyboardInterrupt:
+        rc, payload = _failed(args.command, "CANCELLED", exit_code=130)
+    except SnapshotError as exc:
+        rc, payload = _failed(args.command, exc.code)
+    except sqlite3.DatabaseError:
+        rc, payload = _failed(args.command, "SQLITE_ERROR")
+    except (OSError, RuntimeError, ValueError, TypeError, UnicodeError):
+        # The user-facing error must not contain private paths, raw game text,
+        # SQL details, or unexpected tracebacks. Report no unverified facts.
+        rc, payload = _failed(args.command, "COMMAND_FAILED")
+    if args.format == "json":
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+    else:
+        _emit_text(payload)
+    return rc
