@@ -703,3 +703,38 @@ def test_e018_staging_manifest_scans_sources_linearly(
     assert repo.snapshot(sid).status == "ready"
     # Identity + direct indexed source map + bounded rechecks, not O(N**2).
     assert calls[0] <= len(inputs) * 5
+
+
+
+def test_e019_sqlite_entity_insert_failure_preserves_old_active(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    old = _seed_active(repo)
+    revised = _sources(tech=TECH_SOURCE + b"# synthetic changed\n")
+    new = snapshot_identity(revised, _policy()).snapshot_id
+    with sqlite3.connect(repo.db_path) as conn:
+        conn.execute(
+            "CREATE TRIGGER synthetic_failure BEFORE INSERT ON entities "
+            "BEGIN SELECT RAISE(ABORT, 'simulated insert failure'); END"
+        )
+    with pytest.raises(SnapshotError) as exc:
+        _stage(repo, revised)
+    assert exc.value.code == "SQLITE_ERROR"
+    assert repo.snapshot(new).status == "failed"
+    assert repo.active_snapshot_id() == old
+    assert len(repo.entities()) == 1
+
+
+def test_e019_staging_cancellation_after_building_never_activates(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    old = _seed_active(repo)
+    new_sources = (SourceFileInput("synthetic", "demo", "cancel.txt", b"new"),)
+    new = snapshot_identity(new_sources, _policy()).snapshot_id
+    count = [0]
+    def cancelled() -> bool:
+        count[0] += 1
+        return count[0] >= 3
+    with pytest.raises(SnapshotError) as exc:
+        repo.stage(new_sources, _policy(), cancel=cancelled)
+    assert exc.value.code == "CANCELLED"
+    assert repo.snapshot(new).status == "failed"
+    assert repo.active_snapshot_id() == old
