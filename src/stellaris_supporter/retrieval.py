@@ -224,13 +224,13 @@ class SearchService:
                 candidate_resolution TEXT NOT NULL,
                 korean TEXT, korean_ref TEXT, english TEXT, english_ref TEXT,
                 chosen_resolution TEXT NOT NULL, warning TEXT,
-                korean_ref_selections TEXT NOT NULL, english_references TEXT NOT NULL
+                korean_references TEXT NOT NULL, english_references TEXT NOT NULL
             );
             CREATE INDEX projection_by_id ON projection(game_id,kind);
             CREATE TABLE names (
                 entity_key TEXT NOT NULL, language TEXT NOT NULL,
                 normalized TEXT NOT NULL, source_ref TEXT NOT NULL,
-                references TEXT NOT NULL
+                ref_selections TEXT NOT NULL
             );
             CREATE INDEX names_exact ON names(normalized,language,entity_key);
             CREATE TABLE descriptions (
