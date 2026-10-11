@@ -212,7 +212,7 @@
     {
       "id": "TASK-009",
       "title": "Localisation reader",
-      "status": "todo",
+      "status": "doing",
       "feature_ids": [
         "F-006"
       ],
