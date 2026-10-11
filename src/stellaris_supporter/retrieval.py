@@ -422,10 +422,32 @@ class SearchService:
                 if alias.source_ref.snapshot_id != sid:
                     raise SnapshotError("SOURCE_CHANGED", "Alias belongs to another snapshot.")
                 record = conn.execute(
-                    "SELECT 1 FROM projection WHERE entity_key=?", (alias.entity_key,)
+                    "SELECT kind,game_id,definition_ref FROM projection WHERE entity_key=?",
+                    (alias.entity_key,),
                 ).fetchone()
                 if record is None:
                     raise SnapshotError("SOURCE_CHANGED", "Alias entity was not found in snapshot.")
+                if not _safe_name(alias.text):
+                    raise SnapshotError("SOURCE_CHANGED", "Alias contains dynamic markup.")
+                if alias.source_ref != _ref(record["definition_ref"]):
+                    # Explicit cross-file aliases are accepted only when the
+                    # unique localisation key directly names this game ID.
+                    # SourceRef must equal the stored entry/value span, not an
+                    # arbitrary source-file span or another entity definition.
+                    count = conn.execute(
+                        "SELECT count(*) FROM projection WHERE kind=? AND game_id=?",
+                        (record["kind"], record["game_id"]),
+                    ).fetchone()[0]
+                    matches = [
+                        item for item in conn.execute(
+                            "SELECT language,entry_ref,source_ref,value,unsupported "
+                            "FROM entries WHERE name_key=?", (record["game_id"],),
+                        ) if alias.source_ref in (
+                            _ref(item["entry_ref"]), _ref(item["source_ref"])
+                        ) and not item["unsupported"] and _safe_name(item["value"])
+                    ]
+                    if count != 1 or len(matches) != 1:
+                        raise SnapshotError("SOURCE_CHANGED", "Alias is not grounded to entity.")
                 content = self.repository.source_bytes(alias.source_ref).decode("utf-8")
                 if normalize_search(alias.text) not in normalize_search(content):
                     raise SnapshotError("SOURCE_CHANGED", "Alias literal is not supported by SourceRef.")
