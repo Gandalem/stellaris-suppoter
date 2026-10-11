@@ -13,10 +13,10 @@ import hashlib
 import json
 import os
 import sqlite3
-from collections.abc import Callable, Iterable
-from contextlib import contextmanager, closing
+from collections.abc import Callable
+from contextlib import closing, contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +33,6 @@ from stellaris_supporter.storage.cache import (
     verify_live_source,
 )
 from stellaris_supporter.storage.identity import (
-    MAX_FILES,
     SCHEMA_VERSION,
     SnapshotError,
     SnapshotIdentity,
@@ -57,7 +56,7 @@ _HOOK = Callable[[], None]
 
 
 def _utc() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _db_error(exc: sqlite3.DatabaseError) -> SnapshotError:
