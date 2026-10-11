@@ -269,3 +269,12 @@ def test_e025_forged_search_hit_cross_snapshot_ref_rejected(
     assert result.status == "error"
     assert result.results == ()
     assert result.diagnostics[0].code == "SOURCE_CHANGED"
+
+
+def test_e024_invalid_non_string_query_is_typed_error(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    staged(repo)
+    result = service(repo).answer(Query(None))  # type: ignore[arg-type]
+    assert result.status == "error"
+    assert result.results == ()
+    assert result.diagnostics[0].code == "QUERY_INVALID"
