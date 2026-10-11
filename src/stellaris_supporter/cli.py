@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import sqlite3
+import tomllib
 from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
@@ -11,8 +12,8 @@ from pathlib import Path
 from stellaris_supporter import __version__
 from stellaris_supporter.answers import AnswerService
 from stellaris_supporter.cli_index import _language, index_technologies
-from stellaris_supporter.cli_setup import initialise_config
-from stellaris_supporter.config import load_settings, validate_paths
+from stellaris_supporter.cli_setup import _check_components, initialise_config
+from stellaris_supporter.config import default_config_path, load_settings, validate_paths
 from stellaris_supporter.doctor import DoctorReport, run_doctor
 from stellaris_supporter.retrieval import Query, SearchService
 from stellaris_supporter.storage import SnapshotError, SnapshotRepository
@@ -167,7 +168,40 @@ def _emit_text(payload: dict) -> None:
     print("\n".join(lines))
 
 
+def _guard_original_config_paths(args: argparse.Namespace) -> None:
+    """Reject path links *before* load_settings resolves lexical spellings."""
+    selected = args.config or default_config_path()
+    _check_components(selected)
+    for raw in (args.game_root, args.data_dir):
+        if raw is not None:
+            _check_components(Path(raw))
+    try:
+        if not selected.is_file():
+            return  # Existing loader will produce CONFIG_MISSING.
+        # Bounded, read-only inspection; the loader still owns all TOML validation.
+        if selected.stat().st_size > 1024 * 1024:
+            raise SnapshotError("LIMIT_EXCEEDED", "Configuration file too large.")
+        with selected.open("rb") as stream:
+            data = tomllib.load(stream)
+        for name in ("game_root", "data_dir"):
+            if getattr(args, name) is not None:
+                continue
+            raw = data.get(name)
+            if not isinstance(raw, str):
+                continue
+            path = Path(raw).expanduser()
+            if not path.is_absolute():
+                path = selected.parent / path
+            _check_components(path)
+    except (tomllib.TOMLDecodeError, UnicodeError, ValueError):
+        # Preserve the loader's existing typed CONFIG_INVALID diagnostics.
+        return
+    except OSError as exc:
+        raise SnapshotError("CONFIG_UNREADABLE", "Configuration path cannot be inspected.") from exc
+
+
 def _load_checked(args: argparse.Namespace):
+    _guard_original_config_paths(args)
     config = load_settings(
         args.config,
         overrides={"game_root": args.game_root,
