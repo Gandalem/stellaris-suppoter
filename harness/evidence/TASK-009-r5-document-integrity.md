@@ -13,7 +13,7 @@ R5/P2 review: https://github.com/Gandalem/stellaris-suppoter/pull/17#pullrequest
 
 ## R5/P2 — reproduction and repair
 
-**Before:** In the GitHub PR head `679c327`, `docs/DATA_CONTRACTS.md` had 98 lines. Its first `LocalisationResolution` paragraph ended with the malformed `\`$KEY# 데이터 계약 v1`. The source, snapshot, AST/diagnostics and entity/localisation sections appeared twice; the second duplicate contract had also lost the exact protected-reference syntax. The document harness still passed, exposing a gap between link/ledger checks and semantic Markdown integrity.
+**Before:** In the GitHub PR head `679c327`, `docs/DATA_CONTRACTS.md` had 98 lines. Its first `LocalisationResolution` paragraph ended with the malformed `$KEY# 데이터 계약 v1`. The source, snapshot, AST/diagnostics and entity/localisation sections appeared twice; the second duplicate contract had also lost the exact protected-reference syntax. The document harness still passed, exposing a gap between link/ledger checks and semantic Markdown integrity.
 
 **Repair:** On the *same PR #17 branch*, removed only the duplicate document introduction and repeated normative sections, restoring a single `LocalisationResolution` contract. The document has 58 lines, exactly one top title, and the ordered sections `출처`, `스냅샷`, `AST·진단`, `엔티티·관계·현지화`, `질의·답변` and `저장 구조` once each. Existing `SourceRef`, snapshot, query, storage and schema-version sections remain intact.
 
