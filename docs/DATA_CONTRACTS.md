@@ -70,7 +70,7 @@ schema_version과 앱 버전은 다릅니다. migration에는 백업·복구가 
 
 
 
-### PR #19 R1~R4 보완 — live 원본·손실 없는 JSON·해시 일관성
+**PR #19 R1~R4 보완 — live 원본·손실 없는 JSON·해시 일관성:**
 
 - **서로 다른 두 경로 계약:** SourceRef의 `(source_kind, source_id, relative_path)`는 공개 가능한 **논리적 provenance**이고, `live_path`는 별도의 **실제 입력 파일**입니다. 논리 상대 경로가 game_root의 실제 경로와 같다고 가정하지 않습니다. base/mod별 source_id의 namespace는 그대로 유지하고, 모든 live 입력은 명시한 단일 game_root 내부의 실제 root-relative 경로여야 합니다. 그 밖의 모드 루트·링크·reparse·탈출 경로는 아직 지원하지 않으며 실패합니다.
 - Staging 때 SQLite `source_files.live_relative_path`와 `live_root_sha256`를 **개인 DB 안에만** 기록합니다. 활성화 입력의 source key/bytes/SHA뿐 아니라 같은 game_root 바인딩과 동일한 root-relative 물리 파일을 검사한 뒤, **해당 파일**의 현재 SHA를 다시 확인합니다. 서로 다른 파일의 bytes가 같더라도 검증 대상을 바꿀 수 없습니다. 이 개인용 루트 fingerprint 및 실제 경로는 snapshot identity, 공개 E evidence, 로그의 원문 절대 경로에 포함하지 않습니다. 기존 v1의 구 물리 스키마에 대한 자동 migration은 제공하지 않으며 스키마 preflight에서 명시적으로 거부합니다.
