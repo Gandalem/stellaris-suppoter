@@ -15,6 +15,10 @@ SCHEMA_VERSION = 1
 MAX_FILES = 50_000
 MAX_SOURCE_BYTES = 16 * 1024 * 1024
 MAX_TOTAL_BYTES = 512 * 1024 * 1024
+# Identity policy is one bounded, non-raw JSON record, distinct from source bytes.
+MAX_POLICY_JSON_BYTES = 1024 * 1024
+MAX_POLICY_JSON_ITEMS = 10_000
+MAX_POLICY_JSON_DEPTH = 32
 _ALLOWED_KINDS = frozenset({"synthetic", "base", "mod", "official", "wiki", "community"})
 _WINDOWS_RESERVED = frozenset(
     {"CON", "PRN", "AUX", "NUL"}
@@ -63,14 +67,43 @@ def normalise_relative_path(relative_path: str) -> str:
     return "/".join(parts)
 
 
-def canonical_json(value: Any, *, max_bytes: int | None = None) -> bytes:
-    """UTF-8, NFC input, sorted keys, no whitespace, NaN or platform objects."""
+def _json_bytes(
+    value: Any,
+    *,
+    require_nfc: bool,
+    max_bytes: int | None,
+    max_depth: int,
+    max_items: int | None,
+) -> bytes:
+    """Bounded UTF-8 JSON without altering string codepoints.
+
+    Identity metadata requires NFC; raw records deliberately do not.
+    A cheap codepoint-count preflight prevents materialising huge scalar
+    strings in JSONEncoder.iterencode before enforcing the byte budget.
+    """
+    if max_bytes is not None and (
+        isinstance(max_bytes, bool) or not isinstance(max_bytes, int) or max_bytes < 1
+    ):
+        raise _error("LIMIT_EXCEEDED", "JSON byte budget must be positive.")
+    if max_items is not None and (
+        isinstance(max_items, bool) or not isinstance(max_items, int) or max_items < 1
+    ):
+        raise _error("LIMIT_EXCEEDED", "JSON item budget must be positive.")
+    examined = 0
+    minimum_chars = 0
+
     def inspect(item: Any, depth: int = 0) -> None:
-        if depth > 280:
-            raise _error("LIMIT_EXCEEDED", "Canonical JSON nesting limit exceeded.")
+        nonlocal examined, minimum_chars
+        examined += 1
+        if depth > max_depth or (max_items is not None and examined > max_items):
+            raise _error("LIMIT_EXCEEDED", "JSON depth or item count limit exceeded.")
         if item is None or isinstance(item, (str, bool, int)):
-            if isinstance(item, str) and unicodedata.normalize("NFC", item) != item:
-                raise _error("SCHEMA_ERROR", "Canonical JSON strings must be NFC.")
+            if isinstance(item, str):
+                if require_nfc and unicodedata.normalize("NFC", item) != item:
+                    raise _error("SCHEMA_ERROR", "Canonical JSON strings must be NFC.")
+                minimum_chars += len(item)
+                if max_bytes is not None and minimum_chars > max_bytes:
+                    raise _error("LIMIT_EXCEEDED", "JSON string contents exceed byte budget.")
             return
         if isinstance(item, (list, tuple)):
             for child in item:
@@ -84,26 +117,45 @@ def canonical_json(value: Any, *, max_bytes: int | None = None) -> bytes:
                 inspect(child, depth + 1)
             return
         raise _error("SCHEMA_ERROR", "Unsupported type in canonical JSON.")
+
     inspect(value)
-    if max_bytes is None:
-        return json.dumps(
-            value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
-        ).encode("utf-8")
-    if isinstance(max_bytes, bool) or not isinstance(max_bytes, int) or max_bytes < 1:
-        raise _error("LIMIT_EXCEEDED", "JSON output byte budget must be positive.")
-    # For large nested payloads do not allocate unbounded intermediate JSON.
     encoder = json.JSONEncoder(
         ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
     )
     chunks: list[bytes] = []
     total = 0
-    for chunk in encoder.iterencode(value):
-        encoded = chunk.encode("utf-8")
-        total += len(encoded)
-        if total > max_bytes:
-            raise _error("LIMIT_EXCEEDED", "Record JSON exceeds serialization budget.")
-        chunks.append(encoded)
+    try:
+        for chunk in encoder.iterencode(value):
+            encoded = chunk.encode("utf-8")
+            total += len(encoded)
+            if max_bytes is not None and total > max_bytes:
+                raise _error("LIMIT_EXCEEDED", "JSON serialization exceeds byte budget.")
+            chunks.append(encoded)
+    except UnicodeError as exc:
+        raise _error("SCHEMA_ERROR", "JSON contains an invalid Unicode codepoint.") from exc
     return b"".join(chunks)
+
+
+def canonical_json(
+    value: Any, *, max_bytes: int | None = None,
+    max_depth: int = 280, max_items: int | None = None,
+) -> bytes:
+    """Strict NFC identity/metadata canonical JSON; never normalize input."""
+    return _json_bytes(
+        value, require_nfc=True, max_bytes=max_bytes,
+        max_depth=max_depth, max_items=max_items,
+    )
+
+
+def storage_json(
+    value: Any, *, max_bytes: int, max_depth: int = 280,
+    max_items: int = 100_000,
+) -> bytes:
+    """Lossless storage JSON: retain non-NFC raw codepoints, bound depth/bytes."""
+    return _json_bytes(
+        value, require_nfc=False, max_bytes=max_bytes,
+        max_depth=max_depth, max_items=max_items,
+    )
 
 
 def _digest(value: bytes) -> str:
@@ -191,6 +243,13 @@ class SnapshotPolicy:
                 raise _error("SCHEMA_ERROR", "Parser and adapter versions must be bounded.")
         if not isinstance(self.policy_hash, str) or _HEX64.fullmatch(self.policy_hash) is None:
             raise _error("SCHEMA_ERROR", "policy_hash must be lowercase SHA-256.")
+        if not isinstance(self.analysis_context, Mapping) or not isinstance(
+            self.dlc_state, Mapping
+        ):
+            raise _error("SCHEMA_ERROR", "Policy context and DLC state must be mappings.")
+        if (len(self.analysis_context) > MAX_POLICY_JSON_ITEMS
+                or len(self.dlc_state) > MAX_POLICY_JSON_ITEMS):
+            raise _error("LIMIT_EXCEEDED", "Policy mapping item count exceeds budget.")
         return {
             "schema_version": self.schema_version,
             "parser_version": self.parser_version,
@@ -238,6 +297,14 @@ def snapshot_identity(
         folded.add(collision_key)
     content_hash = _digest(canonical_json([item.identity_fields() for item in descriptors]))
     policy_fields = policy.identity_fields()
-    policy_json = canonical_json(policy_fields).decode("utf-8")
-    snapshot_id = _digest(canonical_json({"content_hash": content_hash, **policy_fields}))
+    policy_json = canonical_json(
+        policy_fields, max_bytes=MAX_POLICY_JSON_BYTES,
+        max_depth=MAX_POLICY_JSON_DEPTH, max_items=MAX_POLICY_JSON_ITEMS,
+    ).decode("utf-8")
+    # content_hash adds <128 ASCII bytes around the bounded policy JSON.
+    snapshot_id = _digest(canonical_json(
+        {"content_hash": content_hash, **policy_fields},
+        max_bytes=MAX_POLICY_JSON_BYTES + 128,
+        max_depth=MAX_POLICY_JSON_DEPTH, max_items=MAX_POLICY_JSON_ITEMS,
+    ))
     return SnapshotIdentity(snapshot_id, content_hash, tuple(descriptors), policy_json)
