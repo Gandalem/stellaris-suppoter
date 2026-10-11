@@ -91,7 +91,8 @@
       ],
       "evidence": [
         "harness/evidence/TASK-002-synthetic-corpus.md",
-        "harness/evidence/TASK-009-localisation-reader-resolver.md"
+        "harness/evidence/TASK-009-localisation-reader-resolver.md",
+        "harness/evidence/TASK-009-review-followup.md"
       ]
     },
     {
