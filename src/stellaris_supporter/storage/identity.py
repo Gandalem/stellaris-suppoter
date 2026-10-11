@@ -62,7 +62,7 @@ def normalise_relative_path(relative_path: str) -> str:
     return "/".join(parts)
 
 
-def canonical_json(value: Any) -> bytes:
+def canonical_json(value: Any, *, max_bytes: int | None = None) -> bytes:
     """UTF-8, NFC input, sorted keys, no whitespace, NaN or platform objects."""
     def inspect(item: Any, depth: int = 0) -> None:
         if depth > 280:
@@ -84,9 +84,25 @@ def canonical_json(value: Any) -> bytes:
             return
         raise _error("SCHEMA_ERROR", "Unsupported type in canonical JSON.")
     inspect(value)
-    return json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
-    ).encode("utf-8")
+    if max_bytes is None:
+        return json.dumps(
+            value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+        ).encode("utf-8")
+    if isinstance(max_bytes, bool) or not isinstance(max_bytes, int) or max_bytes < 1:
+        raise _error("LIMIT_EXCEEDED", "JSON output byte budget must be positive.")
+    # For large nested payloads do not allocate unbounded intermediate JSON.
+    encoder = json.JSONEncoder(
+        ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+    )
+    chunks: list[bytes] = []
+    total = 0
+    for chunk in encoder.iterencode(value):
+        encoded = chunk.encode("utf-8")
+        total += len(encoded)
+        if total > max_bytes:
+            raise _error("LIMIT_EXCEEDED", "Record JSON exceeds serialization budget.")
+        chunks.append(encoded)
+    return b"".join(chunks)
 
 
 def _digest(value: bytes) -> str:
