@@ -11,7 +11,6 @@ import json
 import os
 import platform
 import sqlite3
-import statistics
 import sys
 import time
 
