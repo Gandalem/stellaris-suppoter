@@ -4,7 +4,7 @@
 
 PR #19 보완 합성 회귀는 R1에서 원본/복제 동일 bytes 경로 바꿔치기·루트 변경·source ID 충돌·symlink, R2에서 NFC 한국어/분해형 한글 자모/Latin combining/BOM/CRLF/원문 byte 위치, R3에서 정책 JSON 1MiB 정확 경계·초과·중첩·노드 수, R4에서 DB cache pointer 위조와 과거 정상 snapshot 읽기를 검증합니다. R5는 ADR 테이블 행 연속성과 합성 DB 크기별 `PRAGMA quick_check` 대비 read-only schema preflight 비용을 별도 **비차단** 방식으로 측정합니다. 실게임 검색 warm p95나 실제 파일시스템 공격 완전 방어를 이 측정 결과로 보장하지 않습니다. 현지화 reader/resolver의 합성 E-015~017 검증은 유지되며 TASK-010은 SQLite 저장소와 스냅샷 원자성에 대한 별도 E-018/E-019 부정·경계 회귀를 추가합니다. 이는 DB Repository 단위 검증으로, DB를 포함한 검색·인용/CLI 종단 연결이나 실제 게임 설치본 검증 완료를 뜻하지 않습니다. [평가 사례](../harness/evals.jsonl)는 실행 근거가 있는 항목만 pass로 기록합니다.
 
-TASK-011 검색 후보에는 `tests/test_retrieval.py`의 합성 E-020/021/022 정답·정규화·FTS 비활성·SQL 메타문자·스냅샷 격리 및 cache SHA 검사가 추가됩니다. 검색 PR의 CI 성공 전까지 별도 evidence에서 상태를 `not_run`으로 유지합니다. 실게임 검색 검증이나 공식 p95 보장은 아닙니다.
+TASK-011 검색 후보에는 `tests/test_retrieval.py`의 합성 E-020/021/022 정답·정규화·FTS 비활성·SQL 메타문자·스냅샷 격리 및 cache SHA 검사가 추가됩니다. 검색 PR의 Ubuntu/Windows 합성 회귀 통과 및 평가 결과는 `harness/evidence/TASK-011-retrieval.md`에 기록합니다. 실제 기능 종료는 별도 독립 리뷰·실제 main 병합·main push CI 이후에만 판단합니다. 실게임 검색 검증이나 공식 p95 보장은 아닙니다.
 
 ## 테스트 계층
 

@@ -10,3 +10,5 @@ Changed: search-only typed service/projection, bounded snapshot repository reads
 Checks: upstream main Package `38134576804` and Documentation harness `38134576805` both OS succeeded (359 Ubuntu/356 Windows+3 existing skips). Current PR verification must be recorded from actual new Actions; not claimed yet. Local clone inaccessible due DNS.
 
 TASK-011 stays doing/F-008 in_progress, E-020/021/022 not_run until executed. Await PR head+test-merge CI and independent review; do not merge.
+
+Candidate testing: PR #21 head 7d6ccd580ae56ba07327ba2bbea09e2cc3a7d78a / test-merge 8b0eddcaab6d7db716bb10a5334080e968d1ef80; Package 38135547105, Ubuntu 393 passed / Windows 390 passed and existing 3 skipped, Ruff/harness passed both; Documentation 38135547080 passed both. E-020/E-021/E-022 now pass only for authored synthetic fixtures. SQL-only benchmark is non-gating, not end-to-end. TASK-011 stays doing/F-008 in_progress.
