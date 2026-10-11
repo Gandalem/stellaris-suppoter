@@ -303,17 +303,6 @@ def resolve_localisation(
         chunks.append(text)
         output_bytes += encoded_size
 
-    def append_literal(text: str, entry: LocalisationEntry) -> None:
-        if not text:
-            return
-        if ("[" in text and "]" in text) or "£" in text or "§" in text:
-            emit(
-                "LOC_DYNAMIC_UNSUPPORTED", "warning",
-                "Dynamic scope or markup is preserved without interpretation.",
-                entry.value_source_ref,
-            )
-        append(text)
-
     if not catalog.complete:
         emit(
             "LOC_INCOMPLETE_SOURCE", "error",
@@ -354,52 +343,131 @@ def resolve_localisation(
                 "LOC_UNSUPPORTED_ESCAPE", "warning",
                 "Unsupported escape was retained literally.", entry.value_source_ref,
             )
-        value = entry.display_value
+        # Interpret lexical escapes only while scanning the original value.
+        # Unsupported bracket/markup/escaped-dollar regions are consumed as a
+        # whole BEFORE looking for $KEY$, so references inside remain literal.
+        value = entry.raw_value
         cursor = 0
+        literal_start = 0
         while not stopped and cursor < len(value):
-            pos = value.find("$", cursor)
-            if pos == -1:
-                append_literal(value[cursor:], entry)
-                break
-            append_literal(value[cursor:pos], entry)
+            ch = value[cursor]
+            if ch not in {'"', "\\", "[", "]", "£", "§", "$"}:
+                cursor += 1
+                continue
+            # A bare quote cannot occur in a well-formed quoted value.
+            if ch == '"':
+                cursor += 1
+                continue
+            append(value[literal_start:cursor])
             if stopped:
                 break
-            end = value.find("$", pos + 1)
-            if end == -1:
-                emit(
-                    "LOC_DYNAMIC_UNSUPPORTED", "warning",
-                    "Unmatched dollar expression was retained literally.", entry.value_source_ref,
-                )
-                append(value[pos:])
-                break
-            target = value[pos + 1 : end]
-            raw_ref = value[pos : end + 1]
-            if _REFERENCE_KEY.fullmatch(target) is None:
-                emit(
-                    "LOC_DYNAMIC_UNSUPPORTED", "warning",
-                    "Unsupported dollar expression was preserved.", entry.value_source_ref,
-                )
-                append(raw_ref)
-            else:
-                ref, _, status = select(target)
-                if status == "ambiguous":
-                    emit(
-                        "LOC_DUPLICATE_REFERENCE", "warning",
-                        "Referenced key has multiple definitions.", entry.value_source_ref,
-                    )
-                    append(raw_ref)
-                elif status == "missing":
-                    emit(
-                        "LOC_MISSING_REFERENCE", "warning",
-                        "Referenced key does not exist.", entry.value_source_ref,
-                    )
-                    append(raw_ref)
+
+            if ch == "\\":
+                if cursor + 1 < len(value) and value[cursor + 1] in {'"', "\\"}:
+                    # Supported lexical escape: append decoded character;
+                    # static references after this escape remain eligible.
+                    append(value[cursor + 1])
+                    cursor += 2
+                elif cursor + 1 < len(value) and value[cursor + 1] == "$":
+                    # Unsupported \$KEY$ is one protected literal region.
+                    close = value.find("$", cursor + 2)
+                    cursor_end = len(value) if close < 0 else close + 1
+                    append(value[cursor:cursor_end])
+                    cursor = cursor_end
                 else:
-                    assert ref is not None
-                    ref_sources.append(ref.source_ref)
-                    ref_selections.append(LocalisationReferenceSelection(target, ref.language, ref.source_ref))
-                    expand(ref, path)
-            cursor = end + 1
+                    cursor_end = min(cursor + 2, len(value))
+                    append(value[cursor:cursor_end])
+                    cursor = cursor_end
+
+            elif ch == "[":
+                # No dynamic scope evaluation. Bracket nesting is consumed
+                # once in forward order, including dollars in the scope.
+                depth = 1
+                cursor_end = cursor + 1
+                while cursor_end < len(value) and depth:
+                    if value[cursor_end] == "[":
+                        depth += 1
+                    elif value[cursor_end] == "]":
+                        depth -= 1
+                    cursor_end += 1
+                emit(
+                    "LOC_DYNAMIC_UNSUPPORTED", "warning",
+                    "Bracketed dynamic scope is preserved without interpretation.",
+                    entry.value_source_ref,
+                )
+                append(value[cursor:cursor_end])
+                cursor = cursor_end
+
+            elif ch in {"£", "§"}:
+                close = value.find(ch, cursor + 1)
+                cursor_end = len(value) if close < 0 else close + 1
+                emit(
+                    "LOC_DYNAMIC_UNSUPPORTED", "warning",
+                    "Icon or colour markup is preserved without interpretation.",
+                    entry.value_source_ref,
+                )
+                append(value[cursor:cursor_end])
+                cursor = cursor_end
+
+            elif ch == "]":
+                emit(
+                    "LOC_DYNAMIC_UNSUPPORTED", "warning",
+                    "Unmatched dynamic scope delimiter is preserved.",
+                    entry.value_source_ref,
+                )
+                append(ch)
+                cursor += 1
+
+            else:
+                # $KEY$ outside unsupported regions is the only reference
+                # syntax we expand. Each find advances beyond the closing $.
+                close = value.find("$", cursor + 1)
+                if close < 0:
+                    emit(
+                        "LOC_DYNAMIC_UNSUPPORTED", "warning",
+                        "Unmatched dollar expression was retained literally.",
+                        entry.value_source_ref,
+                    )
+                    append(value[cursor:])
+                    cursor = len(value)
+                else:
+                    target = value[cursor + 1 : close]
+                    raw_ref = value[cursor : close + 1]
+                    if _REFERENCE_KEY.fullmatch(target) is None:
+                        emit(
+                            "LOC_DYNAMIC_UNSUPPORTED", "warning",
+                            "Unsupported dollar expression was preserved.",
+                            entry.value_source_ref,
+                        )
+                        append(raw_ref)
+                    else:
+                        ref, _, status = select(target)
+                        if status == "ambiguous":
+                            emit(
+                                "LOC_DUPLICATE_REFERENCE", "warning",
+                                "Referenced key has multiple definitions.",
+                                entry.value_source_ref,
+                            )
+                            append(raw_ref)
+                        elif status == "missing":
+                            emit(
+                                "LOC_MISSING_REFERENCE", "warning",
+                                "Referenced key does not exist.",
+                                entry.value_source_ref,
+                            )
+                            append(raw_ref)
+                        else:
+                            assert ref is not None
+                            ref_sources.append(ref.source_ref)
+                            ref_selections.append(
+                                LocalisationReferenceSelection(target, ref.language, ref.source_ref)
+                            )
+                            expand(ref, path)
+                    cursor = close + 1
+
+            literal_start = cursor
+        if not stopped:
+            append(value[literal_start:])
 
     expand(selected, ())
     return LocalisationResolution(
