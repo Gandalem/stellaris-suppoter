@@ -8,8 +8,8 @@
 |---|---|
 | [state.json](state.json) | 현재 단계, active_task, next_task, 마지막 인계 |
 | [features.json](features.json) | 20개 기능의 상태와 요구사항 링크 |
-| [tasks.json](tasks.json) | 30개 작업의 의존성·수용 조건·관련 평가 |
-| [evals.jsonl](evals.jsonl) | 46개 평가 시나리오의 입력·정답 조건·실행 상태 |
+| [tasks.json](tasks.json) | 32개 작업의 의존성·수용 조건·관련 평가 |
+| [evals.jsonl](evals.jsonl) | 48개 평가 시나리오의 입력·정답 조건·실행 상태 |
 | [세션 기록](sessions/2026-09-22-bootstrap.md) | 실제 수행·검증·제약·다음 작업 |
 | [작업](templates/task.md) / [검토](templates/review.md) / [인계](templates/session.md) | 복사해 사용하는 기록 양식 |
 

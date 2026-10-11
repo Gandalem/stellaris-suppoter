@@ -22,6 +22,7 @@
 | [파싱과 현지화](PARSING.md) | 지원 구문, 보존 규칙, 번역 연결 |
 | [검색과 근거](SEARCH_AND_ANSWERS.md) | 한국어 검색, 출처, 답변 보류 |
 | [CLI 계약](CLI.md) | 명령, 출력, 오류 코드 |
+| [오버레이 MVP 계획](OVERLAY.md) | Windows 게임 오버레이의 후속 UX·수용 조건·실기기 검증 범위 |
 | [업데이트와 버전](UPDATES.md) | 설치 데이터·정식 공지·베타 분리 |
 | [테스트 전략](TESTING.md) / [평가](EVALUATION.md) | 재현, 회귀, 계량 기준 |
 | [운영·복구](OPERATIONS.md) / [릴리스](RELEASE.md) | 실패 복구, 배포 게이트 |

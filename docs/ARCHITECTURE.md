@@ -65,3 +65,7 @@ TASK-012의 `answers.py`는 검색→정적 formatter와 출처 검증의 메모
 **TASK-013 실제 CLI 수직 연결 (후속 검증 후보)**
 
 `cli.py`는 argparse 전역·subcommand 옵션과 JSON/text·종료 코드를 관리합니다. `cli_setup.py`는 기존 설정의 무단 덮어쓰기를 막고 private 설정만 생성합니다. `cli_index.py`는 game_root의 지원되는 3개 하위 경로만 `scan_inventory`하고 live 원본을 no-follow read, SHA/size/relative identity로 재검증합니다. `SnapshotPolicy`에는 개인 절대 경로나 시각을 넣지 않으며 parser/adapter/localisation을 `stage_from_results`에 결합합니다. `activate(...,sources=...)`가 live manifest/캐시를 다시 확인하고 active를 원자적으로 교체합니다. search는 `SearchService`, show는 `AnswerService.answer(exact_game_id=True)`, snapshots는 bounded repo API로 연결합니다. SQLite v1 및 SourceRef identity는 변경하지 않습니다.
+
+## 후속 Windows 오버레이 설계 (미구현)
+
+게임과 별도 프로세스 오버레이는 기존 SearchService/AnswerService/SnapshotRepository의 동일 pinned snapshot/SourceRef를 안전한 텍스트로 렌더링합니다. 게임 창은 일반 OS 창/프로세스 메타데이터로만 식별하며 메모리/그래픽/입력 후킹 및 게임 조작은 하지 않습니다. 기본은 별도 네트워크 서버 없는 서비스 재사용이며 접힘·게임 창 소실 시 완전 숨김 또는 검증된 입력 통과를 요구합니다. 기술 후보와 수용 기준은 [오버레이 계획](OVERLAY.md)을 따릅니다.

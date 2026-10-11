@@ -62,3 +62,7 @@ E-026 저작 합성 후보는 PR #25 코드 head `e65a9cac1d05ef7a55b3d7510ef66a
 
 
 TASK-013 PR #25 R1–R5 추가 합성 테스트: 실제 subprocess와 작은 제어 한도의 in-process 검증으로 parser/lexer 진단, 실제 parser depth, localisation depth/visits/output, 정상 partial 및 hard-stop 구분, 비대상 .bin 크기·개수 미청구, 대상 초과와 디렉터리 집계·symlink, 설정된 search/show 길이·결과 한도와 종료 코드, 다중 snapshot 기본 text의 active/branch/status/created/checked/pagination, ESC/CR/BS/bidi text 경계·한/영/JSON 의미 보존을 검사합니다. 선행 실패 테스트 실행과 수정 CI는 `harness/evidence/TASK-013-review-followup.md`에 기록합니다. 실패를 skip하거나 전체 baseline을 제거하지 않습니다.
+
+## 후속 Windows 오버레이 테스트 계획
+
+TASK-032/E-048의 Windows 게임 창 기술 실험과 TASK-030/E-046의 정식 OVL-01~06 검증을 구별합니다. 합성 테스트는 상태 전이·단축키 충돌·서비스 검색/출처 일치·입력 차단 방지 논리를, 실제 Windows 수동 테스트는 게임 전경에서 표시·클릭/키 입력 통과·DPI·다중 모니터·최소화/종료 안전 숨김을 검증합니다. 개인 원문·설치 경로·화면 캡처를 공개하지 않습니다. [오버레이 기준](OVERLAY.md).

@@ -85,3 +85,8 @@ schema_version과 앱 버전은 다릅니다. migration에는 백업·복구가 
 **TASK-011 R1–R3 SearchHit 증거 계약 (원본 SQLite v1 불변):** SearchHit의 기존 definition_source_ref, localisation_source_ref 및 match_source_ref는 유지하고, localisation_reference_source_refs와 localisation_reference_selections (key, language_used, source_ref), match_reference_source_refs, match_reference_selections를 append-only typed field로 추가합니다. 참조는 root와 개별 종속 출처를 구별하고 동일 snapshot·원문 cache 및 저장된 entry key/language/span과 일치해야 합니다. 원문에 존재하지만 resolver가 dynamic/partial/ambiguous라고 판단한 표현은 검증된 정적 이름으로 올리지 않고, 안전한 영어 이름 또는 ID fallback을 사용합니다. VerifiedAlias는 명시 등록만 허용하며 출처가 동일 엔티티의 정의 또는 고유하게 연결된 localisation entry여야 합니다. **같은 source 파일에 문자열만 존재한다는 사실은 별칭 증거가 아닙니다.** 저장 schema/migration은 변경하지 않습니다.
 
 **TASK-012 R1–R5 인용 보강:** 저장된 candidate field는 캐시 SHA만으로 신뢰하지 않고, 같은 정의 원본 파일 식별자 및 bounded parser AST의 순서·실제 키·연산자·occurrence·부모 필드/값 span과 정확히 대조합니다. 하나의 AnswerEnvelope에 공통 fact 64, citation 256, 계상된 원문·표시 payload 64KiB 및 raw value 512 byte 제한을 적용하며, 초과는 partial/truncated로 표시합니다. 이 64KiB는 Python 메모리·JSON 직렬화 총 길이 보장이 아닙니다. 검증된 파일 LRU(원본과 newline index 포함 24MiB), 개별 원본 최대 16MiB, newline index 최대 100만 개를 사용합니다. AnswerResult는 선택적 match_source_ref, match_reference_selections, match_language_used를 추가하되 SearchHit가 독립 match 언어를 제공하지 않으면 후자는 null입니다. SQLite v1 schema와 snapshot identity는 유지합니다.
+
+
+## 후속 오버레이 데이터 표시 계약 (F-020 계획)
+
+UI는 기존 Query → SearchService/AnswerService의 AnswerEnvelope와 verified SourceRef를 읽기 전용으로 표시합니다. 같은 pinned snapshot의 game_id, raw_expression, 상대 경로·행·해시, 번역 fallback, partial/not_found/unsupported를 보존합니다. 검증하지 않은 게임 효과를 실제 계산값처럼 표시하지 않습니다. 창 위치·크기·투명도·단축키는 게임 폴더 외부의 개인 설정에 저장하고 snapshot identity/SQLite v1 schema에는 넣지 않습니다. 원문은 안전한 텍스트로만 렌더링합니다. [오버레이 수용 기준](OVERLAY.md).

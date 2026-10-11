@@ -264,12 +264,13 @@
     },
     {
       "id": "F-020",
-      "title": "Local user interface",
+      "title": "Windows game overlay UI",
       "milestone": "later",
       "status": "planned",
       "docs": [
         "docs/REQUIREMENTS.md",
-        "docs/PRODUCT.md"
+        "docs/PRODUCT.md",
+        "docs/OVERLAY.md"
       ],
       "evidence": []
     }
