@@ -315,7 +315,9 @@ class SnapshotRepository:
         by_key = {d.key: d for d in identity.sources}
         source_by_key = {item.descriptor().key: item for item in sources}
         bytes_by_key = {key: item.data for key, item in source_by_key.items()}
-        if len(candidates) + len(entries) > MAX_RECORDS or len(diagnostics) > MAX_DIAGNOSTICS:
+        relation_count = sum(len(candidate.prerequisites) for candidate in candidates)
+        if (len(candidates) + len(entries) + relation_count > MAX_RECORDS
+                or len(diagnostics) > MAX_DIAGNOSTICS):
             raise SnapshotError("LIMIT_EXCEEDED", "Indexed record count exceeds budget.")
         for key, source in source_by_key.items():
             self._check_live(source, by_key[key])
@@ -380,6 +382,8 @@ class SnapshotRepository:
                 keys: dict[tuple[str, str], int] = {}
                 entity_map: dict[tuple[str, str, str, str, int, int], str] = {}
                 for candidate in ordered_candidates:
+                    if cancel is not None and cancel():
+                        raise SnapshotError("CANCELLED", "Staging was cancelled.")
                     ref = candidate.source_ref
                     _validate_ref(ref, sid, by_key)
                     _validate_own_source(
@@ -454,6 +458,8 @@ class SnapshotRepository:
                     x.source_ref.relative_path, x.source_ref.byte_start,
                     x.language, x.key, x.occurrence
                 )):
+                    if cancel is not None and cancel():
+                        raise SnapshotError("CANCELLED", "Staging was cancelled.")
                     ref = entry.source_ref
                     _validate_ref(ref, sid, by_key)
                     _validate_own_source(entry._source, ref, bytes_by_key)
