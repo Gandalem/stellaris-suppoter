@@ -223,7 +223,7 @@ class AnswerService:
                                   (_diag("QUERY_INVALID", "Typed query required.", "error"),), False)
         # Requests for game-engine calculations must not be transformed into
         # apparently supported static fields or numeric answers.
-        if _UNSUPPORTED.search(query.text):
+        if isinstance(query.text, str) and _UNSUPPORTED.search(query.text):
             return AnswerEnvelope(
                 1, "unsupported", query, None, (),
                 (_diag("UNSUPPORTED_CALCULATION",
@@ -253,13 +253,17 @@ class AnswerService:
             results = tuple(self._format_hit(hit, sid, field) for hit in found.results)
             warnings = tuple(_diag(d.code, d.message, d.severity)
                              for d in found.diagnostics)
+            truncated = found.truncated or any(
+                warning.code in {"FACT_LIMIT", "VALUE_LIMIT", "OUTPUT_LIMIT"}
+                for hit in results for warning in hit.warnings
+            )
             partial = (
-                found.status == "partial" or found.truncated or
+                found.status == "partial" or truncated or
                 any(hit.warnings or any(f.support_status != "literal" for f in hit.facts)
                     for hit in results)
             )
             return AnswerEnvelope(1, "partial" if partial else "ok", query, context,
-                                  results, warnings, found.truncated)
+                                  results, warnings, truncated)
         except SnapshotError as exc:
             return AnswerEnvelope(1, "error", query, context, (),
                                   (_diag(exc.code, str(exc), "error"),), False)
