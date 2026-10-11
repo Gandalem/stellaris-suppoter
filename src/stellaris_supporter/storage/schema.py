@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS source_files (
     file_sha256 TEXT NOT NULL,
     byte_size INTEGER NOT NULL CHECK(byte_size >= 0),
     cache_sha256 TEXT NOT NULL,
+    live_required INTEGER NOT NULL CHECK(live_required IN (0,1)),
     PRIMARY KEY(snapshot_id,source_kind,source_id,relative_path),
     FOREIGN KEY(snapshot_id) REFERENCES snapshots(snapshot_id) ON DELETE CASCADE
 );
@@ -130,7 +131,7 @@ CREATE TABLE IF NOT EXISTS settings (
 
 REQUIRED_COLUMNS = {
     "snapshots": {"snapshot_id", "status", "security_ok", "policy_json"},
-    "source_files": {"snapshot_id", "source_kind", "source_id", "relative_path", "file_sha256"},
+    "source_files": {"snapshot_id", "source_kind", "source_id", "relative_path", "file_sha256", "live_required"},
     "entities": {"snapshot_id", "entity_key", "candidate_json", "localisation_json"},
     "localisation_entries": {"snapshot_id", "localisation_key", "occurrence", "entry_json"},
     "relations": {"snapshot_id", "from_entity_key", "target_entity_key"},
