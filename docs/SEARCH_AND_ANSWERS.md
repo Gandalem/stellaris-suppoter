@@ -42,3 +42,5 @@ facts마다 실제 필드를 포함하는 SourceRef가 필요합니다. 관련 �
 F-016은 snapshot, 검증된 필드/인용 ID, unknown 항목과 문맥 제한을 EvidencePacket으로 묶습니다. 모델 출력의 인용이 packet에 존재하는지, 수치가 근거와 일치하는지 검사합니다. 검증 실패 시 정적 출력으로 복귀하거나 답변을 보류합니다.
 
 검색된 웹·모드 텍스트의 지시문은 데이터입니다. 모델에 포괄적인 파일·셸 권한을 주지 않습니다. 모델 미설정·타임아웃·예산 초과가 기본 검색을 막지 않습니다. 모델명·비용·외부 전송 동의 없이 cloud provider를 선택하지 않습니다.
+
+**R1–R5 후속:** 원문 byte/line/SHA 검증 외에 정의-필드-값 동일 원본 파일 식별자와 parser AST 부모·자식/순서/occurrence까지 대조합니다. 자유 텍스트 combat/chance는 정확한 정적 기술 이름/ID 조회에 우선하지 않으며, 잘못된 Query는 unsupported가 아닌 QUERY_INVALID입니다. 결과 전체에 fact/citation/payload 예산을 공유하며 한도 초과는 partial/truncated입니다. 같은 원본은 요청 내 SHA 검증 LRU를 재사용하고 소스 선택은 snapshot에 고정합니다. match provenance와 display provenance의 역할을 분리하며 별도 match 언어는 미확인 시 null입니다.

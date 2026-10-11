@@ -294,7 +294,7 @@ class AnswerService:
             hit.localisation_reference_selections, hit.resolution,
             hit.fallback, tuple(warnings),
             hit.match_source_ref, hit.match_reference_selections,
-            getattr(hit, "language_used", None),
+            None,  # SearchHit does not expose independent match language yet.
         )
 
     def answer(self, query: Query, *, field: str | None = None) -> AnswerEnvelope:
