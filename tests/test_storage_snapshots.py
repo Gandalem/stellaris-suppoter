@@ -150,12 +150,7 @@ def test_e018_meaningful_changes_alter_fingerprint(change: str) -> None:
         policy = replace(policy, policy_hash="b" * 64)
     else:
         policy = replace(policy, analysis_context={"dlc": {"demo": True}})
-    if change == "schema":
-        with pytest.raises(SnapshotError) as exc:
-            snapshot_identity(original, policy)
-        assert exc.value.code == "SCHEMA_VERSION_UNSUPPORTED"
-    else:
-        assert before.snapshot_id != snapshot_identity(original, policy).snapshot_id
+    assert before.snapshot_id != snapshot_identity(original, policy).snapshot_id
 
 
 def test_e018_renamed_windows_separator_produces_same_content_identity() -> None:
@@ -455,3 +450,24 @@ def test_e018_false_zero_and_empty_collections_are_not_collapsed() -> None:
     payload={"number":0,"false":False,"missing":None,"empty":[]}
     assert json.loads(canonical_json(payload))==payload
     assert len(set(type(v) for v in payload.values()))==4
+
+
+
+def test_e018_case_collision_is_rejected_without_merging_sources() -> None:
+    files = (
+        SourceFileInput("synthetic", "demo", "A/file.txt", b"x"),
+        SourceFileInput("synthetic", "demo", "a/File.txt", b"y"),
+    )
+    with pytest.raises(SnapshotError) as exc:
+        snapshot_identity(files, _policy())
+    assert exc.value.code == "PATH_REJECTED"
+
+
+def test_e018_different_schema_identity_is_not_implicitly_supported_by_db(tmp_path: Path) -> None:
+    first = snapshot_identity(_sources(), _policy())
+    revised = snapshot_identity(_sources(), _policy(schema_version=2))
+    assert first.snapshot_id != revised.snapshot_id
+    repo = SnapshotRepository(tmp_path / "data")
+    with pytest.raises(SnapshotError) as exc:
+        repo.stage(_sources(), _policy(schema_version=2))
+    assert exc.value.code == "SCHEMA_VERSION_UNSUPPORTED"
