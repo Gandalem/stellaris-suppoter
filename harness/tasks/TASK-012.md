@@ -20,4 +20,8 @@ Branch: `task/TASK-012-static-answers-citations`.
 No TASK-013 CLI, other game adapters, engine, dynamic evaluation, LLM, network, real game input or schema migration. Runtime semantic correctness, 10k end-to-end p95 and peak RSS are unverified.
 
 ## Required checks
-`python -m pytest`, `python -m ruff check .`, `python scripts/check_harness.py`; Ubuntu Python 3.11, Windows 3.13 and Documentation harness on both. Evaluation status stays not_run pending actual CI evidence. TASK-012 doing/F-009 in_progress until independent review and real main integration.
+`python -m pytest`, `python -m ruff check .`, `python scripts/check_harness.py`; Ubuntu Python 3.11, Windows 3.13 and Documentation harness on both. E-023/E-024/E-025 have synthetic `pass` evidence from actual reviewed CI; the source implementation merged in PR #23 and passed actual main Package and Documentation CI. Official TASK-012 `done`/F-009 `verified` is proposed only on the separate closure PR, pending owner merge and its own main CI.
+
+## TASK-012 main integration closeout (proposal)
+
+PR #23 merged reviewed `7d95a50a22d29d6cbea2f2af24aecd78321ff444` into actual main `ec9d4d2b7bd77bb5ff4839a738c1cf79967ff2d1`. R1–R6 provenance corrections and synthetic E-023–025 acceptance confirmed in main push Package `38143205499` (Ubuntu 448 passed, Windows 445 passed + 3 existing skips, Ruff/harness successful) and Documentation `38143205537` (both OS successful). See `harness/evidence/TASK-012-main-integration.md` for the full verification boundary. TASK-013 stays todo, F-011 planned, E-026 not_run; do not create its branch before this closure PR actually merges and its new main push CI passes.
