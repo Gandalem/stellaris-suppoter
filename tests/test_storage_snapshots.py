@@ -575,6 +575,75 @@ def test_e019_future_schema_db_rejected_without_initialising_cache(tmp_path: Pat
     # Prove the constructor does not create/cache anything on a future DB.
     old_cache = repo.data_dir / "cache"
     assert old_cache.is_dir()
+    import shutil
+    shutil.rmtree(old_cache)
     with pytest.raises(SnapshotError) as exc:
         SnapshotRepository(repo.data_dir)
     assert exc.value.code == "SCHEMA_VERSION_UNSUPPORTED"
+    assert not old_cache.exists()
+
+
+
+def test_e018_old_and_new_snapshots_keep_distinct_bytes_and_provenance(tmp_path: Path) -> None:
+    from stellaris_supporter.domain import SourceRef
+
+    repo = SnapshotRepository(tmp_path / "data")
+    old = _stage(repo).snapshot_id
+    repo.activate(old)
+    first = repo.entities()[0]["candidate"]
+    old_ref = SourceRef(**first["source_ref"])
+    modified = _sources(tech=TECH_SOURCE.replace(b"@price", b"42"))
+    new = _stage(repo, modified).snapshot_id
+    repo.activate(new)
+    assert old != new
+    latest = repo.entities()
+    previous = repo.entities(snapshot_id=old)
+    assert latest[0]["snapshot_id"] == new
+    assert previous[0]["snapshot_id"] == old
+    assert latest[0]["entity_key"] != previous[0]["entity_key"]
+    assert repo.source_bytes(old_ref) == old_ref.raw_bytes(TECH_SOURCE)
+    wrong = replace(old_ref, snapshot_id=new)
+    with pytest.raises(SnapshotError) as error:
+        repo.source_bytes(wrong)
+    assert error.value.code == "SOURCE_CHANGED"
+
+
+def test_e019_live_file_changes_during_stage_cannot_replace_active(tmp_path: Path) -> None:
+    game = tmp_path / "game"
+    game.mkdir()
+    file = game / "origin.txt"
+    file.write_bytes(b"first")
+    repo = SnapshotRepository(tmp_path / "data", game_root=game)
+    old = repo.stage(
+        (SourceFileInput("synthetic", "demo", "old.txt", b"old"),), _policy()
+    ).snapshot_id
+    repo.activate(old)
+    source = SourceFileInput(
+        "synthetic", "demo", "origin.txt", b"first", live_path=file
+    )
+    identity = snapshot_identity((source,), _policy())
+    def change_during_stage() -> None:
+        file.write_bytes(b"second")
+    with pytest.raises(SnapshotError) as exc:
+        repo.stage((source,), _policy(), before_ready=change_during_stage)
+    assert exc.value.code == "SOURCE_CHANGED"
+    assert repo.snapshot(identity.snapshot_id).status == "failed"
+    assert repo.active_snapshot_id() == old
+    assert file.read_bytes() == b"second"
+    assert not list(game.glob("*.sqlite3"))
+
+
+def test_e019_commit_survives_reopen_and_failed_work_cannot_mask_it(tmp_path: Path) -> None:
+    directory = tmp_path / "data"
+    repo = SnapshotRepository(directory)
+    sid = _seed_active(repo)
+    reopened = SnapshotRepository(directory)
+    assert reopened.active_snapshot_id() == sid
+    assert reopened.entities() == repo.entities()
+    newer = (SourceFileInput("synthetic", "demo", "broken.txt", b"fail"),)
+    with pytest.raises(RuntimeError, match="simulated stop"):
+        reopened.stage(
+            newer, _policy(),
+            before_ready=lambda: (_ for _ in ()).throw(RuntimeError("simulated stop")),
+        )
+    assert SnapshotRepository(directory).active_snapshot_id() == sid
