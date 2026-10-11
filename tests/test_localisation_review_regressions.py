@@ -80,7 +80,7 @@ def test_r1_long_valid_marker_prefix_bom_crlf_and_multibyte(
 ) -> None:
     first = b"\xef\xbb\xbfl_korean:" + newline
     prefix = b" demo_value:" + (b"" if marker is None else marker.encode())
-    value = ' "가# \\"인용\\" \\\\ slash"'.encode("utf-8")
+    value = ' "가# \\"인용\\" \\\\ slash"'.encode()
     source = first + prefix + b" " * 65_536 + value + newline
     doc = _parse(source)
     assert doc.ok, doc.diagnostics
