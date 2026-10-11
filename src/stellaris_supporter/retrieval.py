@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from stellaris_supporter.domain import SourceRef
+from stellaris_supporter.localisation import LocalisationReferenceSelection
 from stellaris_supporter.storage import SnapshotError, SnapshotRepository
 
 MAX_QUERY_LENGTH = 512
@@ -92,6 +93,10 @@ class SearchHit:
     localisation_source_ref: SourceRef | None
     match_source_ref: SourceRef
     diagnostics: tuple[SearchDiagnostic, ...] = ()
+    localisation_reference_source_refs: tuple[SourceRef, ...] = ()
+    localisation_reference_selections: tuple[LocalisationReferenceSelection, ...] = ()
+    match_reference_source_refs: tuple[SourceRef, ...] = ()
+    match_reference_selections: tuple[LocalisationReferenceSelection, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,8 +121,16 @@ def _ref(value: str | dict[str, object]) -> SourceRef:
 
 
 def _safe_name(value: str) -> bool:
-    """Do not promote unknown references or dynamic markup to verified names."""
-    return "$" not in value and "[" not in value and "]" not in value
+    """Refuse protected or unresolved dynamic markup in verified names."""
+    return not any(mark in value for mark in "$[]£§")
+
+
+def _selections(value: str) -> tuple[LocalisationReferenceSelection, ...]:
+    """Recover ordered reference provenance with each selected language."""
+    return tuple(
+        LocalisationReferenceSelection(item["key"], item["language_used"], _ref(item["source_ref"]))
+        for item in json.loads(value)
+    )
 
 
 class SearchService:
@@ -201,7 +214,7 @@ class SearchService:
             CREATE TABLE entries (
                 name_key TEXT NOT NULL, language TEXT NOT NULL,
                 value TEXT NOT NULL, source_ref TEXT NOT NULL,
-                unsupported INTEGER NOT NULL
+                entry_ref TEXT NOT NULL, unsupported INTEGER NOT NULL
             );
             CREATE INDEX entries_by_key ON entries(name_key,language);
             CREATE TABLE projection (
@@ -210,12 +223,14 @@ class SearchService:
                 relative_path TEXT NOT NULL, definition_ref TEXT NOT NULL,
                 candidate_resolution TEXT NOT NULL,
                 korean TEXT, korean_ref TEXT, english TEXT, english_ref TEXT,
-                chosen_resolution TEXT NOT NULL, warning TEXT
+                chosen_resolution TEXT NOT NULL, warning TEXT,
+                korean_references TEXT NOT NULL, english_references TEXT NOT NULL
             );
             CREATE INDEX projection_by_id ON projection(game_id,kind);
             CREATE TABLE names (
                 entity_key TEXT NOT NULL, language TEXT NOT NULL,
-                normalized TEXT NOT NULL, source_ref TEXT NOT NULL
+                normalized TEXT NOT NULL, source_ref TEXT NOT NULL,
+                references TEXT NOT NULL
             );
             CREATE INDEX names_exact ON names(normalized,language,entity_key);
             CREATE TABLE descriptions (
@@ -255,18 +270,50 @@ class SearchService:
 
         def translated(
             key: str, language: str
-        ) -> tuple[str | None, str | None, str]:
+        ) -> tuple[str | None, str | None, str, str]:
             rows = conn.execute(
                 "SELECT value,source_ref,unsupported FROM entries "
                 "WHERE name_key=? AND language=? LIMIT 2", (key, language),
             ).fetchall()
             if len(rows) > 1:
-                return None, None, "ambiguous"
+                return None, None, "ambiguous", "[]"
             if not rows:
-                return None, None, "missing"
+                return None, None, "missing", "[]"
             if rows[0]["unsupported"] or not _safe_name(rows[0]["value"]):
-                return None, None, "partial"
-            return rows[0]["value"], rows[0]["source_ref"], "resolved"
+                return None, None, "partial", "[]"
+            return rows[0]["value"], rows[0]["source_ref"], "resolved", "[]"
+
+        def source_entry(key: str, language: str, ref: SourceRef) -> bool:
+            """Bind a ref to exactly one named source entry (not just its file)."""
+            rows = conn.execute(
+                "SELECT entry_ref,value,unsupported FROM entries "
+                "WHERE name_key=? AND language=? LIMIT 2", (key, language),
+            ).fetchall()
+            return (
+                len(rows) == 1 and not rows[0]["unsupported"]
+                and not any(mark in rows[0]["value"] for mark in "£§[]")
+                and _ref(rows[0]["entry_ref"]) == ref
+            )
+
+        def resolved_references(result: dict[str, object], key: str, language: str) -> str:
+            """Validate root and all nested static selections against persisted rows."""
+            root = _ref(result["source_ref"])
+            if root.snapshot_id != sid or not source_entry(key, language, root):
+                raise SnapshotError("SOURCE_CHANGED", "Resolved name has no unique source entry.")
+            self.repository.source_bytes(root)
+            items, sources = result["reference_selections"], result["reference_source_refs"]
+            if not isinstance(items, list) or not isinstance(sources, list):
+                raise SnapshotError("SOURCE_CHANGED", "Resolved name references are invalid.")
+            if len(items) != len(sources):
+                raise SnapshotError("SOURCE_CHANGED", "Reference source and language lists differ.")
+            for item, stored_source in zip(items, sources):
+                selected = _ref(item["source_ref"])
+                if selected.to_dict() != stored_source or selected.snapshot_id != sid:
+                    raise SnapshotError("SOURCE_CHANGED", "Reference SourceRef is inconsistent.")
+                if not source_entry(item["key"], item["language_used"], selected):
+                    raise SnapshotError("SOURCE_CHANGED", "Reference is not bound to unique source entry.")
+                self.repository.source_bytes(selected)
+            return json.dumps(items, ensure_ascii=False)
 
         try:
             conn.execute("BEGIN")
@@ -276,30 +323,42 @@ class SearchService:
                     continue
                 val = row["display_value"]
                 span = json.dumps(payload["value_source_ref"], ensure_ascii=False)
-                charge(row["localisation_key"], val, span)
+                entry_ref = json.dumps(payload["source_ref"], ensure_ascii=False)
+                charge(row["localisation_key"], val, span, entry_ref)
                 conn.execute(
-                    "INSERT INTO entries VALUES(?,?,?,?,?)",
+                    "INSERT INTO entries VALUES(?,?,?,?,?,?)",
                     (
-                        row["localisation_key"], row["language"], val, span,
+                        row["localisation_key"], row["language"], val, span, entry_ref,
                         int(payload["has_unsupported_escape"]),
                     ),
                 )
 
             for row in self.repository.iter_search_rows(sid, "entities"):
                 key = row["game_id"]
-                korean, ko_ref, ko_resolution = translated(key, "korean")
-                english, en_ref, en_resolution = translated(key, "english")
+                korean, ko_ref, ko_resolution, ko_references = translated(key, "korean")
+                english, en_ref, en_resolution, en_references = translated(key, "english")
                 resolved = json.loads(row["localisation_json"]) if row["localisation_json"] else None
                 if resolved is not None and resolved["resolution"] == "resolved":
                     used = resolved["language_used"]
                     selected = resolved["display_value"]
                     selected_ref = resolved["source_ref"]
-                    if used in _ALLOWED_LANGUAGES and selected_ref is not None:
+                    if (
+                        used in _ALLOWED_LANGUAGES and selected_ref is not None
+                        and isinstance(selected, str) and _safe_name(selected)
+                    ):
+                        # Only the complete resolver expansion may promote a
+                        # raw $KEY$ expression. All provenance must be grounded.
+                        proven = resolved_references(resolved, key, used)
                         loc_json = json.dumps(selected_ref, ensure_ascii=False)
+                        charge(proven, loc_json)
                         if used == "korean":
-                            korean, ko_ref, ko_resolution = selected, loc_json, "resolved"
+                            korean, ko_ref, ko_resolution, ko_references = (
+                                selected, loc_json, "resolved", proven
+                            )
                         elif used == "english":
-                            english, en_ref, en_resolution = selected, loc_json, "resolved"
+                            english, en_ref, en_resolution, en_references = (
+                                selected, loc_json, "resolved", proven
+                            )
 
                 warning = None
                 if ko_resolution == "ambiguous" or en_resolution == "ambiguous":
@@ -320,25 +379,29 @@ class SearchService:
                     "line_start": row["line_start"], "line_end": row["line_end"],
                 }
                 def_json = json.dumps(def_ref, ensure_ascii=False)
-                charge(key, row["relative_path"], def_json, korean, english)
+                charge(key, row["relative_path"], def_json, korean, english,
+                       ko_references, en_references)
                 conn.execute(
-                    "INSERT INTO projection VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    "INSERT INTO projection VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (
                         row["entity_key"], key, row["kind"], row["occurrence"],
                         row["relative_path"], def_json, row["resolution"],
                         korean, ko_ref, english, en_ref, chosen_resolution, warning,
+                        ko_references, en_references,
                     ),
                 )
-                for language, value, ref in (
-                    ("korean", korean, ko_ref), ("english", english, en_ref)
+                for language, value, ref, references in (
+                    ("korean", korean, ko_ref, ko_references),
+                    ("english", english, en_ref, en_references),
                 ):
                     if value and ref:
                         conn.execute(
-                            "INSERT INTO names VALUES(?,?,?,?)",
-                            (row["entity_key"], language, normalize_search(value), ref),
+                            "INSERT INTO names VALUES(?,?,?,?,?)",
+                            (row["entity_key"], language, normalize_search(value),
+                             ref, references),
                         )
                 for language in ("korean", "english"):
-                    description, desc_ref, status = translated(key + "_desc", language)
+                    description, desc_ref, status, _ = translated(key + "_desc", language)
                     if description and desc_ref and status == "resolved":
                         normalized = normalize_search(description)
                         charge(normalized, desc_ref)
@@ -346,11 +409,8 @@ class SearchService:
                             "INSERT INTO descriptions VALUES(?,?,?)",
                             (row["entity_key"], normalized, desc_ref),
                         )
-                        if fts:
-                            conn.execute(
-                                "INSERT INTO descriptions_fts(entity_key,body) VALUES(?,?)",
-                                (row["entity_key"], normalized),
-                            )
+                        # FTS capability is probed but not used for this query:
+                        # the former FTS+LIKE path only duplicated LIKE matches.
 
             for alias in self.aliases:
                 if alias.snapshot_id != sid:
