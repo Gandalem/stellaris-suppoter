@@ -262,7 +262,9 @@
       "acceptance": [
         "Typed contracts, deterministic IDs and atomic activation are tested."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-010-sqlite-snapshots.md"
+      ]
     },
     {
       "id": "TASK-011",
