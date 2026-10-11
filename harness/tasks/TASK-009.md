@@ -60,3 +60,15 @@ Historical evaluation successes remain intact, with additional follow-up evidenc
 
 TASK-009 = doing; F-006 and F-005 = in_progress; E-015/E-016/E-017 = pass; latest_game_version = null.
 No actual merge or TASK-010 work. Final evidence-only head will receive its own PR CI.
+
+
+## PR #17 R5/P2 normative data contract follow-up
+
+The blocked reviewed head `679c327c5b2c940c8a886d6b088b3008e0b62599` contained a broken `$KEY# 데이터 계약 v1` phrase and repeated source/snapshot/AST/entity sections in `docs/DATA_CONTRACTS.md`. Removed repeated content; restored protected-region-only `$KEY$` expansion, fallback, unresolved/ambiguous/partial semantics and budgets. Added 11 structural/semantic normative-document regression cases over five documents, including intentional corrupted variants.
+
+Code/doc/test candidate head `eb5b68b377e7ba6566173543faf0a784de575b21`, PR CI test-merge `03718d748bda4ba12ba708d3268a5c142cd4c53d`.
+Package run `38128348984`: Ubuntu 279 passed, Windows 276 passed + original 3 skips, Ruff/harness success both. Documentation harness run `38128348992`: Ubuntu/Windows success.
+
+R5 evidence: [TASK-009 R5 documentation review follow-up](../evidence/TASK-009-r5-document-integrity.md). Historical prior evidence/CI remains unchanged. Final evidence/ledger head requires its own PR CI before requesting independent re-review.
+
+TASK-009 remains `doing`, F-005 and F-006 `in_progress`, E-015/E-016/E-017 `pass`, TASK-010 `todo`, latest_game_version `null`. PR is not merged; no threads were resolved.
