@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import sqlite3
 from dataclasses import replace
 from pathlib import Path
@@ -278,3 +279,172 @@ def test_e024_invalid_non_string_query_is_typed_error(tmp_path: Path) -> None:
     assert result.status == "error"
     assert result.results == ()
     assert result.diagnostics[0].code == "QUERY_INVALID"
+
+
+def _synthetic_multi(
+    repo: SnapshotRepository, scripts: tuple[tuple[str, str], ...],
+    *, translations: tuple[tuple[str, str], ...] = (),
+) -> str:
+    src = tuple(
+        SourceFileInput("synthetic", "demo", f"common/technology/{filename}", content.encode())
+        for filename, content in scripts
+    )
+    loc = "l_english:\n" + "".join(
+        f' {key}:0 "{value}"\n' for key, value in translations
+    )
+    src += (SourceFileInput("synthetic", "demo", "localisation/english/names.yml",
+                            loc.encode()),)
+    policy = SnapshotPolicy("parser-1", "adapter-1", "a" * 64)
+    sid = snapshot_identity(src, policy).snapshot_id
+
+    def ctx(x: SourceFileInput) -> SourceContext:
+        return SourceContext(
+            sid, x.source_kind, x.source_id, x.relative_path,
+            hashlib.sha256(x.data).hexdigest(),
+        )
+
+    adapted = tuple(
+        c for f in src[:-1]
+        for c in adapt_technologies(parse_bytes(f.data), f.data, ctx(f)).candidates
+    )
+    doc = parse_localisation(src[-1].data, ctx(src[-1]))
+    cat = build_localisation_catalog((doc,))
+    repo.stage(
+        src, policy, candidates=adapted, entries=doc.entries,
+        localised_names=tuple(resolve_technology_name(c, cat) for c in adapted),
+    )
+    repo.activate(sid, allow_partial=True)
+    return sid
+
+
+def _mutate_candidate(repo: SnapshotRepository, entity: str, transform) -> None:
+    with sqlite3.connect(repo.db_path) as conn:
+        row = conn.execute(
+            "SELECT candidate_json FROM entities WHERE game_id=?", (entity,)
+        ).fetchone()
+        assert row
+        candidate = json.loads(row[0])
+        transform(candidate)
+        conn.execute(
+            "UPDATE entities SET candidate_json=? WHERE game_id=?",
+            (json.dumps(candidate, ensure_ascii=False), entity),
+        )
+
+
+def test_r1_cross_file_valid_refs_cannot_be_borrowed(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    _synthetic_multi(repo, (
+        ("a.txt", "demo_a = {\n cost = 100\n}\n"),
+        ("b.txt", "demo_b = {\n cost = 999\n}\n"),
+    ))
+    b = repo.entities()[1]["candidate"]["fields"][0]
+    # Preserve A's definition and valid caches, forge only child provenance.
+    _mutate_candidate(repo, "demo_a", lambda c: c["fields"][0].update(
+        source_ref=b["source_ref"], value_source_ref=b["value_source_ref"]
+    ))
+    answer = service(repo).answer(Query("demo_a"))
+    assert answer.status == "error" and not answer.results
+    assert answer.diagnostics[0].code == "SOURCE_CHANGED"
+    assert next(f.raw_expression for f in service(repo).answer(
+        Query("demo_b")).results[0].facts) == "999"
+
+
+@pytest.mark.parametrize("mutation", ["name", "operator", "occurrence", "span", "value"])
+def test_r2_forged_field_structure_rejected(tmp_path: Path, mutation: str) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    _synthetic_multi(repo, ((
+        "tech.txt",
+        'demo_a = { cost = 100 cost_modifier = 999 cost = 200 '
+        'note = "cost = 444" nested = { cost = 777 } }\n',
+    ),))
+    def alter(c):
+        fields = c["fields"]
+        if mutation == "name":
+            fields[0]["source_ref"] = fields[1]["source_ref"]
+            fields[0]["value_source_ref"] = fields[1]["value_source_ref"]
+        elif mutation == "operator":
+            fields[0]["operator"] = ">"
+        elif mutation == "occurrence":
+            fields[2]["occurrence"] = 1
+        elif mutation == "span":
+            fields[0]["source_ref"] = fields[3]["source_ref"]
+        else:
+            fields[0]["value_source_ref"] = fields[4]["value_source_ref"]
+    _mutate_candidate(repo, "demo_a", alter)
+    result = service(repo).answer(Query("demo_a"))
+    assert result.status == "error" and result.results == ()
+    assert result.diagnostics[0].code == "SOURCE_CHANGED"
+
+
+def test_r2_normal_duplicate_nested_fields_preserved(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    _synthetic_multi(repo, ((
+        "tech.txt",
+        'demo_a = { cost = 100 cost_modifier = 999 cost = 200 '
+        'note = "cost = 444" nested = { cost = 777 } }\n',
+    ),))
+    result = service(repo).answer(Query("demo_a"))
+    assert result.results
+    assert [(f.field_name, f.occurrence) for f in result.results[0].facts] == [
+        ("cost", 1), ("cost_modifier", 1), ("cost", 2), ("note", 1), ("nested", 1),
+    ]
+
+
+@pytest.mark.parametrize("name", ["Combat Computers", "Chance Discovery"])
+def test_r3_normal_combat_chance_exact_names(tmp_path: Path, name: str) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    _synthetic_multi(repo, (("tech.txt", "demo_a = { cost = 20 }\n"),),
+                     translations=(("demo_a", name),))
+    result = service(repo).answer(Query(name, language="english"))
+    assert result.status == "ok"
+    assert result.results[0].display_name == name
+    assert result.results[0].match_reason == "name_exact"
+    assert result.results[0].match_source_ref == result.results[0].localisation_source_ref
+
+
+@pytest.mark.parametrize("query", [
+    Query("combat", limit=0),
+    Query("chance", kind="invalid"),
+    Query("probability", snapshot_id="not-a-sha"),
+])
+def test_r3_bad_query_precedes_unsupported(tmp_path: Path, query: Query) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    staged(repo)
+    result = service(repo).answer(query)
+    assert result.status == "error" and result.diagnostics[0].code == "QUERY_INVALID"
+
+
+def test_r4_request_global_fact_limit_and_cache_reuse(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    technology = "".join(
+        f"demo_{i:03d} = {{ cost = {i} tier = 2 }}\n" for i in range(100)
+    )
+    _synthetic_multi(repo, (("tech.txt", technology),))
+    original = repo.cache.read
+    reads = []
+    def tracked(digest, size):
+        reads.append((digest, size))
+        return original(digest, size)
+    monkeypatch.setattr(repo.cache, "read", tracked)
+    result = service(repo).answer(Query("demo_", limit=100))
+    assert result.status == "partial" and result.truncated
+    assert sum(len(hit.facts) for hit in result.results) <= 64
+    assert all(len(hit.source_refs) <= 256 for hit in result.results)
+    # A single cached technology file is rehashed once, not per citation.
+    assert sum(1 for digest, _ in reads if digest == hashlib.sha256(
+        technology.encode()).hexdigest()) == 1
+    assert service(repo).answer(Query("demo_001")).results
+
+
+def test_r4_exact_value_512_bytes_and_one_over(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    _synthetic_multi(repo, (("a.txt", "demo_a = { note = " + "x" * 512 + " }\n"),))
+    yes = service(repo).answer(Query("demo_a"))
+    assert any(len(f.raw_expression.encode()) == 512 for f in yes.results[0].facts)
+    repo2 = SnapshotRepository(tmp_path / "db2")
+    _synthetic_multi(repo2, (("a.txt", "demo_a = { note = " + "x" * 513 + " }\n"),))
+    no = service(repo2).answer(Query("demo_a"))
+    assert no.status == "partial" and no.truncated
+    assert not no.results[0].facts
