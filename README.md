@@ -2,8 +2,8 @@
 
 사용자가 설치한 Stellaris 데이터에 근거하여 한국어로 검색하고 설명하는 로컬 우선 도우미.
 
-> **상태: TASK-001~003과 post-review 안전성 보완(TASK-031)까지 구현·재검증됨. 실제 게임 inventory/parser/search 기능은 아직 구현되지 않았습니다.**
-> 기준일: 2026-09-22 (Asia/Seoul). 이 날짜는 문서 작성일이며 게임 데이터 검증일이 아닙니다.
+> **개발 상태:** 설정·doctor, 안전한 파일 inventory·버전/DLC 증거 처리, 보존형 lexer/ordered AST parser, 합성 technology adapter가 구현돼 테스트되었습니다. 현지화 reader/resolver, SQLite snapshot, 검색·인용 통합은 아직 개발 단계입니다. 실제 게임 설치본 호환성은 검증되지 않았습니다.
+> 정확한 작업·기능·평가 상태는 각각 [작업](harness/tasks.json)·[기능](harness/features.json)·[평가](harness/evals.jsonl) 원장을 확인하세요.
 > 저장소 이름 `stellaris-suppoter`는 기존 이름을 유지합니다. Python 패키지명은 `stellaris_supporter`, 예정 CLI는 `stellaris-supporter`입니다.
 
 ## 시작점
@@ -31,7 +31,7 @@ v0.1은 인터넷·API 키·Codex·GPU 없이 **개발자가 만든 합성 fixtu
 
 ## 지금 실행할 수 있는 것
 
-Python 3.11 이상에서 개발 환경을 설치하고 현재 패키지 골격을 확인할 수 있습니다.
+Python 3.11 이상에서 개발 환경을 설치하고 구현된 CLI와 합성 데이터 기반 라이브러리 테스트를 실행할 수 있습니다.
 
 ```sh
 python -m venv .venv
@@ -45,11 +45,11 @@ python scripts/check_harness.py
 python scripts/generate_synthetic_corpus.py --output ./tmp-synthetic
 ```
 
-현재 `stellaris-supporter`는 help/version과 `doctor`를 제공합니다. `doctor`는 설정, game/data 경로 경계, Python/SQLite/FTS5, network off 상태만 확인하며 게임 파일을 스캔하지 않습니다. [합성 corpus](tests/fixtures/synthetic/README.md)는 parser/localisation 개발용 테스트 입력이며 실제 게임 데이터가 아닙니다. inventory, parser, 검색, 실제 게임 데이터 분석, 모델 연결은 아직 없습니다.
+현재 `stellaris-supporter` CLI는 help/version과 `doctor`를 제공합니다. `doctor`는 설정, game/data 경로 경계, Python/SQLite/FTS5, network off 상태만 확인하며 게임 파일을 스캔하지 않습니다. 안전한 inventory, lexer·parser, technology adapter는 **Python 라이브러리 구현**으로 존재하며 [합성 corpus](tests/fixtures/synthetic/README.md)로 검증합니다. 반면 inventory/index/search CLI 흐름, localisation resolver, DB 저장·검색과 실제 게임 설치본 검증은 아직 완료되지 않았습니다. 합성 fixture는 실제 게임 데이터가 아닙니다.
 
 ## 프로젝트 상태 관리
 
-제품 기능 상태의 단일 원장은 [features.json](harness/features.json), 작업 상태는 [tasks.json](harness/tasks.json), 다음 작업은 [state.json](harness/state.json)입니다. TASK-001~003과 TASK-031이 완료됐고 E-001~004 및 E-047이 실행 근거와 함께 통과했습니다. F-002 설정·진단은 리뷰 반례 보완 후 다시 `verified`, F-013/F-014는 후속 안전·릴리스 작업 때문에 `in_progress`, F-004/F-006은 parser/localisation 구현 전이라 `in_progress`입니다.
+제품 기능·작업·평가의 실제 상태는 각각 [features.json](harness/features.json), [tasks.json](harness/tasks.json), [evals.jsonl](harness/evals.jsonl)이 단일 원장입니다. 현재 작업과 다음 작업은 [state.json](harness/state.json)을 확인하세요. 설계 문서의 수용 조건은 실제 구현·평가 완료를 뜻하지 않으며, 합성 테스트와 실제 게임 파일 수용 검증도 구별합니다.
 
 ## 데이터와 공개 저장소
 

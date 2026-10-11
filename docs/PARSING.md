@@ -27,7 +27,7 @@ UTF-8/BOM을 우선 지원합니다. decoding 실패를 replacement 문자나 �
 
 ## 도메인 adapter
 
-TASK-008에서 기술 하나의 수직 슬라이스를 먼저 만듭니다. 이후 범주마다 합성 fixture, ID 식별법, 필드·조건·출처 보존, 중복 충돌, 참조 추출, unknown 동작을 테스트한 뒤 지원 목록에 추가합니다. AST를 수정하지 않고 EntityCandidate로 변환합니다.
+TASK-008의 기술 수직 슬라이스는 합성 fixture에서 구현됐습니다. ordered AST의 ParseResult와 원문 출처를 입력으로 받아 기술 ID, 중복 필드, 표현식, 조건 구조, 제한된 선행 참조 및 진단을 보존합니다. 이는 실제 게임 파일 호환성이나 다른 도메인 adapter의 완료를 뜻하지 않습니다. 이후 범주마다 합성 fixture, ID 식별법, 필드·조건·출처 보존, 중복 충돌, 참조 추출, unknown 동작을 테스트한 뒤 지원 목록에 추가합니다. AST 자체는 수정하지 않습니다.
 
 potential, allow, prerequisites, weight, modifier 등의 이름만 보고 전체 게임 의미를 확정하지 않습니다. 읽은 숫자와 현재 제국에 적용되는 값은 다릅니다. 가중치는 후보군·조건·추첨 규칙 없이는 등장 확률이 아닙니다.
 

@@ -1,14 +1,14 @@
 # 테스트 전략
 
-문서 검사, 검사기 자체 테스트, 제품 테스트, 실제 게임 검증을 구별합니다. TASK-001에서 패키지/CLI scaffold 테스트를, TASK-002에서 직접 작성한 합성 corpus와 provenance 테스트를 추가했습니다. parser/localisation 제품 구현과 실제 게임 검증은 아직 없습니다. [평가 사례](../harness/evals.jsonl)는 실행 근거가 있는 항목만 pass로 전환합니다.
+문서 검사, 검사기 자체 테스트, 제품 테스트, 실제 게임 검증을 구별합니다. 패키지·설정/doctor, 합성 corpus, 안전한 inventory·버전 증거, lexer/ordered parser, technology adapter에는 구현과 합성 회귀 테스트가 있습니다. 현지화 reader/resolver, SQLite 저장·검색·인용을 연결한 전체 흐름과 실제 게임 설치본 검증은 아직 완료되지 않았습니다. [평가 사례](../harness/evals.jsonl)는 실행 근거가 있는 항목만 pass로 기록합니다.
 
 ## 테스트 계층
 
 | 계층 | 검증 대상 | 데이터 |
 |---|---|---|
 | harness | JSON 원장, ID·의존성·근거·문서 링크 | 작은 임시 문서 저장소 |
-| unit | lexer, AST, localisation, 정규화, hashing | 직접 만든 문자열·bytes |
-| integration | inventory → parser → DB → search → citation | 합성 디렉터리 corpus |
+| unit | 기존 lexer·AST·technology adapter·inventory 테스트와 후속 localisation·정규화 검사 | 직접 만든 문자열·bytes |
+| integration | 구현된 모듈의 합성 통합 검사; inventory → parser → DB → search → citation 전체 연결은 후속 | 합성 디렉터리 corpus |
 | CLI | 종료 코드, stdout JSON, stderr 로그, 설치 후 명령 | 임시 가상환경·합성 corpus |
 | security | 경로·권한·한도·통신·정보 노출·중단 | 악조건 합성 입력 |
 | evaluation | 검색 정답·근거 위치·보류·버전 격리 | 버전이 고정된 합성 정답 세트 |
@@ -35,7 +35,7 @@ python scripts/check_harness.py
 python scripts/generate_synthetic_corpus.py --output ./tmp-synthetic
 ```
 
-마지막 명령은 검사용 임시 출력 생성이며 기존 비어 있지 않은 디렉터리는 기본적으로 덮어쓰지 않습니다. TASK-018 이후 평가 runner의 정확한 명령을 추가합니다. 아직 없는 parser/index/search 명령은 성공 로그에 넣지 않습니다.
+마지막 명령은 검사용 임시 출력 생성이며 기존 비어 있지 않은 디렉터리는 기본적으로 덮어쓰지 않습니다. 소유권이 확인된 출력에만 `--force` 갱신을 허용하며, manifest 검증 실패는 stderr의 `error:` 진단과 종료 코드 `2`로 보고하고 기존 내용을 변경하지 않습니다. TASK-018 이후 평가 runner의 정확한 명령을 추가합니다. parser **Python API**와 아직 없는 index/search/parser **CLI 명령**을 혼동해 성공 로그에 넣지 않습니다.
 
 ## 품질 게이트
 
