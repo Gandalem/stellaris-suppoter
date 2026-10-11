@@ -341,6 +341,8 @@ def _load_owned_paths(output: Path) -> set[str]:
 
     if owner_data != {"owner": OWNER_ID}:
         raise ValueError("existing ownership marker does not match this generator")
+    if not isinstance(data, dict):
+        raise ValueError("existing synthetic manifest must be a JSON object")
     if data.get("origin") != OWNER_ORIGIN or data.get("generator") != OWNER_GENERATOR:
         raise ValueError("existing manifest is not owned by this synthetic generator")
     entries = data.get("files")
