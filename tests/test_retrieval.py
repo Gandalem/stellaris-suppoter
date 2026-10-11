@@ -215,3 +215,72 @@ def test_e022_cache_integrity_failure_is_error_not_stale_quote(tmp_path: Path) -
     assert failed.status == "error"
     assert failed.diagnostics[0].code == "SOURCE_CHANGED"
     service.close()
+
+def test_e021_english_and_id_display_fallback(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    sid = _build(repo, korean="합금 연구", english="Alloy Research")
+    with sqlite3.connect(repo.db_path) as conn:
+        # The service must not invent translations; a version with absent
+        # translations is represented as a separately staged snapshot instead.
+        assert conn.execute(
+            "SELECT count(*) FROM localisation_entries WHERE snapshot_id=?", (sid,)
+        ).fetchone()[0] == 2
+    result = SearchService(repo).search(Query("Alloy Research", language="korean"))
+    assert result.results[0].fallback == "none"  # Korean display is present
+    assert result.results[0].language_used == "korean"
+
+
+def test_e022_exact_512_boundary_and_boolean_limit(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    _build(repo)
+    svc = SearchService(repo, enable_fts=False)
+    assert svc.search(Query("x" * 512)).status == "not_found"
+    assert svc.search(Query("demo_alloy", limit=True)).status == "error"
+    assert svc.search(Query("demo_alloy", limit=100)).results
+    svc.close()
+
+
+def test_e020_active_flip_mid_query_is_snapshot_pinned(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    first = _build(repo, korean="처음 결과")
+    second = _build(repo, korean="나중 결과")
+    repo.activate(first, allow_partial=True)
+    service = SearchService(repo)
+    original = service._sql_matches
+
+    def switch_on_query(*args):
+        repo.activate(second, allow_partial=True)
+        return original(*args)
+
+    monkeypatch.setattr(service, "_sql_matches", switch_on_query)
+    result = service.search(Query("처음 결과"))
+    assert result.results and result.context.snapshot_id == first
+    assert all(hit.snapshot_id == first for hit in result.results)
+    assert repo.active_snapshot_id() == second
+    service.close()
+
+
+def test_e022_many_aliases_limit_and_truncated(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    _build(
+        repo, extra_technology="".join(
+            f"demo_{i:03d} = {{ cost = 0 }}\n" for i in range(30)
+        ),
+    )
+    entities = repo.entities()
+    aliases = tuple(
+        VerifiedAlias(
+            item["snapshot_id"], item["entity_key"], "demo",
+            SourceRef(**item["candidate"]["source_ref"]),
+        )
+        for item in entities
+    )
+    svc = SearchService(repo, aliases=aliases, enable_fts=False)
+    result = svc.search(Query("demo", limit=2))
+    assert len(result.results) == 2
+    assert result.truncated
+    assert result.status == "partial"
+    assert all(hit.match_reason == "alias_exact" for hit in result.results)
+    svc.close()
