@@ -581,7 +581,7 @@ class SearchService:
                 )
             except SnapshotError as exc:
                 return self._error(query, exc.code, str(exc), context)
-            except (sqlite3.DatabaseError, ValueError, KeyError, TypeError, UnicodeError) as exc:
+            except (sqlite3.DatabaseError, ValueError, KeyError, TypeError, UnicodeError):
                 return self._error(
                     query, "SQLITE_ERROR",
                     "Search projection or its stored provenance is invalid.", context,
