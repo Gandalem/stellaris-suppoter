@@ -151,12 +151,41 @@ class BlobCache:
         _read_verified_file(path, expected_hash=digest, expected_size=size)
 
 
-def verify_live_source(path: Path, root: Path, expected_hash: str, size: int) -> None:
-    """Recheck an explicitly allowed game-root file without ever writing to it."""
+def live_source_relative_path(path: Path, root: Path) -> str:
+    """Validate the exact lexical physical path and return its root-relative form.
+
+    The returned path is NOT a logical SourceRef.relative_path. A base or mod
+    source can choose its own source_id and logical path independently; its
+    physical read target is bound privately in the source_files row.
+    """
+    if not Path(path).is_absolute():
+        raise SnapshotError("PATH_REJECTED", "Live source path must be absolute.")
     target = Path(os.path.abspath(path))
     root = Path(os.path.abspath(root))
     if target == root or not target.is_relative_to(root):
         raise SnapshotError("PATH_REJECTED", "Live source is outside the allowed root.")
-    if any(_is_unsafe_link(p) for p in [root, *list(target.parents)[:len(target.parts)-len(root.parts)], target]):
-        raise SnapshotError("PATH_REJECTED", "Live source path contains a link.")
-    _read_verified_file(target, expected_hash=expected_hash, expected_size=size)
+    from stellaris_supporter.storage.identity import normalise_relative_path
+
+    relative = normalise_relative_path(target.relative_to(root).as_posix())
+    # Verify the full root path, not just ancestors below the root.
+    # Windows reparse points and POSIX symlinks must not redirect the read.
+    for component in (*reversed(root.parents), root):
+        if _is_unsafe_link(component):
+            raise SnapshotError("PATH_REJECTED", "Live source root contains a link.")
+    current = root
+    for part in relative.split("/"):
+        current = current / part
+        if _is_unsafe_link(current):
+            raise SnapshotError("PATH_REJECTED", "Live source path contains a link.")
+    return relative
+
+
+def verify_live_source(path: Path, root: Path, expected_hash: str, size: int) -> str:
+    """Recheck an allowed file and return its safe root-relative physical path."""
+    relative = live_source_relative_path(path, root)
+    _read_verified_file(
+        Path(os.path.abspath(root)).joinpath(*relative.split("/")),
+        expected_hash=expected_hash,
+        expected_size=size,
+    )
+    return relative
