@@ -233,7 +233,8 @@
       ],
       "evidence": [
         "harness/evidence/TASK-009-localisation-reader-resolver.md",
-        "harness/evidence/TASK-009-review-followup.md"
+        "harness/evidence/TASK-009-review-followup.md",
+        "harness/evidence/TASK-009-r5-document-integrity.md"
       ]
     },
     {
