@@ -1104,3 +1104,26 @@ def test_r5_adr_012_and_013_share_one_markdown_table() -> None:
     ).splitlines()
     previous = next(i for i, line in enumerate(decisions) if line.startswith("| ADR-012 |"))
     assert decisions[previous + 1].startswith("| ADR-013 |")
+
+
+
+def test_r3_mutable_policy_mapping_cannot_change_row_after_identity_calculation(
+    tmp_path: Path,
+) -> None:
+    context = {"pad": "staged-original"}
+    policy = _policy(analysis_context=context)
+    identity = snapshot_identity((), policy)
+    repo = SnapshotRepository(tmp_path / "data")
+    def alter_after_identity() -> bool:
+        context["pad"] = "mutated-after-identity"
+        return False
+
+    saved = repo.stage((), policy, cancel=alter_after_identity)
+    assert saved.snapshot_id == identity.snapshot_id
+    assert snapshot_identity((), policy).snapshot_id != identity.snapshot_id
+    with sqlite3.connect(repo.db_path) as conn:
+        row = conn.execute(
+            "SELECT policy_json FROM snapshots WHERE snapshot_id=?", (saved.snapshot_id,)
+        ).fetchone()
+    assert row is not None and row[0] == identity.policy_json
+    assert json.loads(row[0])["analysis_context"] == {"pad": "staged-original"}
