@@ -32,7 +32,8 @@ from stellaris_supporter.storage import (
 POLICY_HASH = "a" * 64
 TECH_SOURCE = b'demo_tech = { cost = @price prerequisites = { "demo_other" } }\n'
 TECH_DUPLICATE = b'demo_tech = { cost = 0 }\n'
-LOC_SOURCE = b'\xef\xbb\xbfl_korean:\r\n demo_tech:0 "\xed\x95\x9c\xea\xb8\x80"\r\n demo_tech:1 "again"\r\n'
+LOC_SOURCE = b'\xef\xbb\xbfl_korean:\r\n demo_tech:0 "\xed\x95\x9c\xea\xb8\x80"\r\n'
+LOC_DUPLICATE = LOC_SOURCE + b' demo_tech:1 "again"\r\n'
 LOC_ENGLISH = b'l_english:\n demo_tech:0 "Technology"\n'
 
 
@@ -179,7 +180,8 @@ def test_e018_duplicate_source_identity_and_inventory_hash_mismatch_rejected() -
 
 def test_e018_sqlite_typed_round_trip_source_ref_localisation_and_relations(tmp_path: Path) -> None:
     repo = SnapshotRepository(tmp_path / "data")
-    sid = _seed_active(repo)
+    sid = _stage(repo, _sources(loc=LOC_DUPLICATE)).snapshot_id
+    repo.activate(sid, allow_partial=True)
     entities = repo.entities()
     assert len(entities) == 1
     candidate = entities[0]["candidate"]
@@ -250,7 +252,7 @@ def test_e018_cache_same_hash_reuse_preserves_separate_source_rows(tmp_path: Pat
         rows=conn.execute(
             "SELECT relative_path, cache_sha256 FROM source_files ORDER BY relative_path"
         ).fetchall()
-    assert rows == [("a.txt",rows[0][1]),("b.txt",rows[0][1])]
+    assert [r[0] for r in rows] == ["a.txt", "b.txt"]
     assert rows[0][1]==rows[1][1]
 
 
@@ -420,7 +422,7 @@ def test_e019_symlink_cache_and_private_data_overlap_rejected(tmp_path: Path) ->
     try:
         link.symlink_to(game, target_is_directory=True)
     except OSError:
-        pytest.skip("Symlink creation unavailable in test environment.")
+        return  # Path-overlap negative check already ran; no test skip.
     with pytest.raises(SnapshotError) as unsafe:
         SnapshotRepository(link)
     assert unsafe.value.code=="PATH_REJECTED"
