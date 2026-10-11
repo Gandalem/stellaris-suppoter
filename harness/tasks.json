@@ -271,7 +271,7 @@
     {
       "id": "TASK-011",
       "title": "Retrieval service",
-      "status": "doing",
+      "status": "done",
       "feature_ids": [
         "F-008"
       ],
@@ -292,7 +292,8 @@
       ],
       "evidence": [
         "harness/evidence/TASK-011-retrieval.md",
-        "harness/evidence/TASK-011-review-followup.md"
+        "harness/evidence/TASK-011-review-followup.md",
+        "harness/evidence/TASK-011-main-integration.md"
       ]
     },
     {
