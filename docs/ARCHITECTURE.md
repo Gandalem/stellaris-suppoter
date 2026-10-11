@@ -41,6 +41,8 @@ src/stellaris_supporter/
 
 파서가 DB를 호출하거나 검색기가 네트워크를 호출하지 않습니다. 로그와 사용자 출력은 별도 채널입니다. SQLite 구현은 Repository 뒤에 두고 CLI와 parser에 SQL을 섞지 않습니다.
 
+TASK-010에서는 `stellaris_supporter.storage`의 `identity`, `schema`, `cache`, `repository` 경계가 이를 구현합니다. Inventory/technology/localisation이 제공한 원본 bytes와 SourceRef를 Repository 경계에서 다시 검증하며, 파일 해시→canonical snapshot identity→cache 저장→building record→ready/partial 검증→SQLite active pointer 갱신 순서를 유지합니다. 각 row는 snapshot_id 및 원본 source FK에 묶이고 `game_id` 자체는 unique하지 않습니다. 명시적 selected snapshot만 조회하며 building/failed는 노출하지 않습니다. 검색 및 FTS는 TASK-011 범위입니다.
+
 ## 스냅샷과 정합성
 
 파일 해시는 원본 bytes 기준입니다. 같은 내용의 캐시 재사용은 가능하지만 서로 다른 상대 경로의 출처를 합치지 않습니다. 동일 corpus·분석 정책·문맥의 snapshot_id는 안정적이어야 합니다. 수집 시각·개인 절대 경로는 콘텐츠 지문에서 제외합니다.
