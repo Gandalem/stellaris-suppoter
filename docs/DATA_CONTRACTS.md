@@ -55,3 +55,16 @@ AnswerEnvelope: schema_version, status, query, context, results, diagnostics, tr
 논리 테이블: snapshots, source_files, entities, localisation_entries, relations, search_documents, diagnostics, settings. 모든 관계·조회는 snapshot 경계를 적용합니다. 원문 bytes는 개인 content-addressed cache에 보존하고 DB가 해시를 참조합니다. FTS는 재생성 가능한 보조 색인입니다.
 
 schema_version과 앱 버전은 다릅니다. migration에는 백업·복구가 필요합니다. 더 최신 schema를 발견한 구버전 프로그램은 쓰지 않습니다. 캐시 정리는 참조된 snapshot 원문을 보존해야 합니다.
+
+**TASK-010 SQLite v1 물리 계약 (저장 API, 전체 CLI/검색은 후속):**
+
+- `SnapshotPolicy`는 schema_version, parser_version, adapter_version, policy_hash(SHA-256), context_kind, analysis_context, game_version|null, game_version_source, build_id|null, branch, dlc_state, mod_state를 별도 typed 값으로 받습니다. 순수 identity 계산은 schema 변경에도 다른 ID를 생성할 수 있지만 현 Repository의 쓰기 지원 버전은 오직 v1입니다.
+- 경로는 두 OS의 slash를 `/`로 통일하되 **대소문자 원형을 보존**합니다. 상대 경로는 정규화된 NFC만 수락하고 절대 경로, `..`, 빈 구성요소, OS 예약 이름, case-insensitive 충돌을 거부합니다. 다른 출처를 묵시적으로 하나로 합치지 않습니다.
+- canonical JSON은 UTF-8, `ensure_ascii=False`, 키 정렬, 공백 없는 구분자, 비유한 부동소수·임의 객체 거부입니다. 파일 identity 목록을 `(source_kind,source_id,relative_path)`로 정렬한 다음 각 항목의 `source_kind`, `source_id`, `relative_path`, `file_sha256`에 SHA-256을 적용해 content_hash를 생성합니다. snapshot ID는 content_hash와 정책/스키마/문맥 필드의 canonical JSON SHA-256입니다. 수집 시각·개인 절대 경로·임시 디렉터리·탐색 순서는 포함하지 않습니다. `created_at`은 저장 메타데이터일 뿐 ID의 구성요소가 아닙니다.
+- 물리 테이블은 `snapshots`, `source_files`, `entities`, `localisation_entries`, `relations`, `search_documents`, `diagnostics`, `settings`입니다. `(snapshot_id,entity_key)` 및 복합 source FK를 쓰고 `game_id`는 중복 가능한 인덱스 열입니다. 기술 candidate/field/source_refs의 bounded JSON과 별도 localisation result JSON을 유지합니다. 해당 값의 `null`, `false`, `0`, `[]`는 구별됩니다. 원문은 레코드마다 복제하지 않고 파일 SHA-256 cache를 참조합니다. `search_documents`는 TASK-011을 위한 빈 저장 경계로, FTS와 순위는 아직 없습니다.
+- 별도 settings key `active_snapshot`이 선택 포인터입니다. 스냅샷 빌드 상태는 `building|ready|partial|failed`로 보존하며 `active`는 상태를 뜻하지 않습니다. `stage`는 building 기록을 먼저 남긴 뒤 원본·SourceRef·FK·cache를 검증해 ready/partial로 전환합니다. 스냅샷이 이미 존재하면 덮어쓰지 않고 명시적 재선택만 허용합니다. building/failed는 명시 snapshot 조회에도 제외합니다. 재시작 후 잔존 building의 failed 전환은 **다른 writer가 없음을 확인한 뒤** 명시적 복구 API로 수행합니다.
+- `activate`는 `BEGIN IMMEDIATE` 트랜잭션 안에서 source manifest/live source 재검사, cache 원문·SHA 검사, FK 검사, partial 승인/취소 확인을 통과한 후에만 active 포인터를 변경하고 commit합니다. 외래 키는 모든 연결에서 ON, busy timeout 250ms, WAL+FULL 동기화입니다. DB commit 전 캐시 파일을 임시 파일→검증→원자적 파일 교체로 영속화하고 다시 검증합니다. SQLite와 파일시스템의 원자성을 동일하다고 주장하지 않으며, 과거 active가 참조하는 cache는 제거하지 않습니다.
+- real/live 파일에는 명시 game_root와 안전한 경로 및 다시 읽기 경계가 필요하며, 활성화 때 현재 원문 검증용 manifest도 요구합니다. synthetic immutable bytes만 있는 경우 캐시 SHA 검사로 재현성을 확인합니다. `allow_partial`로도 경로 탈출·SHA 위조·캐시 오류를 우회하지 못합니다.
+- 기본 제한: 파일 50,000개, 각 16MiB, 총 512MiB, 기술 후보+현지화 레코드 100,000개, 진단 10,000개, 각 JSON 직렬화 1MiB, 유한 writer 대기 250ms. 실제 메모리 사용량 측정에 대한 별도 보장은 아닙니다.
+- DB `PRAGMA user_version=1`과 settings schema_version=1을 함께 확인하고 read-only 연결로 **먼저 검증**한 후 기존 DB에 접근합니다. 알 수 없는 과거/미래 버전·손상된 DB를 새 빈 DB로 간주하지 않고 거부합니다. 자동 migration은 구현하지 않았습니다. SQLite backup API는 DB 단독의 일관된 백업을 만들며, 실제 복구에는 같은 snapshot의 cache blob도 함께 보존해야 합니다.
+
