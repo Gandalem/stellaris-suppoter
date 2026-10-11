@@ -219,3 +219,214 @@ def test_e026_symlink_component_rejected_where_supported(tmp_path: Path) -> None
     from stellaris_supporter.storage.cache import live_source_relative_path
     with pytest.raises(SnapshotError):
         live_source_relative_path(other / "foreign.txt", game)
+
+
+def test_e026_duplicate_game_ids_are_not_merged(tmp_path: Path) -> None:
+    game, _, config = initialised(tmp_path)
+    path = game / "common/technology/demo.txt"
+    path.write_bytes(path.read_bytes() + b"demo_tech = { tier = 9 }\n")
+    assert query(config, "index")[0] == 0
+    rc, result, _ = query(config, "show", "demo_tech")
+    assert rc == 0 and result["status"] == "partial"
+    assert len(result["results"]) == 2
+    assert len({x["entity_key"] for x in result["results"]}) == 2
+    assert {f["raw_expression"] for x in result["results"]
+            for f in x["facts"] if f["field_name"] == "tier"} == {"2", "9"}
+
+
+def test_e026_partial_explicit_opt_in_keeps_diagnostics(tmp_path: Path) -> None:
+    game, _, config = initialised(tmp_path)
+    script = game / "common/technology/demo.txt"
+    script.write_bytes(script.read_bytes().replace(b"tier = 2", b"tier = \xff"))
+    failed_code, failed, _ = query(config, "index")
+    assert failed_code == 5 and failed["status"] == "error"
+    assert query(config, "snapshots")[1]["results"][0]["status"] == "partial"
+    rc, permitted, _ = query(config, "index", "--allow-partial")
+    assert rc == 0 and permitted["status"] == "partial"
+    assert permitted["activated"] is True
+
+
+def test_e026_allow_partial_never_bypasses_root_security(tmp_path: Path) -> None:
+    game, _, config = initialised(tmp_path)
+    root = game / "common" / "technology"
+    forbidden = root / "bad.txt"
+    try:
+        forbidden.symlink_to(tmp_path / "outside.txt")
+    except (OSError, NotImplementedError):
+        # Non-link platforms still exercise the path guard as a unit:
+        from stellaris_supporter.storage import SnapshotError
+        from stellaris_supporter.storage.cache import live_source_relative_path
+        with pytest.raises(SnapshotError):
+            live_source_relative_path(tmp_path / "outside.txt", game)
+    else:
+        code, result, _ = query(config, "index", "--allow-partial")
+        assert code == 4 and result["status"] == "error"
+
+
+def test_e026_inventory_to_capture_change_fails_before_staging(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import stellaris_supporter.cli_index as integration
+    from stellaris_supporter.config import load_settings
+    from stellaris_supporter.storage import SnapshotError, SnapshotRepository
+
+    game, data, config = initialised(tmp_path)
+    settings = load_settings(config).settings
+    repo = SnapshotRepository(data, game_root=game)
+    previous = integration.index_technologies(repo, settings)["snapshot_id"]
+    technology = game / "common/technology/demo.txt"
+    original = integration._read_verified_file
+    def mutate(path, *, expected_hash, expected_size):
+        technology.write_bytes(technology.read_bytes().replace(b"tier = 2", b"tier = 3"))
+        return original(path, expected_hash=expected_hash, expected_size=expected_size)
+    monkeypatch.setattr(integration, "_read_verified_file", mutate)
+    with pytest.raises(SnapshotError) as exc:
+        integration.index_technologies(repo, settings)
+    assert exc.value.code == "SOURCE_CHANGED"
+    assert repo.active_snapshot_id() == previous
+
+
+def test_e026_modified_live_path_during_activation_preserves_active(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import stellaris_supporter.cli_index as integration
+    from stellaris_supporter.config import load_settings
+    from stellaris_supporter.storage import SnapshotError, SnapshotRepository
+
+    game, data, config = initialised(tmp_path)
+    settings = load_settings(config).settings
+    repo = SnapshotRepository(data, game_root=game)
+    previous = integration.index_technologies(repo, settings)["snapshot_id"]
+    technology = game / "common/technology/demo.txt"
+    technology.write_bytes(technology.read_bytes().replace(b"tier = 2", b"tier = 3"))
+    original = repo.activate
+    def mutate(sid, **kwargs):
+        technology.write_bytes(technology.read_bytes().replace(b"tier = 3", b"tier = 4"))
+        return original(sid, **kwargs)
+    monkeypatch.setattr(repo, "activate", mutate)
+    with pytest.raises(SnapshotError) as exc:
+        integration.index_technologies(repo, settings)
+    assert exc.value.code == "SOURCE_CHANGED"
+    assert repo.active_snapshot_id() == previous
+
+
+def test_e026_writer_failure_preserves_prior_active(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import stellaris_supporter.cli_index as integration
+    from stellaris_supporter.config import load_settings
+    from stellaris_supporter.storage import SnapshotError, SnapshotRepository
+
+    game, data, config = initialised(tmp_path)
+    settings = load_settings(config).settings
+    repo = SnapshotRepository(data, game_root=game)
+    previous = integration.index_technologies(repo, settings)["snapshot_id"]
+    script = game / "common/technology/demo.txt"
+    script.write_bytes(script.read_bytes().replace(b"tier = 2", b"tier = 3"))
+    def locked(*args, **kwargs):
+        raise SnapshotError("SQLITE_BUSY", "Synthetic writer lock.")
+    monkeypatch.setattr(repo, "stage_from_results", locked)
+    with pytest.raises(SnapshotError) as exc:
+        integration.index_technologies(repo, settings)
+    assert exc.value.code == "SQLITE_BUSY"
+    assert repo.active_snapshot_id() == previous
+
+
+def test_e026_cancel_maps_to_130_and_clean_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import stellaris_supporter.cli as cli
+
+    _, _, config = initialised(tmp_path)
+    def stopped(*args, **kwargs):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(cli, "index_technologies", stopped)
+    code = cli.main(["--config", str(config), "--format", "json", "index"])
+    stdout = capsys.readouterr().out
+    payload = json.loads(stdout)
+    assert code == 130 and payload["status"] == "error"
+    assert payload["diagnostics"][0]["code"] == "CANCELLED"
+    assert "Traceback" not in stdout
+
+
+def test_e026_cache_corruption_is_not_returned_as_fact(tmp_path: Path) -> None:
+    import hashlib
+
+    game, data, config = initialised(tmp_path)
+    assert query(config, "index")[0] == 0
+    script = (game / "common/technology/demo.txt").read_bytes()
+    digest = hashlib.sha256(script).hexdigest()
+    cache = data / "cache" / "blobs" / digest[:2] / digest
+    assert cache.is_file()
+    cache.write_bytes(b"x" * len(script))
+    rc, result, _ = query(config, "show", "demo_tech")
+    assert rc in {5, 6}
+    assert result["status"] == "error" and result["results"] == []
+
+
+def test_e026_bounded_snapshot_listing_and_text(tmp_path: Path) -> None:
+    game, _, config = initialised(tmp_path)
+    assert query(config, "index")[0] == 0
+    script = game / "common/technology/demo.txt"
+    script.write_bytes(script.read_bytes().replace(b"tier = 2", b"tier = 3"))
+    assert query(config, "index")[0] == 0
+    rc, snapshots, _ = query(config, "snapshots", "--limit", "1")
+    assert rc == 0 and len(snapshots["results"]) == 1 and snapshots["truncated"]
+    out = subprocess.run(
+        [sys.executable, "-m", "stellaris_supporter", "--config", str(config),
+         "show", "demo_tech"], text=True, capture_output=True, check=False,
+    )
+    assert out.returncode == 0
+    assert "demo_tech" in out.stdout
+    assert "common/technology/demo.txt" in out.stdout
+
+
+def test_e026_config_file_symlink_rejected_where_supported(tmp_path: Path) -> None:
+    _, _, config = initialised(tmp_path)
+    link = tmp_path / "linked.toml"
+    try:
+        link.symlink_to(config)
+    except (OSError, NotImplementedError):
+        from stellaris_supporter.cli_setup import _check_components
+        from stellaris_supporter.storage import SnapshotError
+        with pytest.raises(SnapshotError):
+            _check_components(tmp_path / "missing" / "suspicious_link" / "bad")
+        # On link-disallowed platforms the actual link case is not asserted.
+    else:
+        rc, result, _ = invoke("--format", "json", "--config", str(link), "index")
+        assert rc == 4 and result["diagnostics"][0]["code"] == "PATH_REJECTED"
+
+
+def test_e026_installed_console_script_smoke(tmp_path: Path) -> None:
+    import shutil
+
+    entrypoint = shutil.which("stellaris-supporter")
+    assert entrypoint is not None
+    game, data, config = corpus(tmp_path)
+    process = subprocess.run(
+        [entrypoint, "init", "--format", "json", "--config", str(config),
+         "--game-root", str(game), "--data-dir", str(data)],
+        text=True, capture_output=True, check=False,
+    )
+    assert process.returncode == 0
+    assert json.loads(process.stdout)["status"] == "ok"
+    process = subprocess.run(
+        [entrypoint, "--format", "json", "--config", str(config), "index"],
+        text=True, capture_output=True, check=False,
+    )
+    assert process.returncode == 0
+    assert json.loads(process.stdout)["snapshot_id"]
+
+
+def test_e026_limit_failure_does_not_replace_active(tmp_path: Path) -> None:
+    game, _, config = initialised(tmp_path)
+    previous = query(config, "index")[1]["snapshot_id"]
+    script = game / "common/technology/demo.txt"
+    script.write_bytes(script.read_bytes() + b"# additional comments exceed limit\n")
+    with config.open("a", encoding="utf-8") as handle:
+        handle.write("\n[limits]\nfile_bytes = 16\n")
+    code, result, _ = query(config, "index", "--allow-partial")
+    assert code == 4 and result["status"] == "error"
+    code, listings, _ = query(config, "snapshots")
+    assert code == 0
+    assert next(x for x in listings["results"] if x["active"])["snapshot_id"] == previous
