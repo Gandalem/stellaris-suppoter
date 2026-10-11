@@ -230,3 +230,20 @@ def test_r3_parsing_markdown_integrity_and_contract() -> None:
     assert "LIMIT_EXCEEDED" in content
     assert "8 MiB" in content
     assert "64" in content
+
+
+
+@pytest.mark.parametrize(
+    "value",
+    [r"\[Root.$demo_b$]", r"[Root.\]$demo_b$]", r"\£resource$demo_b$£"],
+)
+def test_r2_unsupported_escape_cannot_hide_dynamic_protected_region(value: str) -> None:
+    doc, resolved = _resolve(value)
+    assert doc.entries[0].has_unsupported_escape
+    assert resolved.display_value == value
+    assert resolved.resolution == "partial"
+    assert not resolved.reference_selections
+    assert not resolved.reference_source_refs
+    codes = [d.code for d in resolved.diagnostics]
+    assert "LOC_UNSUPPORTED_ESCAPE" in codes
+    assert "LOC_DYNAMIC_UNSUPPORTED" in codes
