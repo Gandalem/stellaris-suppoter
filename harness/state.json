@@ -2,17 +2,17 @@
   "schema_version": 1,
   "phase": "implementation",
   "product_implemented": false,
-  "active_task": null,
+  "active_task": "TASK-009",
   "next_task": "TASK-009",
-  "last_session": "harness/sessions/2026-09-23-task-008-close.md",
+  "last_session": "harness/sessions/2026-10-11-task-009-start.md",
   "latest_game_version": null,
-  "updated_on": "2026-09-23",
+  "updated_on": "2026-10-11",
   "notes": [
-    "PR #14 merged to main as 3275aeabbfa51a249b3449c34ec192fbec966adb.",
-    "Actual main push Package and tooling run 35868827744 passed on Ubuntu and Windows; Documentation harness run 35868827712 passed on both platforms.",
-    "TASK-008 is done and E-014 remains pass, including the review follow-up evidence for parser-state propagation, prerequisite validation, and bounded raw serialization.",
-    "F-005 remains in_progress because other domain-adapter work remains outside TASK-008.",
-    "No task is active after this closure change; TASK-009 is the next actionable task.",
+    "PR #16 merged as e49ab75153d695b92614b2db3a0e54136f148e37; actual main push Package 38125171893 and Documentation harness 38125171970 succeeded on Ubuntu and Windows.",
+    "Issue #9 closed/completed.",
+    "TASK-009 localisation reader/resolver is doing on separate task branch.",
+    "E-015/E-016/E-017 remain not_run pending successful tests.",
+    "F-006 and F-005 remain in_progress.",
     "latest_game_version remains null."
   ]
 }
