@@ -100,6 +100,20 @@ def build_localisation_catalog(
 
 
 @dataclass(frozen=True, slots=True)
+class LocalisationReferenceSelection:
+    key: str
+    language_used: str
+    source_ref: SourceRef
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "key": self.key,
+            "language_used": self.language_used,
+            "source_ref": self.source_ref.to_dict(),
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class LocalisationResolution:
     key: str
     language_requested: str
@@ -114,6 +128,7 @@ class LocalisationResolution:
     scanned_bytes: int
     output_bytes: int
     truncated: bool
+    reference_selections: tuple[LocalisationReferenceSelection, ...] = ()
 
     @property
     def ok(self) -> bool:
@@ -131,6 +146,7 @@ class LocalisationResolution:
             "display_value": self.display_value,
             "source_ref": None if self.source_ref is None else self.source_ref.to_dict(),
             "reference_source_refs": [ref.to_dict() for ref in self.reference_source_refs],
+            "reference_selections": [ref.to_dict() for ref in self.reference_selections],
             "fallback": self.fallback,
             "resolution": self.resolution,
             "diagnostics": [d.to_dict() for d in self.diagnostics],
@@ -248,6 +264,7 @@ def resolve_localisation(
     fallback = "none" if used == requested else "english"
     diagnostics_list: list[LocalisationDiagnostic] = []
     ref_sources: list[SourceRef] = []
+    ref_selections: list[LocalisationReferenceSelection] = []
     chunks: list[str] = []
     output_bytes = 0
     visits = 0
@@ -380,6 +397,7 @@ def resolve_localisation(
                 else:
                     assert ref is not None
                     ref_sources.append(ref.source_ref)
+                    ref_selections.append(LocalisationReferenceSelection(target, ref.language, ref.source_ref))
                     expand(ref, path)
             cursor = end + 1
 
@@ -391,4 +409,5 @@ def resolve_localisation(
         resolution="partial" if partial else "resolved",
         diagnostics=tuple(diagnostics_list), visits=visits,
         scanned_bytes=scanned_bytes, output_bytes=output_bytes, truncated=truncated,
+        reference_selections=tuple(ref_selections),
     )
