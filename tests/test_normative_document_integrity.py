@@ -134,7 +134,7 @@ def _verify_normative_markdown(name: str, contents: str) -> None:
             headings.append(line)
         # Normative docs require inline code pairs on each prose line.
         # Code fences are excluded.
-        ticks = re.findall(r"(?<!`)(?<!\\)`(?!`)", line)
+        ticks = re.findall(r"(?<!`)`(?!`)", line)
         assert len(ticks) % 2 == 0, (name, number, line[:100])
     assert not fenced, name
     assert headings == list(expected), (name, headings)
