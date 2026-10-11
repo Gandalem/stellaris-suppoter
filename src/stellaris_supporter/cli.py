@@ -147,6 +147,10 @@ def _code_exit(code: str) -> int:
         return 5
     if code == "CANCELLED":
         return 130
+    if code.startswith(("CONFIG_", "GAME_ROOT_", "DATA_DIR_", "CWD_")):
+        return 3
+    if code in {"PATH_INVALID", "SNAPSHOT_NOT_READY", "FILESYSTEM_ERROR"}:
+        return 3
     return 6
 
 
