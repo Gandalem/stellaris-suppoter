@@ -157,6 +157,8 @@ def connect(db_path: Path, *, read_only: bool = False, timeout: float = 0.25) ->
             connection.execute("PRAGMA synchronous = FULL")
         return connection
     except sqlite3.DatabaseError as exc:
+        if "locked" in str(exc).lower() or "busy" in str(exc).lower():
+            raise SnapshotError("SQLITE_BUSY", "Another SQLite writer holds the database.") from exc
         raise SnapshotError("SQLITE_ERROR", "Could not open the snapshot database.") from exc
 
 
