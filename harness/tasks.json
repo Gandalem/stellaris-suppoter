@@ -231,7 +231,9 @@
       "acceptance": [
         "Fallback, references, cycles and duplicates have explicit outcomes."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-009-localisation-reader-resolver.md"
+      ]
     },
     {
       "id": "TASK-010",
