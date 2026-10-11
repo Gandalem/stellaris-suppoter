@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from stellaris_supporter.answers import AnswerService
-from stellaris_supporter.domain import SourceContext, SourceRef, adapt_technologies
+from stellaris_supporter.domain import SourceContext, adapt_technologies
 from stellaris_supporter.localisation import (
     build_localisation_catalog,
     parse_localisation,
@@ -18,7 +18,10 @@ from stellaris_supporter.localisation import (
 from stellaris_supporter.parsing import parse_bytes
 from stellaris_supporter.retrieval import Query, SearchService
 from stellaris_supporter.storage import (
-    SnapshotPolicy, SnapshotRepository, SourceFileInput, snapshot_identity,
+    SnapshotPolicy,
+    SnapshotRepository,
+    SourceFileInput,
+    snapshot_identity,
 )
 
 
