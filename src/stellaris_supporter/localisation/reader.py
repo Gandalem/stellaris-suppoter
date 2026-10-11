@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass, field
+from io import StringIO
 from pathlib import PurePosixPath
 from typing import Literal
 
@@ -99,20 +100,20 @@ class LocalisationEntry:
         raw = self.raw_value
         if "\\" not in raw:
             return raw
-        result: list[str] = []
+        result = StringIO()
         start = 0
         i = 0
         while i < len(raw):
             if raw[i] == "\\" and i + 1 < len(raw):
-                result.append(raw[start:i])
+                result.write(raw[start:i])
                 next_char = raw[i + 1]
-                result.append(next_char if next_char in {'"', "\\"} else raw[i : i + 2])
+                result.write(next_char if next_char in {'"', "\\"} else raw[i : i + 2])
                 i += 2
                 start = i
             else:
                 i += 1
-        result.append(raw[start:])
-        return "".join(result)
+        result.write(raw[start:])
+        return result.getvalue()
 
     def to_dict(self) -> dict[str, object]:
         return {
