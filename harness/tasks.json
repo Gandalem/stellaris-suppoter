@@ -241,7 +241,7 @@
     {
       "id": "TASK-010",
       "title": "Schema and snapshots",
-      "status": "todo",
+      "status": "doing",
       "feature_ids": [
         "F-007"
       ],
