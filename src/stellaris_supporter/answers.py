@@ -318,7 +318,10 @@ class AnswerService:
             None,  # SearchHit does not expose independent match language yet.
         )
 
-    def answer(self, query: Query, *, field: str | None = None) -> AnswerEnvelope:
+    def answer(
+        self, query: Query, *, field: str | None = None,
+        exact_game_id: bool = False,
+    ) -> AnswerEnvelope:
         if field is not None and (
             not isinstance(field, str) or not field or len(field) > 128
         ):
@@ -368,7 +371,12 @@ class AnswerService:
                            "Game calculations/effective-state analysis are unsupported."),),
                     False,
                 )
-            if not found.results:
+            selected = (
+                tuple(hit for hit in found.results
+                      if hit.game_id == query.text and hit.match_reason == "game_id_exact")
+                if exact_game_id else found.results
+            )
+            if not selected:
                 return AnswerEnvelope(
                     1, "partial" if found.status == "partial" else "not_found",
                     query, context, (),
@@ -378,7 +386,7 @@ class AnswerService:
             budget = _Budget()
             results: list[AnswerResult] = []
             with self.repository.citation_reader(sid) as reader:
-                for hit in found.results:
+                for hit in selected:
                     if budget.truncated:
                         break
                     result = self._format_hit(hit, sid, field, reader, budget)
