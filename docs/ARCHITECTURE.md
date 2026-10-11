@@ -2,7 +2,7 @@
 
 ## 설계 선택
 
-v0.1은 단일 Python 패키지와 개인 로컬 SQLite DB를 사용하는 모듈형 프로그램입니다. CLI를 먼저 만들고 모든 기능은 UI와 무관한 서비스 계층을 호출합니다. 정적 검색에 LLM·서버·외부 DB를 요구하지 않습니다. 아래 트리는 예정 구조이며 현재 구현 상태가 아닙니다.
+v0.1은 단일 Python 패키지와 개인 로컬 SQLite DB를 사용하는 모듈형 프로그램입니다. CLI를 먼저 만들고 모든 기능은 UI와 무관한 서비스 계층을 호출합니다. 정적 검색에 LLM·서버·외부 DB를 요구하지 않습니다. 아래 트리는 구현 모듈(또는 인접 모듈)을 요약하며 후속 계획과 구분합니다. CLI 구현은 TASK-013 브랜치의 합성 검증 후보입니다.
 
 ```text
 src/stellaris_supporter/
@@ -10,12 +10,13 @@ src/stellaris_supporter/
   config.py               # TOML, 경로/한도 검증
   diagnostics.py          # 코드가 있는 진단 객체
   discovery/              # 안전한 파일 목록, 버전 증거
-  parsing/                # tokens, AST, localisation
-  domain/                 # 범주별 adapter, reference extractor
+  parsing/                # lossless tokens, ordered AST
+  domain/                 # Technology adapter; 타 범주 후속
   storage/                # SQLite schema, transactions, snapshots
-  search/                 # normalization, lookup, ranking
-  answers/                # deterministic formatter, citations
-  services/               # index, query, diff orchestration
+  retrieval.py            # SearchService projection and bounded Query
+  answers.py              # grounded AnswerEnvelope and SourceRef verification
+  cli_index.py            # scoped capture → stage/activate orchestration
+  cli_setup.py            # atomic exclusive first-run TOML
   providers/              # 후속: network/LLM 격리
 ```
 
@@ -41,11 +42,11 @@ src/stellaris_supporter/
 
 파서가 DB를 호출하거나 검색기가 네트워크를 호출하지 않습니다. 로그와 사용자 출력은 별도 채널입니다. SQLite 구현은 Repository 뒤에 두고 CLI와 parser에 SQL을 섞지 않습니다.
 
-TASK-010에서는 `stellaris_supporter.storage`의 `identity`, `schema`, `cache`, `repository` 경계가 이를 구현합니다. Inventory/technology/localisation이 제공한 원본 bytes와 SourceRef를 Repository 경계에서 다시 검증하며, 파일 해시→canonical snapshot identity→cache 저장→building record→ready/partial 검증→SQLite active pointer 갱신 순서를 유지합니다. 각 row는 snapshot_id 및 원본 source FK에 묶이고 `game_id` 자체는 unique하지 않습니다. 명시적 selected snapshot만 조회하며 building/failed는 노출하지 않습니다. 검색 및 FTS는 TASK-011 범위입니다.
+TASK-010에서는 `stellaris_supporter.storage`의 `identity`, `schema`, `cache`, `repository` 경계가 이를 구현합니다. Inventory/technology/localisation이 제공한 원본 bytes와 SourceRef를 Repository 경계에서 다시 검증하며, 파일 해시→canonical snapshot identity→cache 저장→building record→ready/partial 검증→SQLite active pointer 갱신 순서를 유지합니다. 각 row는 snapshot_id 및 원본 source FK에 묶이고 `game_id` 자체는 unique하지 않습니다. 명시적 selected snapshot만 조회하며 building/failed는 노출하지 않습니다. 검색 및 FTS는 구현·합성 검증된 TASK-011 범위입니다.
 
 SearchService는 검증된 SnapshotRepository의 snapshot-scoped 스트리밍 읽기를 이용해 메모리의 재생성 가능한 SQL projection을 만듭니다. 검색 경로에서 파서·게임 파일·네트워크·모델을 실행하지 않으며 FTS5는 실행 환경에서 지원 여부만 검사하는 선택적 기능이며, 현재 같은 LIKE 후보를 중복하는 FTS query branch를 제거했으므로 검색 가속 성능은 검증되거나 주장되지 않습니다. 한 query의 active snapshot 선택은 고정되고 result limit은 SQL에서 적용합니다. DB migration·영속 FTS 생성은 수행하지 않습니다.
 
-TASK-012의 `answers.py`는 검색→정적 formatter와 출처 검증의 메모리 계층이며 UI/CLI/LLM을 포함하지 않습니다. Repository는 `answer_entity(snapshot_id,entity_key)`의 bounded point lookup과 `citation_bytes(SourceRef)`의 hash/byte/UTF-8/line 검증을 제공하고, 변하는 active pointer를 답변 중 다시 조회하지 않습니다. 조회된 raw 필드는 원문 그대로만 보여 주며 중복 정의를 병합하지 않고 번역의 root/dependency 참조는 별도로 유지합니다.
+TASK-012의 `answers.py`는 검색→정적 formatter와 출처 검증의 메모리 계층이며 UI/LLM을 포함하지 않습니다. TASK-013의 CLI는 이 서비스를 호출합니다. Repository는 `answer_entity(snapshot_id,entity_key)`의 bounded point lookup과 `citation_bytes(SourceRef)`의 hash/byte/UTF-8/line 검증을 제공하고, 변하는 active pointer를 답변 중 다시 조회하지 않습니다. 조회된 raw 필드는 원문 그대로만 보여 주며 중복 정의를 병합하지 않고 번역의 root/dependency 참조는 별도로 유지합니다.
 
 ## 스냅샷과 정합성
 
@@ -60,3 +61,7 @@ TASK-012의 `answers.py`는 검색→정적 formatter와 출처 검증의 메모
 외부 입력의 오류는 Diagnostic(code, severity, message, source_ref, remediation)으로 모읍니다. 오류 원문에 비밀 값이나 절대 경로를 넣지 않습니다. 파일·바이트·깊이·개수·검색 길이에 한도를 적용하고 결과가 잘렸으면 truncated=true와 원인을 출력합니다. 무한 재귀 대신 깊이 제한과 방문 집합을 사용합니다.
 
 저장소 손상·중단·스키마 불일치는 [운영·복구](OPERATIONS.md)를 따릅니다. 성능 개선은 기준선 측정 뒤 추가하며 재현성과 출처 보존을 희생하지 않습니다.
+
+## TASK-013 실제 CLI 수직 연결 (후속 검증 후보)
+
+`cli.py`는 argparse 전역·subcommand 옵션과 JSON/text·종료 코드를 관리합니다. `cli_setup.py`는 기존 설정의 무단 덮어쓰기를 막고 private 설정만 생성합니다. `cli_index.py`는 game_root의 지원되는 3개 하위 경로만 `scan_inventory`하고 live 원본을 no-follow read, SHA/size/relative identity로 재검증합니다. `SnapshotPolicy`에는 개인 절대 경로나 시각을 넣지 않으며 parser/adapter/localisation을 `stage_from_results`에 결합합니다. `activate(...,sources=...)`가 live manifest/캐시를 다시 확인하고 active를 원자적으로 교체합니다. search는 `SearchService`, show는 `AnswerService.answer(exact_game_id=True)`, snapshots는 bounded repo API로 연결합니다. SQLite v1 및 SourceRef identity는 변경하지 않습니다.

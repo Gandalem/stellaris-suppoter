@@ -39,7 +39,7 @@ python scripts/check_harness.py
 python scripts/generate_synthetic_corpus.py --output ./tmp-synthetic
 ```
 
-마지막 명령은 검사용 임시 출력 생성이며 기존 비어 있지 않은 디렉터리는 기본적으로 덮어쓰지 않습니다. 소유권이 확인된 출력에만 `--force` 갱신을 허용하며, manifest 검증 실패는 stderr의 `error:` 진단과 종료 코드 `2`로 보고하고 기존 내용을 변경하지 않습니다. TASK-018 이후 평가 runner의 정확한 명령을 추가합니다. parser **Python API**와 아직 없는 index/search/parser **CLI 명령**을 혼동해 성공 로그에 넣지 않습니다.
+마지막 명령은 검사용 임시 출력 생성이며 기존 비어 있지 않은 디렉터리는 기본적으로 덮어쓰지 않습니다. 소유권이 확인된 출력에만 `--force` 갱신을 허용하며, manifest 검증 실패는 stderr의 `error:` 진단과 종료 코드 `2`로 보고하고 기존 내용을 변경하지 않습니다. TASK-018 이후 평가 runner의 정확한 명령을 추가합니다. Python API의 parser/search/answers와 TASK-013 브랜치에서 연결 중인 index/search/show **CLI 명령**은 별도의 E-026 합성 subprocess 검증으로 구분합니다. 미실행 명령이나 실제 게임 통합을 완료로 주장하지 않습니다.
 
 ## 품질 게이트
 
@@ -53,3 +53,7 @@ PR #21 R1~R3 follow-up은 합성 테스트에서 dynamic §/£/bracket/escaped d
 TASK-012 E-023–025는 `tests/test_answers.py`의 저작 합성 원본으로 field/value 정확한 byte·line 인용, BOM/CRLF, 한국어→영어 종속 출처, 고의적인 cache SHA 손상, 동적 표현식 보류, 없는 ID/필드, 중복 정의, stable/beta snapshot 격리와 active 변경을 평가합니다. `harness/evidence/TASK-012-static-answers-citations.md`에 실제 CI와 평가 증거를 따로 기록하며 CI 전에는 not_run을 유지합니다. 실제 설치본과 게임 엔진 의미는 미검증입니다.
 
 TASK-012 R1–R5 재검토 합성 회귀는 `tests/test_answers.py`에 서로 다른 파일로부터 대여한 Field/Value SourceRef, 저장 JSON의 필드 구문/occurrence 위조, Combat Computers/Chance Discovery 정확 검색과 미지원 의도, Query 유효성 우선순위, 100건 공통 예산·cache.read 호출 수, raw value 512/513 bytes를 포함합니다. 후속 재평가 근거는 `harness/evidence/TASK-012-review-followup.md`를 참고합니다.
+
+## TASK-013 E-026 CLI contract
+
+`tests/test_cli_vertical.py`는 실제 `python -m stellaris_supporter` 하위 프로세스를 통해 합성 game root에서 init→doctor→index→한국어·영어·ID 검색→exact ID show→개별 SourceRef 원문 span→snapshots→동일 index 재사용을 검사합니다. 설정 덮어쓰기·중첩 data_dir·symlink·없는 snapshot·잘못된 Query·인코딩 partial·실제 원본 read-only 및 stdout JSON 파싱을 부정 회귀로 검사합니다. R1–R6 기존 448 Ubuntu/445 Windows +3 skips 회귀는 변경하거나 skip하지 않습니다. CLI 실제 CI 결과와 미검증 취소/동시 writer/OS TOCTOU 범위는 [evidence](../harness/evidence/TASK-013-cli-vertical-slice.md)에 구분 기록합니다.
