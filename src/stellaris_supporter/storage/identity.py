@@ -99,11 +99,11 @@ def _json_bytes(
             raise _error("LIMIT_EXCEEDED", "JSON depth or item count limit exceeded.")
         if item is None or isinstance(item, (str, bool, int)):
             if isinstance(item, str):
-                if require_nfc and unicodedata.normalize("NFC", item) != item:
-                    raise _error("SCHEMA_ERROR", "Canonical JSON strings must be NFC.")
                 minimum_chars += len(item)
                 if max_bytes is not None and minimum_chars > max_bytes:
                     raise _error("LIMIT_EXCEEDED", "JSON string contents exceed byte budget.")
+                if require_nfc and unicodedata.normalize("NFC", item) != item:
+                    raise _error("SCHEMA_ERROR", "Canonical JSON strings must be NFC.")
             return
         if isinstance(item, (list, tuple)):
             for child in item:
