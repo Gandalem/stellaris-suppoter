@@ -11,7 +11,7 @@ from typing import Literal
 
 from stellaris_supporter.domain import SourceRef
 from stellaris_supporter.localisation import LocalisationReferenceSelection
-from stellaris_supporter.retrieval import Query, SearchContext, SearchDiagnostic, SearchHit, SearchService
+from stellaris_supporter.retrieval import Query, SearchHit, SearchService
 from stellaris_supporter.storage import SnapshotError, SnapshotRepository
 
 AnswerStatus = Literal["ok", "partial", "not_found", "unsupported", "error"]
