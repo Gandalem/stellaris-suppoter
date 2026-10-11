@@ -116,12 +116,14 @@
       "id": "F-008",
       "title": "Korean and ID retrieval",
       "milestone": "v0.1",
-      "status": "planned",
+      "status": "in_progress",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/SEARCH_AND_ANSWERS.md"
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-011-retrieval.md"
+      ]
     },
     {
       "id": "F-009",

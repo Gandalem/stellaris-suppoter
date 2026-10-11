@@ -600,6 +600,59 @@ class SnapshotRepository:
         self._ensure_ready(conn, sid)
         return sid
 
+    def search_snapshot(self, snapshot_id: str | None = None) -> dict[str, Any]:
+        """Pin one query to an active or explicit ready/partial snapshot."""
+        with self._connection(read_only=True) as conn:
+            sid = self._snapshot_for_query(conn, snapshot_id)
+            row = conn.execute(
+                "SELECT snapshot_id,status,game_version,checked_at "
+                "FROM snapshots WHERE snapshot_id=?", (sid,),
+            ).fetchone()
+            assert row is not None
+            return dict(row)
+
+    def iter_search_rows(
+        self, snapshot_id: str, record_kind: str
+    ):
+        """Stream one verified snapshot in bounded batches for index reconstruction.
+
+        This is a cold-path projection builder, not the search hot path.
+        The only allowed selectors are hardcoded (no user-supplied SQL identifiers).
+        No entity candidate JSON or whole table is materialised into Python lists.
+        """
+        if record_kind not in {"entities", "localisation"}:
+            raise SnapshotError("QUERY_INVALID", "Unsupported search record type.")
+        with self._connection(read_only=True) as conn:
+            # A read transaction ensures every yielded row comes from one
+            # SQLite snapshot, even during a concurrent active-pointer change.
+            conn.execute("BEGIN")
+            self._snapshot_for_query(conn, snapshot_id)
+            if record_kind == "entities":
+                cursor = conn.execute(
+                    "SELECT e.entity_key,e.game_id,e.kind,e.occurrence,"
+                    "e.relative_path,e.source_kind,e.source_id,e.byte_start,e.byte_end,"
+                    "e.resolution,e.localisation_json,s.file_sha256,"
+                    "json_extract(e.candidate_json,'$.source_ref.line_start') AS line_start,"
+                    "json_extract(e.candidate_json,'$.source_ref.line_end') AS line_end "
+                    "FROM entities e JOIN source_files s "
+                    "ON e.snapshot_id=s.snapshot_id AND e.source_kind=s.source_kind "
+                    "AND e.source_id=s.source_id AND e.relative_path=s.relative_path "
+                    "WHERE e.snapshot_id=? "
+                    "ORDER BY e.kind,e.game_id,e.relative_path,e.occurrence,e.entity_key",
+                    (snapshot_id,),
+                )
+            else:
+                cursor = conn.execute(
+                    "SELECT language,localisation_key,display_value,entry_json "
+                    "FROM localisation_entries WHERE snapshot_id=? "
+                    "ORDER BY language,localisation_key,relative_path,occurrence",
+                    (snapshot_id,),
+                )
+            while batch := cursor.fetchmany(128):
+                for row in batch:
+                    yield dict(row)
+            conn.execute("ROLLBACK")
+
     def entities(self, snapshot_id: str | None = None) -> list[dict[str, Any]]:
         with self._connection(read_only=True) as conn:
             sid = self._snapshot_for_query(conn, snapshot_id)
