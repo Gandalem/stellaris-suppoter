@@ -31,3 +31,13 @@ Adds optional \`AnswerResult.match_source_ref\`, \`match_reference_selections\`,
 ## Evidence / limitations
 The prior \`harness/evidence/TASK-012-static-answers-citations.md\` is preserved. E-023/024/025 remain synthetic pass from previous verified head, with follow-up cases requiring latest CI check. Baseline 428 Ubuntu passed, Windows 425 passed + 3 prior skips.
 No original game files, calculated game rules, real OS peak RSS, 10k end-to-end latency, FTS speedup or general malformed database forensic guarantee are claimed. Bounded source reparse (1MiB definition) is intentionally fail-closed for larger definitions; full 16MiB source cache read is still supported.
+
+## Verified follow-up CI (code/document candidate)
+
+- Reviewed old head: \`ee47dbc6fa8dc0d54280296299b626271e84f28c\`.
+- Code/doc verification head: \`5f63d281fb4bd15b5a2b6610f16497f49dfd869a\`.
+- PR **test-merge**, not actual main: \`306fa369a491cc42694d29219684a7368fedc77a\`.
+- Package CI: https://github.com/Gandalem/stellaris-suppoter/actions/runs/38141154994 — Ubuntu Python 3.11 **442 passed**, Windows Python 3.13 **439 passed, 3 original skips**, Ruff and check_harness both OS passed (harness_valid=true).
+- Documentation harness: https://github.com/Gandalem/stellaris-suppoter/actions/runs/38141155010 — both OS succeeded, same test-merge checkout in each job.
+- 14 new authored synthetic test parameter instances versus prior Ubuntu 428 pass; previous E-023/E-024/E-025 pass retained. R1/R2 tampered candidate_json returns SOURCE_CHANGED with zero results; R3 exact names and bad-query precedence pass; R4 cache.read count and global facts/value-size boundary pass.
+- This follow-up evidence commit itself changes the PR head; **its own head/test-merge, Package/Docs and head push CI must be inspected after commit**. This evidence does not imply actual merge or approval.
