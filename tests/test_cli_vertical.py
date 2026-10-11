@@ -517,3 +517,22 @@ def test_e026_invalid_nul_config_path_returns_security_exit(
     result = json.loads(capsys.readouterr().out)
     assert rc == 4 and result["status"] == "error"
     assert result["diagnostics"][0]["code"] == "PATH_REJECTED"
+
+
+def test_e026_malformed_toml_returns_config_exit_three(tmp_path: Path) -> None:
+    _, _, config = initialised(tmp_path)
+    config.write_bytes(b"schema_version = [unclosed\n")
+    code, result, stderr = query(config, "index")
+    assert code == 3
+    assert result["status"] == "error"
+    assert result["diagnostics"][0]["code"].startswith("CONFIG_")
+    assert "Traceback" not in stderr
+
+
+def test_e026_private_data_directory_missing_returns_exit_three(tmp_path: Path) -> None:
+    _, data, config = initialised(tmp_path)
+    data.rmdir()
+    code, result, _ = query(config, "index")
+    assert code == 3
+    assert result["status"] == "error"
+    assert result["diagnostics"][0]["code"] == "DATA_DIR_MISSING"
