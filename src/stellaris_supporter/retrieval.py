@@ -459,25 +459,24 @@ class SearchService:
     ) -> list[sqlite3.Row]:
         prefix = _like_literal(term) + "%"
         substring = "%" + _like_literal(term) + "%"
-        # FTS is strictly an optional extra path. The ordinary LIKE path
-        # remains authoritative for short Korean, punctuation and no-FTS parity.
+        # FTS availability is informational; LIKE preserves literal parity.
         union = """
             SELECT p.entity_key,1 AS rank,'game_id_exact' AS reason,'' AS matched_language,
-                   p.definition_ref AS match_ref FROM projection p WHERE p.game_id=?
+                   p.definition_ref AS match_ref,'[]' AS match_references FROM projection p WHERE p.game_id=?
             UNION ALL
-            SELECT n.entity_key,2,'name_exact',n.language,n.source_ref
+            SELECT n.entity_key,2,'name_exact',n.language,n.source_ref,n.references
               FROM names n WHERE n.normalized=? AND n.language IN ({languages})
             UNION ALL
-            SELECT a.entity_key,3,'alias_exact','',a.source_ref
+            SELECT a.entity_key,3,'alias_exact','',a.source_ref,'[]'
               FROM aliases a WHERE a.normalized=?
             UNION ALL
-            SELECT n.entity_key,4,'name_prefix',n.language,n.source_ref
+            SELECT n.entity_key,4,'name_prefix',n.language,n.source_ref,n.references
               FROM names n WHERE n.normalized LIKE ? ESCAPE char(92) AND n.language IN ({languages})
             UNION ALL
-            SELECT n.entity_key,5,'name_substring',n.language,n.source_ref
+            SELECT n.entity_key,5,'name_substring',n.language,n.source_ref,n.references
               FROM names n WHERE n.normalized LIKE ? ESCAPE char(92) AND n.language IN ({languages})
             UNION ALL
-            SELECT d.entity_key,6,'description_lexical','',d.source_ref
+            SELECT d.entity_key,6,'description_lexical','',d.source_ref,'[]'
               FROM descriptions d WHERE d.normalized LIKE ? ESCAPE char(92)
         """
         lang_sql = "?,?" if query.language == "korean" else "?"
@@ -489,14 +488,7 @@ class SearchService:
             query.text, term, *allowed, term, prefix, *allowed,
             substring, *allowed, substring,
         ]
-        if use_fts:
-            parts.append("""
-                SELECT d.entity_key,6,'description_lexical','',d.source_ref
-                FROM descriptions_fts
-                JOIN descriptions d ON d.entity_key=descriptions_fts.entity_key
-                WHERE descriptions_fts MATCH ? AND d.normalized LIKE ? ESCAPE char(92)
-            """)
-            params.extend(['"' + term.replace('"', '""') + '"', substring])
+        # FTS+LIKE repeated this same candidate set, so omit that branch.
         kind_filter = "" if query.kind is None else "WHERE p.kind=?"
         if query.kind is not None:
             params.append(query.kind)
@@ -513,7 +505,7 @@ class SearchService:
                 ) AS selected
                 FROM matches m
             )
-            SELECT p.*,c.rank,c.reason,c.matched_language,c.match_ref,
+            SELECT p.*,c.rank,c.reason,c.matched_language,c.match_ref,c.match_references,
                 (SELECT count(*) FROM projection duplicates
                  WHERE duplicates.kind=p.kind AND duplicates.game_id=p.game_id) AS duplicates
             FROM chosen c JOIN projection p ON p.entity_key=c.entity_key
@@ -547,14 +539,7 @@ class SearchService:
                     str(meta["status"]),
                 )
                 index = self._index_for(sid)
-                try:
-                    rows = self._sql_matches(index, term, query, self._fts_available)
-                except sqlite3.OperationalError:
-                    if not self._fts_available:
-                        raise
-                    # FTS implementation may reject even a quoted literal:
-                    # an ordinary safe lexical path must still run.
-                    rows = self._sql_matches(index, term, query, False)
+                rows = self._sql_matches(index, term, query, self._fts_available)
                 truncated = len(rows) > query.limit
                 verified_files: set[tuple[str, str, str, str]] = set()
                 hits: list[SearchHit] = []
@@ -565,25 +550,34 @@ class SearchService:
                     fallback = "id"
                     localisation_source: SourceRef | None = None
                     chosen_status = str(row["chosen_resolution"])
+                    display_references: tuple[LocalisationReferenceSelection, ...] = ()
                     if query.language == "korean":
                         if row["korean"] is not None and row["korean_ref"]:
                             used, fallback = "korean", "none"
                             localisation_source = _ref(row["korean_ref"])
                             display = row["korean"]
+                            display_references = _selections(row["korean_references"])
                         elif row["english"] is not None and row["english_ref"]:
                             used, fallback = "english", "english"
                             localisation_source = _ref(row["english_ref"])
                             display = row["english"]
+                            display_references = _selections(row["english_references"])
                         else:
                             display = row["game_id"]
                     elif row["english"] is not None and row["english_ref"]:
                         used, fallback = "english", "none"
                         localisation_source = _ref(row["english_ref"])
                         display = row["english"]
+                        display_references = _selections(row["english_references"])
                     else:
                         display = row["game_id"]
                     match_source = _ref(row["match_ref"])
-                    for source in (definition, localisation_source, match_source):
+                    match_references = _selections(row["match_references"])
+                    for source in (
+                        definition, localisation_source, match_source,
+                        *(item.source_ref for item in display_references),
+                        *(item.source_ref for item in match_references),
+                    ):
                         if source is None:
                             continue
                         if source.snapshot_id != sid:
@@ -619,6 +613,10 @@ class SearchService:
                         row["reason"], query.language, used, fallback, resolution,
                         chosen_status, definition, localisation_source, match_source,
                         tuple(diagnostics),
+                        tuple(item.source_ref for item in display_references),
+                        display_references,
+                        tuple(item.source_ref for item in match_references),
+                        match_references,
                     ))
                 report: list[SearchDiagnostic] = []
                 if meta["status"] == "partial":
