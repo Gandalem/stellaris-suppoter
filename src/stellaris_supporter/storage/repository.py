@@ -30,9 +30,11 @@ from stellaris_supporter.storage.cache import (
     BlobCache,
     _ensure_directory,
     _is_unsafe_link,
+    live_source_relative_path,
     verify_live_source,
 )
 from stellaris_supporter.storage.identity import (
+    MAX_POLICY_JSON_BYTES,
     SCHEMA_VERSION,
     SnapshotError,
     SnapshotIdentity,
@@ -41,6 +43,7 @@ from stellaris_supporter.storage.identity import (
     SourceFileInput,
     canonical_json,
     snapshot_identity,
+    storage_json,
 )
 from stellaris_supporter.storage.schema import check_schema, connect, initialise_schema
 
@@ -81,7 +84,7 @@ def _immediate(conn: sqlite3.Connection):
 
 
 def _as_json(obj: Any) -> str:
-    return canonical_json(obj, max_bytes=MAX_JSON_BYTES).decode("utf-8")
+    return storage_json(obj, max_bytes=MAX_JSON_BYTES).decode("utf-8")
 
 
 def _validate_ref(
@@ -228,16 +231,28 @@ class SnapshotRepository:
             )
             return tuple(row[0] for row in rows)
 
-    def _check_live(self, source: SourceFileInput, descriptor: SourceDescriptor) -> None:
-        if source.live_path is None:
-            if source.source_kind != "synthetic":
-                raise SnapshotError("SOURCE_UNVERIFIED", "Real sources require an allowed live path.")
-            return
+    def _live_root_hash(self) -> str:
         if self.game_root is None:
             raise SnapshotError("PATH_REJECTED", "Live sources require an explicit game root.")
-        verify_live_source(
+        # Private DB binding, never included in SnapshotPolicy, snapshot_id or evidence.
+        spelling = os.path.normcase(os.path.abspath(self.game_root))
+        return hashlib.sha256(os.fsencode(spelling)).hexdigest()
+
+    def _check_live(
+        self, source: SourceFileInput, descriptor: SourceDescriptor
+    ) -> tuple[str | None, str | None]:
+        if source.live_path is None:
+            if source.source_kind != "synthetic":
+                raise SnapshotError(
+                    "SOURCE_UNVERIFIED", "Real sources require an allowed live path."
+                )
+            return None, None
+        if self.game_root is None:
+            raise SnapshotError("PATH_REJECTED", "Live sources require an explicit game root.")
+        physical_relative = verify_live_source(
             source.live_path, self.game_root, descriptor.file_sha256, descriptor.size
         )
+        return self._live_root_hash(), physical_relative
 
     def stage_from_results(
         self,
@@ -311,6 +326,8 @@ class SnapshotRepository:
         identity = snapshot_identity(sources, policy)
         if policy.schema_version != SCHEMA_VERSION:
             raise SnapshotError("SCHEMA_VERSION_UNSUPPORTED", "Repository cannot write this schema.")
+        if len(identity.policy_json.encode("utf-8")) > MAX_POLICY_JSON_BYTES:
+            raise SnapshotError("LIMIT_EXCEEDED", "Policy exceeds its identity byte budget.")
         sid = identity.snapshot_id
         by_key = {d.key: d for d in identity.sources}
         source_by_key = {item.descriptor().key: item for item in sources}
@@ -362,13 +379,18 @@ class SnapshotRepository:
 
                 for d in identity.sources:
                     original = source_by_key[d.key]
-                    self._check_live(original, d)
+                    root_sha, physical_relative = self._check_live(original, d)
                     conn.execute(
                         "INSERT INTO source_files(snapshot_id,source_kind,source_id,"
-                        "relative_path,file_sha256,byte_size,cache_sha256,live_required)"
-                        " VALUES(?,?,?,?,?,?,?,?)",
-                        (sid, d.source_kind, d.source_id, d.relative_path,
-                         d.file_sha256, d.size, d.file_sha256, int(original.live_path is not None)),
+                        "relative_path,file_sha256,byte_size,cache_sha256,live_required,"
+                        "live_relative_path,live_root_sha256)"
+                        " VALUES(?,?,?,?,?,?,?,?,?,?)",
+                        (
+                            sid, d.source_kind, d.source_id, d.relative_path,
+                            d.file_sha256, d.size, d.file_sha256,
+                            int(original.live_path is not None),
+                            physical_relative, root_sha,
+                        ),
                     )
                 is_partial = bool(partial)
                 ordered_candidates = sorted(
@@ -396,10 +418,10 @@ class SnapshotRepository:
                     _validate_payload_refs(payload, sid, by_key)
                     occurrence = keys.get((candidate.kind, candidate.game_id), 0) + 1
                     keys[(candidate.kind, candidate.game_id)] = occurrence
-                    entity_key = hashlib.sha256(canonical_json({
+                    entity_key = hashlib.sha256(storage_json({
                         "kind": candidate.kind, "game_id": candidate.game_id,
                         "source": ref.to_dict(), "occurrence": occurrence,
-                    })).hexdigest()
+                    }, max_bytes=MAX_JSON_BYTES)).hexdigest()
                     match = (
                         candidate.game_id, ref.source_kind, ref.source_id,
                         ref.relative_path, ref.byte_start, ref.byte_end,
@@ -619,6 +641,8 @@ class SnapshotRepository:
             ).fetchone()
             if row is None or ref.file_sha256 != row["file_sha256"]:
                 raise SnapshotError("SOURCE_CHANGED", "SourceRef does not belong to the snapshot.")
+            if row["cache_sha256"] != row["file_sha256"]:
+                raise SnapshotError("SOURCE_CHANGED", "Cache pointer differs from source SHA-256.")
             if ref.byte_start < 0 or ref.byte_end < ref.byte_start or ref.byte_end > row["byte_size"]:
                 raise SnapshotError("SOURCE_CHANGED", "SourceRef range is invalid.")
             return self.cache.read(row["cache_sha256"], row["byte_size"])[
@@ -639,7 +663,8 @@ class SnapshotRepository:
         sources: tuple[SourceFileInput, ...] | None
     ) -> None:
         rows = conn.execute(
-            "SELECT source_kind,source_id,relative_path,file_sha256,byte_size,live_required "
+            "SELECT source_kind,source_id,relative_path,file_sha256,byte_size,live_required, "
+            "live_relative_path,live_root_sha256 "
             "FROM source_files WHERE snapshot_id=? "
             "ORDER BY source_kind,source_id,relative_path",
             (sid,),
@@ -659,9 +684,24 @@ class SnapshotRepository:
             ) or descriptor.file_sha256 != row["file_sha256"]
                     or descriptor.size != row["byte_size"]):
                 raise SnapshotError("SOURCE_CHANGED", "Source inventory changed after staging.")
-            if row["live_required"] and original.live_path is None:
-                raise SnapshotError("SOURCE_UNVERIFIED", "Source revalidation path missing.")
-            self._check_live(original, descriptor)
+            if bool(row["live_required"]) != (original.live_path is not None):
+                raise SnapshotError("SOURCE_UNVERIFIED", "Live-source requirement changed.")
+            if row["live_required"]:
+                if self.game_root is None:
+                    raise SnapshotError("SOURCE_UNVERIFIED", "Original game root is unavailable.")
+                if row["live_root_sha256"] != self._live_root_hash():
+                    raise SnapshotError("SOURCE_CHANGED", "Staged live-source root changed.")
+                # Compare targets BEFORE reading bytes; a same-hash copy cannot
+                # take the place of the file bound during stage().
+                actual_relative = live_source_relative_path(
+                    original.live_path, self.game_root
+                )
+                if actual_relative != row["live_relative_path"]:
+                    raise SnapshotError("SOURCE_CHANGED", "Staged live-source path changed.")
+            root_sha, relative = self._check_live(original, descriptor)
+            if (root_sha != row["live_root_sha256"]
+                    or relative != row["live_relative_path"]):
+                raise SnapshotError("SOURCE_CHANGED", "Staged live-source binding changed.")
 
     def activate(
         self,
