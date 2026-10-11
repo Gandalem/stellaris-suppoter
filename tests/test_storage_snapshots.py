@@ -954,9 +954,13 @@ def test_r2_technology_raw_decomposed_unicode_roundtrip(tmp_path: Path) -> None:
     repo.stage_from_results((src,), _policy(), technology_results=(adapted,))
     repo.activate(sid)
     candidate = repo.entities()[0]["candidate"]
-    assert "e\u0301" in candidate["fields"][0]["raw_value"]
     from stellaris_supporter.domain import SourceRef
 
+    # The technology adapter intentionally stores source spans rather than
+    # eager raw_value copies. The exact decomposed codepoints must remain in
+    # the original referenced UTF-8 source bytes.
+    raw_field = repo.source_bytes(SourceRef(**candidate["fields"][0]["value_source_ref"]))
+    assert raw_field.decode("utf-8") == '"e\u0301"'
     assert repo.source_bytes(SourceRef(**candidate["source_ref"])) == data[
         candidate["source_ref"]["byte_start"]:candidate["source_ref"]["byte_end"]
     ]
