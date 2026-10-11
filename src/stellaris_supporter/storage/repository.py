@@ -118,7 +118,7 @@ def _validate_payload_refs(
     def visit(value: Any, depth: int) -> None:
         nonlocal remaining
         remaining -= 1
-        if remaining < 0 or depth > 150:
+        if remaining < 0 or depth > 280:
             raise SnapshotError("LIMIT_EXCEEDED", "Provenance traversal budget exceeded.")
         if isinstance(value, dict):
             if _SOURCE_REF_KEYS <= value.keys():
@@ -259,6 +259,8 @@ class SnapshotRepository:
         or source content rather than unsafe partial replacement.
         """
         identity = snapshot_identity(sources, policy)
+        if policy.schema_version != SCHEMA_VERSION:
+            raise SnapshotError("SCHEMA_VERSION_UNSUPPORTED", "Repository cannot write this schema.")
         sid = identity.snapshot_id
         by_key = {d.key: d for d in identity.sources}
         bytes_by_key = {
