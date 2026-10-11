@@ -1,6 +1,6 @@
 # 데이터 계약 v1
 
-이 문서는 구현 규범입니다. 실제 타입·DB migration·JSON Schema는 TASK-010에서 만듭니다. null(알 수 없음)은 0, false, 빈 목록과 구별합니다. 시간은 UTC ISO 8601입니다.
+이 문서는 구현 규범입니다. TASK-010에서 SQLite v1 typed schema, 결정적 snapshot identity, 원자적 active pointer 전환 및 SourceRef·원본 캐시 SHA 검증을 구현했습니다. 자동 DB migration과 원본 캐시를 포함한 전체 백업/복구는 아직 미구현이며, 검색·FTS는 TASK-011 범위입니다. 별도 JSON Schema 자동 생성·검증의 완료를 의미하지 않습니다. null(알 수 없음)은 0, false, 빈 목록과 구별합니다. 시간은 UTC ISO 8601입니다.
 
 ## 출처
 

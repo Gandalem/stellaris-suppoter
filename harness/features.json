@@ -101,14 +101,15 @@
       "id": "F-007",
       "title": "Snapshot database",
       "milestone": "v0.1",
-      "status": "in_progress",
+      "status": "verified",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/DATA_CONTRACTS.md"
       ],
       "evidence": [
         "harness/evidence/TASK-010-sqlite-snapshots.md",
-        "harness/evidence/TASK-010-review-followup.md"
+        "harness/evidence/TASK-010-review-followup.md",
+        "harness/evidence/TASK-010-main-integration.md"
       ]
     },
     {
