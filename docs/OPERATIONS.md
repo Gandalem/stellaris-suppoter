@@ -47,3 +47,7 @@ PR #19 리뷰 보완 운영 경계: live 파일을 stage하면 원문 SHA뿐 아
 `index`는 명시 game_root 내부의 `common/technology/*.txt`, `localisation/korean/*.yml`, `localisation/english/*.yml`만 선택하고 inventory SHA와 안전하게 재수집한 bytes 및 root-relative 물리 경로를 비교합니다. `stage_from_results`가 파서·번역 진단과 partial을 보존하고, activation이 cache SHA와 동일한 live manifest를 재검증한 뒤 active 포인터만 트랜잭션으로 바꿉니다. `--allow-partial`은 미완성 구조에는 쓰일 수 있으나 원본 변경·경로·한도/DB 무결성 오류 우회에는 적용하지 않습니다. 기존 ready snapshot 재활성화도 live/cached bytes를 재검증합니다. building/failed는 재활성화 대상이 아닙니다. 
 
 기술 ID show는 AnswerService의 출처 검사를 실행하며 연구 비용·확률을 계산하지 않습니다. `snapshots`는 limit 1~100의 읽기 전용 목록을 반환합니다. 종료 코드·JSON/text 출력과 충돌되는 문구가 있으면 [CLI.md](CLI.md)를 우선합니다. 실제 게임 호환성과 hostile same-path 교체 완전 방어, cold time·peak RSS는 검증되지 않았습니다.
+
+## TASK-013 CLI 리뷰 후속 운영 경계
+
+지원된 확장자 파일만 용량·해시·파일 수 색인 예산에 포함하며, 그 외 파일의 경로/링크와 전체 디렉터리 traversal 안전성 검사는 유지합니다. Parser/lexer/localisation resolver의 hard resource limit는 `--allow-partial`을 지정해도 종료 코드 4로 실패하고 기존 활성 snapshot은 변경하지 않습니다. Query가 서비스 절대 상한을 위반하면 2, 형식은 유효하되 운영자 설정의 `query_chars/max_results`가 더 작으면 4를 사용합니다. Text 상태 목록은 active/status/branch/시각을 포함하며 출력 경계에서 비표시 제어문자와 bidi를 이스케이프합니다. JSON 데이터 자체는 변경하지 않습니다. 신규 보완 회귀는 `harness/evidence/TASK-013-review-followup.md` 참조.

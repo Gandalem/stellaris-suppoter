@@ -602,6 +602,7 @@ def test_review_r1_technology_bound_is_not_partial_consent(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, code: str,
 ) -> None:
     from dataclasses import replace
+
     import stellaris_supporter.cli_index as pipeline
     from stellaris_supporter.config import load_settings
     from stellaris_supporter.domain import TechnologyDiagnostic
@@ -692,8 +693,8 @@ def test_review_r2_supported_symlink_remains_rejected(tmp_path: Path) -> None:
     try:
         path.symlink_to(target)
     except (OSError, NotImplementedError):
-        from stellaris_supporter.storage.cache import live_source_relative_path
         from stellaris_supporter.storage import SnapshotError
+        from stellaris_supporter.storage.cache import live_source_relative_path
         with pytest.raises(SnapshotError):
             live_source_relative_path(target, game)
     else:
@@ -721,7 +722,7 @@ def test_review_r3_configured_result_default_and_explicit_limit(tmp_path: Path) 
     for name, lang in (("korean", "korean"), ("english", "english")):
         loc = game / f"localisation/{name}/demo_l_{lang}.yml"
         loc.write_text(loc.read_text(encoding="utf-8") +
-                       f' demo_other:0 "Other Tech"\n', encoding="utf-8")
+                       ' demo_other:0 "Other Tech"\n', encoding="utf-8")
     with config.open("a", encoding="utf-8") as stream:
         stream.write("\n[limits]\nmax_results = 1\n")
     assert query(config, "index")[0] == 0
@@ -787,8 +788,8 @@ def test_review_r5_terminal_controls_escaped_only_in_text(tmp_path: Path) -> Non
         "results": [{"game_id": "demo_tech", "display_name": unsafe, "status": "ok"}],
         "diagnostics": [{"code": "DEMO", "message": unsafe}],
     }
-    from io import StringIO
     from contextlib import redirect_stdout
+    from io import StringIO
     output = StringIO()
     with redirect_stdout(output):
         cli._emit_text(payload)

@@ -57,3 +57,13 @@ JSON 모드는 stdout에 유일한 객체 하나(기본 schema_version 1, comman
 | 130 | 사용자 취소 |
 
 구현 결과는 `harness/evidence/TASK-013-cli-vertical-slice.md`에 CI 실제 실행을 확인한 다음 연결합니다. 동일 입력·동일 정책은 동일 snapshot ID를 생성하며 절대경로/시간을 ID에 혼합하지 않습니다.
+
+## TASK-013 R1–R5 안전 경계 (PR #25 검토 후속)
+
+- `--allow-partial`은 일반적으로 미완성인 파싱·번역에만 적용합니다. 기술 lexer/parser의 `LIMIT_EXCEEDED`, `PARSE_DEPTH_LIMIT`, `PARSE_NODE_LIMIT`, `PARSE_DIAGNOSTIC_LIMIT` 및 localisation resolver의 확장 depth/visit/output 제한을 만나면 기존 active를 보존하고 종료 **4**로 실패합니다. 이미 존재하는 partial snapshot도 재활성화 전에 이 조건을 다시 검사합니다.
+- Inventory의 파일 크기·파일 개수·SHA 청구는 `common/technology/**/*.txt`, `localisation/korean/**/*.yml`, `localisation/english/**/*.yml`만 포함합니다. 그 밖의 일반 파일은 해시·수집하지 않지만 경로, symlink/reparse 및 디렉터리 탐색 `max_entries` 보안 검사 대상입니다. 모든 지원 파일의 합계에 `max_files/total_bytes`가 적용됩니다.
+- `search`·`show`는 설정 `limits.query_chars`, `limits.max_results`와 서비스 절대 상한 **512자/100개**를 모두 검사합니다. 인자 자체가 잘못됐거나 서비스 상한을 위반하면 `QUERY_INVALID`/**2**; 서비스 계약 내에서 TOML 한도를 초과하면 `LIMIT_EXCEEDED`/**4**를 반환합니다. `--limit` 생략 시 search는 `min(20, configured max_results)`, show는 `min(100, configured max_results)`를 사용합니다. snapshot·kind·검색 결과 의미는 기존 SearchService/AnswerService를 유지합니다.
+- `snapshots`의 **기본 text** 출력은 JSON과 동일하게 각 항목의 `snapshot_id/active/status/context_kind/branch/game_version/created_at/checked_at`를 표시합니다. 알 수 없는 버전·시각은 `unknown`으로 표시하며 `limit/offset/truncated`도 출력합니다.
+- 게임·모드 유래의 사용자 제어 문자열(검색명, 정의 필드·진단·경로 등)은 **text 출력에서만** ESC/C0/C1/Unicode bidi 등의 nonprinting 문자를 가시적으로 `\\xNN`, `\\uNNNN`로 이스케이프합니다. SourceRef, 원문 캐시, JSON 값의 데이터 의미를 변경하지 않습니다. 정상 한/영 이름은 그대로 표시합니다.
+
+상기 계약은 `harness/evidence/TASK-013-review-followup.md`에 기록한 합성 검증 범위에 한하며, 실제 게임 설치본이나 OS-level hostile same-path TOCTOU 보증을 뜻하지 않습니다.
