@@ -572,13 +572,13 @@ def test_e026_large_search_payload_abstains_without_partial_json(
 ) -> None:
     game, _, config = initialised(tmp_path)
     technology = game / "common/technology/demo.txt"
-    definitions = "".join(f"demo_{i:03d} = {{ tier = 2 }}\n" for i in range(6))
+    definitions = "".join(f"demo_{i:03d} = {{ tier = 2 }}\n" for i in range(8))
     technology.write_bytes(definitions.encode())
     korean = game / "localisation/korean/demo_l_korean.yml"
-    long_name = "합금" * 120_000
+    long_name = "합금" * 30_000
     korean.write_text(
         "l_korean:\n" + "".join(
-            f' demo_{i:03d}:0 "{long_name}{i}"\n' for i in range(6)
+            f' demo_{i:03d}:0 "{long_name}{i}"\n' for i in range(8)
         ), encoding="utf-8",
     )
     rc, indexed, _ = query(config, "index")
