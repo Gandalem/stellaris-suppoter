@@ -17,4 +17,6 @@
 | ADR-011 | game_root는 자동 탐색하지 않고 data/config만 OS별 안전 기본 위치를 사용 | Steam 경로 추측·환경변수 오염을 피하고 개인 데이터는 게임 트리와 분리; TOML 상대 경로는 설정 파일 기준 | 실제 사용자 설치 흐름에서 자동 탐색이 명시적으로 필요해지고 안전한 증거 기반 방법이 검증될 때 |
 | ADR-012 | localisation은 제한된 문법 reader와 deterministic bounded resolver를 분리하고 원본 source bytes/span을 공유 | 범용 YAML은 순서·중복·byte span 손실이 있고 즉시 문자열 확장은 반복 참조 시 메모리/CPU 증폭을 초래한다. SOURCE hash 검증 후 raw reference와 출력/방문/스캔 예산을 적용하고 검증되지 않은 정의 우선순위를 ambiguous로 처리한다. F-006/TASK-009/E-015~017 관련 | 실제 게임 현지화 구문 조사에서 지원 범위를 변경할 근거가 확보되거나 TASK-010 snapshot 계약과 충돌할 때 |
 
+| ADR-013 | TASK-010 SQLite v1은 snapshot ID와 active pointer를 분리하고 cache 검증→staging→BEGIN IMMEDIATE atomic pointer 전환을 사용한다 | 2026-10-11; F-007/TASK-010/E-018/E-019. 후보 ID는 NFC 필수·구분자 slash·원형 대소문자 보존·충돌 거부, 정렬된 상대 경로/출처/hash + canonical UTF-8 JSON 정책으로 생성한다. SQLite WAL/FULL/foreign_keys/250ms busy timeout 사용; 원본은 개인 SHA cache에서 atomic replace + 검증 후 DB에 연결한다. DB와 filesystem은 별도 원자성 영역이므로 cache가 누락/손상됐으면 ready 전환 및 활성화를 거부한다. duplicate game_id는 별도 occurrence, raw는 shared cache. 자동 migration·실제 게임 규칙/FTS는 미지원. | 실제 OS DB lock/cache 실패 회귀나 상위 schema migration 수요가 확인되면 검증과 승인 후 개정 |
+
 새 결정은 문제, 선택, 대안, trade-off, 영향 F/TASK/E-ID, migration, 승인/검토, 날짜를 기록합니다. 폐기된 결정을 삭제하지 말고 superseded와 새 ID를 연결합니다. 패치·모델·라이브러리의 최신 여부는 설계 결정이 아니라 확인해야 할 외부 사실입니다.
