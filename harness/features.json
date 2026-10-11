@@ -106,7 +106,9 @@
         "docs/REQUIREMENTS.md",
         "docs/DATA_CONTRACTS.md"
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-010-sqlite-snapshots.md"
+      ]
     },
     {
       "id": "F-008",
