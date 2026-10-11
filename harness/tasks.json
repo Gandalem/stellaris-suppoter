@@ -212,7 +212,7 @@
     {
       "id": "TASK-009",
       "title": "Localisation reader",
-      "status": "doing",
+      "status": "done",
       "feature_ids": [
         "F-006"
       ],
@@ -234,7 +234,8 @@
       "evidence": [
         "harness/evidence/TASK-009-localisation-reader-resolver.md",
         "harness/evidence/TASK-009-review-followup.md",
-        "harness/evidence/TASK-009-r5-document-integrity.md"
+        "harness/evidence/TASK-009-r5-document-integrity.md",
+        "harness/evidence/TASK-009-main-integration.md"
       ]
     },
     {
