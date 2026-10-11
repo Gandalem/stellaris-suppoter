@@ -527,7 +527,7 @@ class SnapshotRepository:
             rows = conn.execute(
                 "SELECT entity_key,game_id,kind,occurrence,resolution,"
                 "candidate_json,localisation_json FROM entities "
-                "WHERE snapshot_id=? ORDER BY kind,game_id,entity_key", (sid,)
+                "WHERE snapshot_id=? ORDER BY kind,game_id,occurrence,entity_key", (sid,)
             ).fetchall()
             return [
                 {
