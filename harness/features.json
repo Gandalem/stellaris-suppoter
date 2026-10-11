@@ -164,7 +164,8 @@
       ],
       "evidence": [
         "harness/evidence/TASK-013-cli-vertical-slice.md",
-        "harness/evidence/TASK-013-review-followup.md"
+        "harness/evidence/TASK-013-review-followup.md",
+        "harness/evidence/TASK-013-main-integration.md"
       ]
     },
     {
