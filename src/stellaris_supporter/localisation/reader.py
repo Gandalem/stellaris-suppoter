@@ -149,6 +149,7 @@ class LocalisationDocument:
     def raw_bytes(self, span: SourceRef) -> bytes:
         if (
             span.snapshot_id != self.context.snapshot_id
+            or span.source_kind != self.context.source_kind
             or span.source_id != self.context.source_id
             or span.relative_path != self.context.relative_path
             or span.file_sha256 != self.context.file_sha256
