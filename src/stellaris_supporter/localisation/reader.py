@@ -377,6 +377,7 @@ def parse_localisation(
             continue
 
         if stripped.startswith("l_") and _ENTRY_PREFIX.match(text) is None:
+            language = None
             unknown.append(line_ref)
             if not emit("LOC_INVALID_HEADER", "error", "Invalid localisation language header.", line_ref):
                 break
