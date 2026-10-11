@@ -463,3 +463,57 @@ def test_e026_partial_localisation_can_only_activate_with_consent(tmp_path: Path
     assert rc == 0
     assert accepted["status"] == "partial"
     assert accepted["activated"] is True
+
+
+def test_e026_sqlite_writer_failure_is_exit_six_json(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import stellaris_supporter.cli as cli
+    from stellaris_supporter.storage import SnapshotError
+
+    _, _, config = initialised(tmp_path)
+
+    def unavailable(*args, **kwargs):
+        raise SnapshotError("SQLITE_BUSY", "Synthetic write conflict.")
+
+    monkeypatch.setattr(cli, "index_technologies", unavailable)
+    code = cli.main(["--config", str(config), "--format", "json", "index"])
+    result = json.loads(capsys.readouterr().out)
+    assert code == 6 and result["status"] == "error"
+    assert result["results"] == []
+    assert result["diagnostics"][0]["code"] == "SQLITE_BUSY"
+
+
+def test_e026_snapshot_identity_ignores_private_root_spelling(tmp_path: Path) -> None:
+    _, _, config_a = initialised(tmp_path / "first")
+    _, _, config_b = initialised(tmp_path / "second location")
+    rc_a, one, _ = query(config_a, "index")
+    rc_b, two, _ = query(config_b, "index")
+    assert rc_a == rc_b == 0
+    assert one["snapshot_id"] == two["snapshot_id"]
+
+
+def test_e026_network_enabled_config_rejected_before_writing(tmp_path: Path) -> None:
+    game, data, config = initialised(tmp_path)
+    contents = config.read_text(encoding="utf-8")
+    config.write_text(
+        contents.replace("enabled = false", "enabled = true"), encoding="utf-8"
+    )
+    rc, result, _ = query(config, "index")
+    assert rc == 4 and result["status"] == "error"
+    assert not data.joinpath("snapshots.sqlite3").exists()
+    assert game.joinpath("common/technology/demo.txt").is_file()
+
+
+def test_e026_invalid_nul_config_path_returns_security_exit(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str],
+) -> None:
+    import stellaris_supporter.cli as cli
+
+    game, _, _ = corpus(tmp_path)
+    rc = cli.main(["--format", "json", "--config", "unsafe\x00config",
+                   "init", "--game-root", str(game)])
+    result = json.loads(capsys.readouterr().out)
+    assert rc == 4 and result["status"] == "error"
+    assert result["diagnostics"][0]["code"] == "PATH_REJECTED"
