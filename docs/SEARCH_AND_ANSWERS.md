@@ -22,6 +22,8 @@ facts마다 실제 필드를 포함하는 SourceRef가 필요합니다. 관련 �
 
 예: '이 정의에는 비용 표현식 @demo_cost가 있습니다. 해당 변수의 적용값은 이 조회에서 확정하지 않았습니다.' 이는 실제 게임 비용이 아닙니다.
 
+**TASK-012 결정적 formatter 구현:** 검색을 다시 구현하지 않고 `SearchService.search(Query)`의 결과를 사용합니다. 한 답변의 snapshot ID는 검색 종료 직후 고정하고 `SnapshotRepository.answer_entity(snapshot_id,entity_key)`로 개별 엔티티만 읽습니다. `citation_bytes`에서 field/value 원문 bytes와 UTF-8/행 정보를 검증합니다. 정적 raw literal은 실제 엔진 비용·조건 평가·결과를 의미하지 않으며 `@reference`·block 표현식은 그대로 남겨 partial로 처리합니다. 모든 번역 이름의 최초 root와 정적 참조 근거·언어가 기술 정의 및 사실별 근거와 분리됩니다. 사용자 계산 요청은 unsupported, 검색 결과 없음은 not_found, 손상된 원문·인용은 error입니다. fact 64개·citation 256개·raw value 512 bytes 등 제한을 적용합니다.
+
 ## 보류 기준
 
 | 상황 | 동작 |
@@ -40,3 +42,5 @@ facts마다 실제 필드를 포함하는 SourceRef가 필요합니다. 관련 �
 F-016은 snapshot, 검증된 필드/인용 ID, unknown 항목과 문맥 제한을 EvidencePacket으로 묶습니다. 모델 출력의 인용이 packet에 존재하는지, 수치가 근거와 일치하는지 검사합니다. 검증 실패 시 정적 출력으로 복귀하거나 답변을 보류합니다.
 
 검색된 웹·모드 텍스트의 지시문은 데이터입니다. 모델에 포괄적인 파일·셸 권한을 주지 않습니다. 모델 미설정·타임아웃·예산 초과가 기본 검색을 막지 않습니다. 모델명·비용·외부 전송 동의 없이 cloud provider를 선택하지 않습니다.
+
+**R1–R5 후속:** 원문 byte/line/SHA 검증 외에 정의-필드-값 동일 원본 파일 식별자와 parser AST 부모·자식/순서/occurrence까지 대조합니다. 자유 텍스트 combat/chance는 정확한 정적 기술 이름/ID 조회에 우선하지 않으며, 잘못된 Query는 unsupported가 아닌 QUERY_INVALID입니다. 결과 전체에 fact/citation/payload 예산을 공유하며 한도 초과는 partial/truncated입니다. 같은 원본은 요청 내 SHA 검증 LRU를 재사용하고 소스 선택은 snapshot에 고정합니다. match provenance와 display provenance의 역할을 분리하며 별도 match 언어는 미확인 시 null입니다.

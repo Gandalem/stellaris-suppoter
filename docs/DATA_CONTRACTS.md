@@ -50,6 +50,8 @@ Query: text, snapshot_id, kind|null, language, limit. 질의 최대 512문자, l
 
 AnswerEnvelope: schema_version, status, query, context, results, diagnostics, truncated. status는 ok|partial|not_found|unsupported|error입니다. context는 snapshot_id, kind, game_version, checked_at을 갖습니다. results 원소는 entity_key, game_id, kind, display_name, match_reason, facts, source_refs를 갖습니다. facts마다 실제 필드를 포함한 근거가 필요합니다. 결과 없음은 빈 results이며 사실을 생성하지 않습니다.
 
+**TASK-012 메모리 답변 구현 계약:** `AnswerService.answer(Query, field: str|null)`는 한 번 호출한 검색 응답의 snapshot ID를 고정한 `AnswerEnvelope(schema_version,status,query,context,results,diagnostics,truncated)`를 반환합니다. `AnswerResult`는 snapshot/entity/game ID, kind, display_name, match_reason, facts, source_refs, definition_source_ref, localisation_source_ref, ordered localisation_reference_selections, resolution/fallback/warnings를 갖습니다. `AnswerFact(field_name,occurrence,operator,raw_expression,value_kind,support_status,source_ref,value_source_ref,diagnostics)`에서 source_ref는 필드 전체의 실제 원문 span, value_source_ref는 해당 값의 더 좁은 실제 span이며 null 값과 `0`을 혼동하지 않습니다. `raw_literal` 표시는 script lexical literal이지 실제 게임에서 평가·적용된 수치가 아닙니다. 동적 표현식은 `raw_expression`으로만 보존하고 `unsupported_expression`으로 표시합니다. SourceRef의 cache SHA, Unicode 경계, 원문 line/byte 및 동일 snapshot을 읽기 때 재검증합니다. 기술 정의·필드·번역 root·번역 종속 출처는 별개 인용입니다. 부분/중복/모호성은 완전 성공으로 승격하지 않습니다. SQLite v1 물리 schema는 불변입니다.
+
 ## 저장 구조
 
 논리 테이블: snapshots, source_files, entities, localisation_entries, relations, search_documents, diagnostics, settings. 모든 관계·조회는 snapshot 경계를 적용합니다. 원문 bytes는 개인 content-addressed cache에 보존하고 DB가 해시를 참조합니다. FTS는 재생성 가능한 보조 색인입니다.
@@ -81,3 +83,5 @@ schema_version과 앱 버전은 다릅니다. migration에는 백업·복구가 
 
 
 **TASK-011 R1–R3 SearchHit 증거 계약 (원본 SQLite v1 불변):** SearchHit의 기존 definition_source_ref, localisation_source_ref 및 match_source_ref는 유지하고, localisation_reference_source_refs와 localisation_reference_selections (key, language_used, source_ref), match_reference_source_refs, match_reference_selections를 append-only typed field로 추가합니다. 참조는 root와 개별 종속 출처를 구별하고 동일 snapshot·원문 cache 및 저장된 entry key/language/span과 일치해야 합니다. 원문에 존재하지만 resolver가 dynamic/partial/ambiguous라고 판단한 표현은 검증된 정적 이름으로 올리지 않고, 안전한 영어 이름 또는 ID fallback을 사용합니다. VerifiedAlias는 명시 등록만 허용하며 출처가 동일 엔티티의 정의 또는 고유하게 연결된 localisation entry여야 합니다. **같은 source 파일에 문자열만 존재한다는 사실은 별칭 증거가 아닙니다.** 저장 schema/migration은 변경하지 않습니다.
+
+**TASK-012 R1–R5 인용 보강:** 저장된 candidate field는 캐시 SHA만으로 신뢰하지 않고, 같은 정의 원본 파일 식별자 및 bounded parser AST의 순서·실제 키·연산자·occurrence·부모 필드/값 span과 정확히 대조합니다. 하나의 AnswerEnvelope에 공통 fact 64, citation 256, 계상된 원문·표시 payload 64KiB 및 raw value 512 byte 제한을 적용하며, 초과는 partial/truncated로 표시합니다. 이 64KiB는 Python 메모리·JSON 직렬화 총 길이 보장이 아닙니다. 검증된 파일 LRU(원본과 newline index 포함 24MiB), 개별 원본 최대 16MiB, newline index 최대 100만 개를 사용합니다. AnswerResult는 선택적 match_source_ref, match_reference_selections, match_language_used를 추가하되 SearchHit가 독립 match 언어를 제공하지 않으면 후자는 null입니다. SQLite v1 schema와 snapshot identity는 유지합니다.

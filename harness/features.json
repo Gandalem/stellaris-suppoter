@@ -131,12 +131,14 @@
       "id": "F-009",
       "title": "Grounded static answers",
       "milestone": "v0.1",
-      "status": "planned",
+      "status": "in_progress",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/SEARCH_AND_ANSWERS.md"
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-012-static-answers-citations.md"
+      ]
     },
     {
       "id": "F-010",

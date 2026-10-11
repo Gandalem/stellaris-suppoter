@@ -49,3 +49,7 @@ python scripts/generate_synthetic_corpus.py --output ./tmp-synthetic
 
 
 PR #21 R1~R3 follow-up은 합성 테스트에서 dynamic §/£/bracket/escaped dollar, 정적 다단계/영어 참조의 전체 SourceRef, 중복·순환·누락 참조의 partial 반환, 다른 entity/key/snapshot 출처의 별칭 위조와 조작된 byte span을 평가합니다. 기존 E-020~022와 34개 검색 테스트를 그대로 유지하고 추가 테스트를 양 OS Package CI에 포함합니다. R4 FTS 탐지/중복 SQL 제거는 검색 가속을 증명하지 않으며, 초기 SQL-only microbenchmark는 FTS on/off E2E 비교가 아닙니다. 독립 리뷰 및 실제 병합 이전에 TASK-011 done/F-008 verified를 선언하지 않습니다.
+
+TASK-012 E-023–025는 `tests/test_answers.py`의 저작 합성 원본으로 field/value 정확한 byte·line 인용, BOM/CRLF, 한국어→영어 종속 출처, 고의적인 cache SHA 손상, 동적 표현식 보류, 없는 ID/필드, 중복 정의, stable/beta snapshot 격리와 active 변경을 평가합니다. `harness/evidence/TASK-012-static-answers-citations.md`에 실제 CI와 평가 증거를 따로 기록하며 CI 전에는 not_run을 유지합니다. 실제 설치본과 게임 엔진 의미는 미검증입니다.
+
+TASK-012 R1–R5 재검토 합성 회귀는 `tests/test_answers.py`에 서로 다른 파일로부터 대여한 Field/Value SourceRef, 저장 JSON의 필드 구문/occurrence 위조, Combat Computers/Chance Discovery 정확 검색과 미지원 의도, Query 유효성 우선순위, 100건 공통 예산·cache.read 호출 수, raw value 512/513 bytes를 포함합니다. 후속 재평가 근거는 `harness/evidence/TASK-012-review-followup.md`를 참고합니다.
