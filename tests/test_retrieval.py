@@ -11,12 +11,17 @@ import pytest
 
 from stellaris_supporter.domain import SourceContext, SourceRef, adapt_technologies
 from stellaris_supporter.localisation import (
-    build_localisation_catalog, parse_localisation, resolve_technology_name,
+    build_localisation_catalog,
+    parse_localisation,
+    resolve_technology_name,
 )
 from stellaris_supporter.parsing import parse_bytes
 from stellaris_supporter.retrieval import Query, SearchService, VerifiedAlias
 from stellaris_supporter.storage import (
-    SnapshotPolicy, SnapshotRepository, SourceFileInput, snapshot_identity,
+    SnapshotPolicy,
+    SnapshotRepository,
+    SourceFileInput,
+    snapshot_identity,
 )
 
 POLICY = SnapshotPolicy("parser-1", "adapter-1", "a" * 64)
