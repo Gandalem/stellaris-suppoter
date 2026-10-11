@@ -7,10 +7,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import Any
 from typing import Literal
 
 from stellaris_supporter.domain import SourceRef
 from stellaris_supporter.localisation import LocalisationReferenceSelection
+from stellaris_supporter.parsing import BlockNode, PairNode, parse_bytes
 from stellaris_supporter.retrieval import Query, SearchHit, SearchService
 from stellaris_supporter.storage import SnapshotError, SnapshotRepository
 
@@ -63,6 +65,9 @@ class AnswerResult:
     resolution: str
     fallback: str
     warnings: tuple[AnswerDiagnostic, ...]
+    match_source_ref: SourceRef | None = None
+    match_reference_selections: tuple[LocalisationReferenceSelection, ...] = ()
+    match_language_used: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,8 +102,92 @@ def _diag(code: str, message: str, severity: str = "warning") -> AnswerDiagnosti
     return AnswerDiagnostic(code, severity, message)
 
 
+class _Budget:
+    """One envelope-wide budget, shared by all results, not reset per hit."""
+
+    def __init__(self) -> None:
+        self.facts = 0
+        self.citations = 0
+        self.output = 0
+        self.truncated = False
+
+    def charge(self, *, facts: int = 0, citations: int = 0, output: int = 0) -> bool:
+        if (self.facts + facts > MAX_FACTS
+                or self.citations + citations > MAX_CITATIONS
+                or self.output + output > MAX_OUTPUT_BYTES):
+            self.truncated = True
+            return False
+        self.facts += facts
+        self.citations += citations
+        self.output += output
+        return True
+
+
+def _same_file(left: SourceRef, right: SourceRef) -> bool:
+    return (
+        left.snapshot_id, left.source_kind, left.source_id,
+        left.relative_path, left.file_sha256
+    ) == (
+        right.snapshot_id, right.source_kind, right.source_id,
+        right.relative_path, right.file_sha256
+    )
+
+
+def _span(ref: SourceRef, offset: int) -> tuple[int, int]:
+    return ref.byte_start - offset, ref.byte_end - offset
+
+
+def _field_structure(
+    definition: SourceRef, original: bytes, fields: list[Any]
+) -> None:
+    """Compare persisted fields with the parser's ordered, direct child pairs.
+
+    Parsing ONLY the bounded citation definition prevents nested/comment/string
+    substrings from posing as top-level technology fields. No inferred values.
+    """
+    if len(original) > 1024 * 1024:
+        raise SnapshotError("LIMIT_EXCEEDED", "Definition reparse exceeds 1 MiB.")
+    parsed = parse_bytes(original, max_bytes=1024 * 1024)
+    if not parsed.ok or len(parsed.document.items) != 1:
+        raise SnapshotError("SOURCE_CHANGED", "Definition source cannot be verified.")
+    root = parsed.document.items[0]
+    if not isinstance(root, PairNode) or not isinstance(root.value, BlockNode):
+        raise SnapshotError("SOURCE_CHANGED", "Definition is not a parsed key and block.")
+    actual = [item for item in root.value.items if isinstance(item, PairNode)]
+    if len(actual) != len(fields):
+        raise SnapshotError("SOURCE_CHANGED", "Stored fields differ from original structure.")
+    occurrences: dict[str, int] = {}
+    for stored, item in zip(fields, actual, strict=True):
+        if not isinstance(stored, dict):
+            raise SnapshotError("SOURCE_CHANGED", "Stored field is malformed.")
+        name = item.key_text
+        occurrences[name] = occurrences.get(name, 0) + 1
+        field_ref = _ref(stored["source_ref"])
+        raw_ref = stored["value_source_ref"]
+        value_ref = None if raw_ref is None else _ref(raw_ref)
+        if (
+            not _same_file(definition, field_ref)
+            or _span(field_ref, definition.byte_start) != (
+                item.span.byte_start, item.span.byte_end
+            )
+            or stored["name"] != name
+            or stored["operator"] != item.operator_text
+            or stored["occurrence"] != occurrences[name]
+            or (value_ref is None) != (item.value is None)
+        ):
+            raise SnapshotError("SOURCE_CHANGED", "Stored field structure was altered.")
+        if value_ref is not None and item.value is not None:
+            if (
+                not _same_file(definition, value_ref)
+                or _span(value_ref, definition.byte_start) != (
+                    item.value.span.byte_start, item.value.span.byte_end
+                )
+            ):
+                raise SnapshotError("SOURCE_CHANGED", "Stored field value is not its child.")
+
+
 class AnswerService:
-    """Statically format the result of SearchService.search, pinned to one snapshot."""
+    """One search, pinned manifest, verified field syntax and global budgets."""
 
     def __init__(self, search: SearchService, repository: SnapshotRepository) -> None:
         if search.repository is not repository:
@@ -106,135 +195,137 @@ class AnswerService:
         self.search = search
         self.repository = repository
 
-    def _validate_ref(self, ref: SourceRef, sid: str) -> bytes:
-        if ref.snapshot_id != sid:
-            raise SnapshotError("SOURCE_CHANGED", "Citation points outside pinned snapshot.")
-        return self.repository.citation_bytes(ref)
-
-    def _format_hit(self, hit: SearchHit, sid: str, wanted: str | None) -> AnswerResult:
+    def _format_hit(
+        self, hit: SearchHit, sid: str, wanted: str | None,
+        reader: Any, budget: _Budget,
+    ) -> AnswerResult | None:
         stored = self.repository.answer_entity(sid, hit.entity_key)
         candidate = stored["candidate"]
         definition = _ref(candidate["source_ref"])
-        if (stored["game_id"] != hit.game_id or stored["kind"] != hit.kind
-                or definition != hit.definition_source_ref):
-            raise SnapshotError("SOURCE_CHANGED", "Search entity and stored candidate differ.")
-        self._validate_ref(definition, sid)
-        citations: list[SourceRef] = [definition]
-        if hit.localisation_source_ref is not None:
-            self._validate_ref(hit.localisation_source_ref, sid)
-            citations.append(hit.localisation_source_ref)
-        for selection in hit.localisation_reference_selections:
-            self._validate_ref(selection.source_ref, sid)
-            citations.append(selection.source_ref)
-        self._validate_ref(hit.match_source_ref, sid)
-        citations.append(hit.match_source_ref)
-        for selection in hit.match_reference_selections:
-            self._validate_ref(selection.source_ref, sid)
-            citations.append(selection.source_ref)
-        if len(citations) > MAX_CITATIONS:
-            raise SnapshotError("LIMIT_EXCEEDED", "Answer has too many source citations.")
-
-        facts: list[AnswerFact] = []
-        warnings: list[AnswerDiagnostic] = [
-            _diag(item.code, item.message, item.severity) for item in hit.diagnostics
-        ]
+        if (
+            stored["game_id"] != hit.game_id
+            or stored["kind"] != hit.kind
+            or definition != hit.definition_source_ref
+        ):
+            raise SnapshotError("SOURCE_CHANGED", "Search result differs from candidate.")
+        original = reader.read(definition)
         fields = candidate["fields"]
         if not isinstance(fields, list):
             raise SnapshotError("SOURCE_CHANGED", "Candidate fields are malformed.")
-        budget = MAX_OUTPUT_BYTES
-        matching = 0
+        _field_structure(definition, original, fields)
+        if not budget.charge(output=len(hit.display_name.encode("utf-8"))):
+            return None
+        citations: list[SourceRef] = [
+            definition, hit.match_source_ref,
+        ]
+        if hit.localisation_source_ref is not None:
+            citations.append(hit.localisation_source_ref)
+        citations.extend(item.source_ref for item in hit.localisation_reference_selections)
+        citations.extend(item.source_ref for item in hit.match_reference_selections)
+        for ref in citations:
+            reader.read(ref)
+        unique = list(dict.fromkeys(citations))
+        if not budget.charge(citations=len(unique)):
+            return None
+        facts: list[AnswerFact] = []
+        warnings = [
+            _diag(x.code, x.message, x.severity) for x in hit.diagnostics
+        ]
+        found = False
         for item in fields:
             if wanted is not None and item["name"] != wanted:
                 continue
-            matching += 1
-            if len(facts) >= MAX_FACTS:
-                warnings.append(_diag("FACT_LIMIT", "Answer facts truncated."))
-                break
+            found = True
             ref = _ref(item["source_ref"])
-            value = None if item["value_source_ref"] is None else _ref(item["value_source_ref"])
-            field_span = self._validate_ref(ref, sid)
-            if not (definition.byte_start <= ref.byte_start < ref.byte_end
-                    <= definition.byte_end):
-                raise SnapshotError("SOURCE_CHANGED", "Field is outside its definition.")
-            raw: str | None = None
-            if value is not None:
-                if not (ref.byte_start <= value.byte_start < value.byte_end <= ref.byte_end):
-                    raise SnapshotError("SOURCE_CHANGED", "Value is outside field span.")
-                value_span = self._validate_ref(value, sid)
-                if field_span[value.byte_start - ref.byte_start:
-                              value.byte_end - ref.byte_start] != value_span:
-                    raise SnapshotError("SOURCE_CHANGED", "Value span does not match field bytes.")
-                if len(value_span) > MAX_FIELD_BYTES:
-                    warnings.append(_diag("VALUE_LIMIT", "Long field expression was omitted."))
-                    continue
-                raw = value_span.decode("utf-8")
-            field_name = item["name"]
-            if not isinstance(field_name, str) or not field_name:
-                raise SnapshotError("SOURCE_CHANGED", "Invalid field name.")
-            if field_name.encode("utf-8") not in field_span:
-                raise SnapshotError("SOURCE_CHANGED", "Field label is absent from citation.")
-            if item["operator"].encode("utf-8") not in field_span:
-                raise SnapshotError("SOURCE_CHANGED", "Field operator absent from citation.")
-            budget -= len(field_span) + (0 if raw is None else len(raw.encode("utf-8")))
-            if budget < 0:
-                warnings.append(_diag("OUTPUT_LIMIT", "Answer text budget exceeded."))
-                break
-            # A literal token is merely an observed script literal, NOT a
-            # calculated game value. References and blocks stay expressions.
-            literal = (raw is not None and not raw.startswith(("@", "{", "[", "$"))
-                       and not any(x in raw for x in ("£", "§")))
-            status = "literal" if literal else "unsupported_expression"
-            diagnostics = () if literal else (
-                _diag("DYNAMIC_UNEVALUATED", "Only original static expression is known."),
+            value_ref = (
+                None if item["value_source_ref"] is None
+                else _ref(item["value_source_ref"])
             )
+            # The parser-verified offsets must ALSO be from this definition's
+            # exact original file, not another valid file in the snapshot.
+            if not _same_file(definition, ref):
+                raise SnapshotError("SOURCE_CHANGED", "Field source differs from definition.")
+            span = reader.read(ref)
+            value_span = None
+            if value_ref is not None:
+                if not _same_file(definition, value_ref):
+                    raise SnapshotError("SOURCE_CHANGED", "Value source differs from definition.")
+                value_span = reader.read(value_ref)
+            if value_span is not None and len(value_span) > MAX_FIELD_BYTES:
+                warnings.append(_diag("VALUE_LIMIT", "Raw expression omitted by byte budget."))
+                budget.truncated = True
+                continue
+            raw = None if value_span is None else value_span.decode("utf-8")
+            charge = len(span) + (0 if value_span is None else len(value_span))
+            needed = int(ref not in unique) + int(
+                value_ref is not None and value_ref not in unique and value_ref != ref
+            )
+            if not budget.charge(facts=1, citations=needed, output=charge):
+                warnings.append(_diag("ANSWER_LIMIT", "Global fact/citation/output limit."))
+                break
+            if ref not in unique:
+                unique.append(ref)
+            if value_ref is not None and value_ref not in unique:
+                unique.append(value_ref)
+            literal = (
+                raw is not None and not raw.startswith(("@", "{", "[", "$"))
+                and not any(x in raw for x in ("£", "§"))
+            )
+            status = "literal" if literal else "unsupported_expression"
             facts.append(AnswerFact(
-                field_name, item["occurrence"], item["operator"], raw,
+                item["name"], item["occurrence"], item["operator"], raw,
                 "raw_literal" if literal else "raw_expression", status,
-                ref, value, diagnostics,
+                ref, value_ref,
+                () if literal else (
+                    _diag("DYNAMIC_UNEVALUATED", "Only original expression is known."),
+                ),
             ))
-            citations.append(ref)
-            if value is not None:
-                citations.append(value)
-            if len(citations) > MAX_CITATIONS:
-                raise SnapshotError("LIMIT_EXCEEDED", "Answer citation budget exceeded.")
-        if wanted is not None and matching == 0:
+        if wanted is not None and not found:
             warnings.append(_diag("FIELD_NOT_FOUND", "Requested field is absent."))
         if not facts:
-            warnings.append(_diag("NO_VERIFIED_FIELDS", "No supported field facts were returned."))
+            warnings.append(_diag("NO_VERIFIED_FIELDS", "No field facts were returned."))
         if hit.resolution in {"partial", "ambiguous"}:
-            warnings.append(_diag("DEFINITION_" + hit.resolution.upper(),
-                                  "Definition cannot be treated as unambiguous."))
+            warnings.append(_diag(
+                "DEFINITION_" + hit.resolution.upper(), "Definition is not unambiguous."
+            ))
         return AnswerResult(
             sid, hit.entity_key, hit.game_id, hit.kind, hit.display_name,
-            hit.match_reason, tuple(facts), tuple(dict.fromkeys(citations)),
+            hit.match_reason, tuple(facts), tuple(unique),
             definition, hit.localisation_source_ref,
             hit.localisation_reference_selections, hit.resolution,
             hit.fallback, tuple(warnings),
+            hit.match_source_ref, hit.match_reference_selections,
+            getattr(hit, "language_used", None),
         )
 
     def answer(self, query: Query, *, field: str | None = None) -> AnswerEnvelope:
-        """Search once then use its snapshot ID throughout, even if active changes."""
-        if field is not None and (not isinstance(field, str) or not field
-                                  or len(field) > 128):
-            return AnswerEnvelope(1, "error", query, None, (),
-                                  (_diag("QUERY_INVALID", "Invalid field selector.", "error"),), False)
-        if not isinstance(query, Query):
-            return AnswerEnvelope(1, "error", Query(""), None, (),
-                                  (_diag("QUERY_INVALID", "Typed query required.", "error"),), False)
-        # Requests for game-engine calculations must not be transformed into
-        # apparently supported static fields or numeric answers.
-        if isinstance(query.text, str) and _UNSUPPORTED.search(query.text):
+        if field is not None and (
+            not isinstance(field, str) or not field or len(field) > 128
+        ):
             return AnswerEnvelope(
-                1, "unsupported", query, None, (),
-                (_diag("UNSUPPORTED_CALCULATION",
-                       "Game probability/effective-state computations are not available."),),
-                False,
+                1, "error", query, None, (),
+                (_diag("QUERY_INVALID", "Invalid field selector.", "error"),), False,
+            )
+        if not isinstance(query, Query):
+            return AnswerEnvelope(
+                1, "error", Query(""), None, (),
+                (_diag("QUERY_INVALID", "Typed query required.", "error"),), False,
+            )
+        # Typed validation precedes intent decisions. An exact technology name
+        # always wins over a broad English keyword such as "Combat".
+        _, error = SearchService._validate(query)
+        if error is not None:
+            return AnswerEnvelope(
+                1, "error", query, None, (),
+                (_diag("QUERY_INVALID", error, "error"),), False,
             )
         found = self.search.search(query)
         if found.status == "error" or found.context is None:
-            return AnswerEnvelope(1, "error", query, None, (),
-                                  tuple(_diag(d.code, d.message, d.severity)
-                                        for d in found.diagnostics), found.truncated)
+            return AnswerEnvelope(
+                1, "error", query, None, (),
+                tuple(_diag(d.code, d.message, d.severity)
+                      for d in found.diagnostics), found.truncated,
+            )
         sid = found.context.snapshot_id
         context: AnswerContext | None = None
         try:
@@ -242,32 +333,63 @@ class AnswerService:
             context = AnswerContext(
                 sid, found.context.kind, meta["game_version"],
                 meta["game_version_source"], meta["branch"],
-                meta["context_kind"], meta["mod_state"], meta["checked_at"], meta["status"],
+                meta["context_kind"], meta["mod_state"],
+                meta["checked_at"], meta["status"],
             )
+            is_question = bool(_UNSUPPORTED.search(query.text))
+            # An exact ID/name/alias is a lookup, regardless of its spelling.
+            exact = any(x.match_reason in {
+                "game_id_exact", "name_exact", "alias_exact"
+            } for x in found.results)
+            if is_question and not exact:
+                return AnswerEnvelope(
+                    1, "unsupported", query, context, (),
+                    (_diag("UNSUPPORTED_CALCULATION",
+                           "Game calculations/effective-state analysis are unsupported."),),
+                    False,
+                )
             if not found.results:
                 return AnswerEnvelope(
                     1, "partial" if found.status == "partial" else "not_found",
-                    query, context, (), tuple(_diag(d.code, d.message, d.severity)
-                                               for d in found.diagnostics), found.truncated,
+                    query, context, (),
+                    tuple(_diag(d.code, d.message, d.severity)
+                          for d in found.diagnostics), found.truncated,
                 )
-            results = tuple(self._format_hit(hit, sid, field) for hit in found.results)
-            warnings = tuple(_diag(d.code, d.message, d.severity)
-                             for d in found.diagnostics)
-            truncated = found.truncated or any(
-                warning.code in {"FACT_LIMIT", "VALUE_LIMIT", "OUTPUT_LIMIT"}
-                for hit in results for warning in hit.warnings
+            budget = _Budget()
+            results: list[AnswerResult] = []
+            with self.repository.citation_reader(sid) as reader:
+                for hit in found.results:
+                    if budget.truncated:
+                        break
+                    result = self._format_hit(hit, sid, field, reader, budget)
+                    if result is not None:
+                        results.append(result)
+            warnings = tuple(
+                _diag(d.code, d.message, d.severity) for d in found.diagnostics
             )
+            truncated = found.truncated or budget.truncated
             partial = (
-                found.status == "partial" or truncated or
-                any(hit.warnings or any(f.support_status != "literal" for f in hit.facts)
-                    for hit in results)
+                found.status == "partial" or truncated
+                or any(
+                    result.warnings
+                    or any(f.support_status != "literal" for f in result.facts)
+                    for result in results
+                )
             )
-            return AnswerEnvelope(1, "partial" if partial else "ok", query, context,
-                                  results, warnings, truncated)
+            if budget.truncated:
+                warnings += (_diag("ANSWER_LIMIT", "Envelope resource limit reached."),)
+            return AnswerEnvelope(
+                1, "partial" if partial else "ok", query, context,
+                tuple(results), warnings, truncated,
+            )
         except SnapshotError as exc:
-            return AnswerEnvelope(1, "error", query, context, (),
-                                  (_diag(exc.code, str(exc), "error"),), False)
+            return AnswerEnvelope(
+                1, "error", query, context, (),
+                (_diag(exc.code, str(exc), "error"),), False,
+            )
         except (KeyError, ValueError, TypeError, UnicodeError, OverflowError):
-            return AnswerEnvelope(1, "error", query, context, (),
-                                  (_diag("SOURCE_CHANGED", "Stored answer provenance is invalid.",
-                                         "error"),), False)
+            return AnswerEnvelope(
+                1, "error", query, context, (),
+                (_diag("SOURCE_CHANGED", "Stored answer provenance is invalid.", "error"),),
+                False,
+            )
