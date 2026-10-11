@@ -34,6 +34,7 @@ def _build(
     korean: str | None = "합금 연구",
     english: str | None = "Alloy Research",
     korean_extra: str = "",
+    english_extra: str = "",
     extra_technology: str = "",
     activate: bool = True,
 ) -> str:
@@ -48,7 +49,7 @@ def _build(
         ),
         SourceFileInput(
             "synthetic", "demo", "localisation/english/demo.yml",
-            ('l_english:\n' + ('' if english is None else ' demo_alloy:0 "' + english + '"\n')).encode(),
+            ('l_english:\n' + ('' if english is None else ' demo_alloy:0 "' + english + '"\n') + english_extra).encode(),
         ),
     )
     sid = snapshot_identity(sources, POLICY).snapshot_id
@@ -386,5 +387,74 @@ def test_r3_corrupted_nested_reference_cache_is_error(tmp_path: Path) -> None:
             ("b" * 64,),
         )
     failed = service.search(Query("합금 연구"))
+    assert failed.status == "error"
+    assert failed.diagnostics[0].code == "SOURCE_CHANGED"
+
+
+@pytest.mark.parametrize("extra", [
+    "",
+    ' demo_suffix:0 "연구"\n demo_suffix:0 "중복"\n',
+    ' demo_suffix:0 "$demo_alloy$"\n',
+])
+def test_r3_missing_duplicate_cycle_refs_are_not_fabricated(
+    tmp_path: Path, extra: str,
+) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    _build(repo, korean="합금 $demo_suffix$", korean_extra=extra)
+    service = SearchService(repo)
+    miss = service.search(Query("합금 연구"))
+    assert not miss.results
+    by_id = service.search(Query("demo_alloy"))
+    assert by_id.results and by_id.results[0].fallback == "english"
+    assert by_id.status == "partial"
+    assert by_id.results[0].localisation_reference_source_refs == ()
+    service.close()
+
+
+def test_r3_selected_reference_language_preserved_across_files(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    _build(
+        repo, korean="합금 $demo_suffix$",
+        english_extra=' demo_suffix:0 "Research"\n',
+    )
+    service = SearchService(repo)
+    result = service.search(Query("합금 Research"))
+    assert result.results and result.results[0].match_reason == "name_exact"
+    hit = result.results[0]
+    assert hit.language_used == "korean"
+    assert len(hit.localisation_reference_selections) == 1
+    assert hit.localisation_reference_selections[0].language_used == "english"
+    assert "english" in hit.localisation_reference_source_refs[0].relative_path
+    assert service.search(Query("합금 Research")).results == result.results
+    service.close()
+
+
+def test_r2_cross_snapshot_alias_ref_is_rejected(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    first = _build(repo, korean="합금 별칭")
+    old_ref = SourceRef(**next(
+        x for x in repo.localisation_entries(first) if x["language"] == "korean"
+    )["value_source_ref"])
+    second = _build(repo, korean="합금 새로운 별칭")
+    target = repo.entities(second)[0]
+    alias = VerifiedAlias(second, target["entity_key"], "별칭", old_ref)
+    failed = SearchService(repo, aliases=(alias,)).search(Query("별칭", snapshot_id=second))
+    assert failed.status == "error"
+    assert failed.diagnostics[0].code == "SOURCE_CHANGED"
+
+
+def test_r2_forged_byte_span_not_valid_alias_evidence(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    repo = SnapshotRepository(tmp_path / "data")
+    sid = _build(repo, korean="합금 별칭")
+    target = repo.entities()[0]
+    value = next(x for x in repo.localisation_entries()
+                 if x["language"] == "korean")["value_source_ref"]
+    ref = SourceRef(**value)
+    forged = replace(ref, byte_start=ref.byte_start + 1)
+    failed = SearchService(
+        repo, aliases=(VerifiedAlias(sid, target["entity_key"], "별칭", forged),),
+    ).search(Query("별칭"))
     assert failed.status == "error"
     assert failed.diagnostics[0].code == "SOURCE_CHANGED"
