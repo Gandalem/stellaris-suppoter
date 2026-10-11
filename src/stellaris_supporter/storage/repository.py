@@ -38,6 +38,7 @@ from stellaris_supporter.storage.cache import (
 )
 from stellaris_supporter.storage.identity import (
     MAX_POLICY_JSON_BYTES,
+    MAX_SOURCE_BYTES,
     SCHEMA_VERSION,
     SnapshotError,
     SnapshotIdentity,
