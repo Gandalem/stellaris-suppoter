@@ -799,3 +799,103 @@ def test_review_r5_terminal_controls_escaped_only_in_text(tmp_path: Path) -> Non
     assert "\\u202e" in text
     assert "합금" in text and "Research" in text
     assert json.loads(cli._bounded_json(payload))["results"][0]["display_name"] == unsafe
+
+
+
+def test_review_r1_actual_parser_depth_exhaustion_is_not_partial(
+    tmp_path: Path,
+) -> None:
+    from stellaris_supporter.parsing import parse_bytes
+
+    game, _, config = initialised(tmp_path)
+    active = query(config, "index")[1]["snapshot_id"]
+    script = b"demo_tech = { " + (b"nested = { " * 130) + b" cost = 1 " + (b" }" * 131)
+    diagnostic_codes = {diag.code for diag in parse_bytes(script).diagnostics}
+    assert "PARSE_DEPTH_LIMIT" in diagnostic_codes
+    (game / "common/technology/demo.txt").write_bytes(script)
+    code, failed, _ = query(config, "index", "--allow-partial")
+    assert code == 4 and failed["diagnostics"][0]["code"] == "LIMIT_EXCEEDED"
+    assert next(x for x in query(config, "snapshots")[1]["results"]
+                if x["active"])["snapshot_id"] == active
+
+
+@pytest.mark.parametrize("bound,limit", [("max_visits", 1), ("max_output_bytes", 10)])
+def test_review_r1_resolver_visit_and_output_bounds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, bound: str, limit: int,
+) -> None:
+    import stellaris_supporter.cli_index as pipeline
+    from stellaris_supporter.config import load_settings
+    from stellaris_supporter.storage import SnapshotError, SnapshotRepository
+
+    game, data, config = initialised(tmp_path)
+    repo = SnapshotRepository(data, game_root=game)
+    settings = load_settings(config).settings
+    active = pipeline.index_technologies(repo, settings)["snapshot_id"]
+    (game / "localisation/korean/demo_l_korean.yml").write_text(
+        'l_korean:\n demo_tech:0 "합금 $suffix$ 연구"\n suffix:0 "연구"\n',
+        encoding="utf-8",
+    )
+    original = pipeline.resolve_technology_name
+
+    def limited(candidate, catalog, **kwargs):
+        return original(candidate, catalog, **{**kwargs, bound: limit})
+
+    monkeypatch.setattr(pipeline, "resolve_technology_name", limited)
+    with pytest.raises(SnapshotError) as error:
+        pipeline.index_technologies(repo, settings, allow_partial=True)
+    assert error.value.code == "LIMIT_EXCEEDED"
+    assert repo.active_snapshot_id() == active
+
+
+@pytest.mark.parametrize("status", ["ready", "partial", "building", "failed"])
+def test_review_r4_all_snapshot_statuses_text(status: str) -> None:
+    import io
+    from contextlib import redirect_stdout
+
+    import stellaris_supporter.cli as cli
+
+    response = {
+        "command": "snapshots", "status": "ok", "truncated": True,
+        "limit": 1, "offset": 3, "diagnostics": [],
+        "results": [{
+            "snapshot_id": "a" * 64, "status": status, "active": status == "ready",
+            "context_kind": "base_install", "branch": "beta",
+            "game_version": None, "created_at": "2026-01-01T00:00:00Z",
+            "checked_at": "2026-01-02T00:00:00Z",
+        }],
+    }
+    output = io.StringIO()
+    with redirect_stdout(output):
+        cli._emit_text(response)
+    rendered = output.getvalue()
+    assert f"status: {status}" in rendered
+    assert f"active: {str(status == 'ready').lower()}" in rendered
+    assert "context_kind: base_install" in rendered
+    assert "branch: beta" in rendered
+    assert "game_version: unknown" in rendered
+    assert "created_at: 2026-01-01" in rendered
+    assert "checked_at: 2026-01-02" in rendered
+    assert "limit: 1" in rendered and "offset: 3" in rendered
+    assert "truncated: true" in rendered
+
+
+def test_review_r5_end_to_end_unsafe_name_is_only_escaped_in_text(
+    tmp_path: Path,
+) -> None:
+    game, _, config = initialised(tmp_path)
+    unsafe_name = "합금\x1bc\u202e 연구"
+    (game / "localisation/korean/demo_l_korean.yml").write_text(
+        'l_korean:\n demo_tech:0 "' + unsafe_name + '"\n', encoding="utf-8"
+    )
+    code, indexed, _ = query(config, "index")
+    assert code == 0, indexed
+    code, shown, _ = query(config, "show", "demo_tech")
+    assert code == 0 and shown["results"][0]["display_name"] == unsafe_name
+    process = subprocess.run(
+        [sys.executable, "-m", "stellaris_supporter", "--config", str(config),
+         "show", "demo_tech"], capture_output=True, text=True, check=False,
+    )
+    assert process.returncode == 0
+    assert "\x1b" not in process.stdout and "\u202e" not in process.stdout
+    assert "\\x1b" in process.stdout and "\\u202e" in process.stdout
+    assert "합금" in process.stdout

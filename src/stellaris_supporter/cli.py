@@ -110,6 +110,14 @@ def _safe_terminal_line(line: str) -> str:
     for character in line:
         if character.isprintable():
             pieces.append(character)
+        elif character == "\r":
+            pieces.append("\\r")
+        elif character == "\b":
+            pieces.append("\\b")
+        elif character == "\n":
+            pieces.append("\\n")
+        elif character == "\t":
+            pieces.append("\\t")
         else:
             code = ord(character)
             if code <= 0xFF:
