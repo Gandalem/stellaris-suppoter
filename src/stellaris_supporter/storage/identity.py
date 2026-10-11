@@ -65,7 +65,7 @@ def normalise_relative_path(relative_path: str) -> str:
 def canonical_json(value: Any) -> bytes:
     """UTF-8, NFC input, sorted keys, no whitespace, NaN or platform objects."""
     def inspect(item: Any, depth: int = 0) -> None:
-        if depth > 32:
+        if depth > 280:
             raise _error("LIMIT_EXCEEDED", "Canonical JSON nesting limit exceeded.")
         if item is None or isinstance(item, (str, bool, int)):
             if isinstance(item, str) and unicodedata.normalize("NFC", item) != item:
@@ -158,8 +158,9 @@ class SnapshotPolicy:
     mod_state: str = "unknown"
 
     def identity_fields(self) -> dict[str, Any]:
-        if self.schema_version != SCHEMA_VERSION:
-            raise _error("SCHEMA_VERSION_UNSUPPORTED", "Unsupported snapshot schema version.")
+        if (isinstance(self.schema_version, bool) or not isinstance(self.schema_version, int)
+                or self.schema_version < 1 or self.schema_version > 1024):
+            raise _error("SCHEMA_ERROR", "Snapshot schema identity version is invalid.")
         if self.context_kind not in {"synthetic", "base_install", "effective"}:
             raise _error("SCHEMA_ERROR", "Unknown snapshot analysis context.")
         if self.game_version_source not in {"metadata", "user_reported", "unknown"}:
@@ -207,10 +208,17 @@ def snapshot_identity(
         raise _error("LIMIT_EXCEEDED", "Sources exceed aggregate byte budget.")
     descriptors.sort(key=lambda x: x.key)
     seen: set[tuple[str, str, str]] = set()
+    folded: set[tuple[str, str, str]] = set()
     for descriptor in descriptors:
         if descriptor.key in seen:
             raise _error("COLLISION_UNRESOLVED", "Source identity is duplicated.")
+        collision_key = (descriptor.source_kind, descriptor.source_id,
+                         descriptor.relative_path.casefold())
+        if collision_key in folded:
+            # Never silently alias two case-sensitive paths on Windows.
+            raise _error("PATH_REJECTED", "Source path has a case-insensitive collision.")
         seen.add(descriptor.key)
+        folded.add(collision_key)
     content_hash = _digest(canonical_json([item.identity_fields() for item in descriptors]))
     policy_fields = policy.identity_fields()
     policy_json = canonical_json(policy_fields).decode("utf-8")
