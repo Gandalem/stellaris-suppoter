@@ -48,3 +48,16 @@ This development branch proposes TASK-010=`doing`, F-007=`in_progress`. E-018/E-
 ## Review and integration gate
 
 TASK-010 remains `doing` and F-007 `in_progress` even if all PR CI is green. Neither will transition to done/verified until independent review, actual GitHub merge and main push CI. F-005 remains `in_progress`, TASK-009 `done`, F-006 `verified`, game version `null`, product_implemented false. PR #19 stays **not merged**. No TASK-011/012/013 implementation.
+
+
+## PR #19 R1–R5 follow-up (2026-10-11)
+
+- Review reference: [PR #19 review 5482958006](https://github.com/Gandalem/stellaris-suppoter/pull/19#pullrequestreview-5482958006). Original reviewed head `d4fddd5425ce71a5a689e5740550d6a2c7b0e25e`; base/main unchanged.
+- R1 stage/activation binds *physical* game-root-relative source path and private root fingerprint independent of logical SourceRef key, including same-content copy substitution, symlink and source-ID collision regressions.
+- R2 stores raw non-NFC strings without rewriting their codepoints; retains strict NFC policy/path identity, source byte span and SHA.
+- R3 caps policy JSON at 1MiB/32 depth/10,000 visits, accepts exact limit, rejects overlimit and mutable mapping races before snapshot insert.
+- R4 enforces and verifies `file_sha256=cache_sha256`, including CHECK bypass fault injection and historical source retrieval.
+- R5 connects ADR-012/013 in one table and measures full quick_check versus lightweight reads on synthetic SQLite databases; no warm-query p95 claim.
+- **22 additional review test cases**, preserving 337 baseline cases (of which 58 were prior TASK-010 SQLite additions). [Follow-up evidence](../evidence/TASK-010-review-followup.md) contains case-to-fix matrix, resource limits, timings, CI and residual risks. Existing [TASK-010 original evidence](../evidence/TASK-010-sqlite-snapshots.md) remains.
+- Verified code/test head `e3c598b92de53a54baa2bb0bf708a60f457dba9f`, PR test-merge `9d4fcdaf77226687dd1f033fb5f4b5eb52e339cb`; Package CI `38133251652` Ubuntu Python3.11.17/SQLite3.45.1 **359 passed**, Windows Python3.13.15/SQLite3.50.4 **356 passed + 3 existing skips**, Ruff/harness pass; Documentation harness `38133251707` both pass; head push CI `38133247585` success. Final evidence-only head CI and exact test-merge are recorded in PR #19 body after validation.
+- **No technical merge approval claimed**. TASK-010 `doing`, F-007 `in_progress`, E-018/E-019 `pass` with follow-up evidence, TASK-009 `done`, F-006 `verified`, F-005 `in_progress`, E-020/021/022 `not_run`, latest_game_version null, product_implemented false. No main merge or TASK-011 implementation.

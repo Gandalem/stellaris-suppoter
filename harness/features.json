@@ -107,7 +107,8 @@
         "docs/DATA_CONTRACTS.md"
       ],
       "evidence": [
-        "harness/evidence/TASK-010-sqlite-snapshots.md"
+        "harness/evidence/TASK-010-sqlite-snapshots.md",
+        "harness/evidence/TASK-010-review-followup.md"
       ]
     },
     {
