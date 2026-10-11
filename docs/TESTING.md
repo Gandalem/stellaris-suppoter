@@ -57,3 +57,5 @@ TASK-012 R1–R5 재검토 합성 회귀는 `tests/test_answers.py`에 서로 �
 **TASK-013 E-026 CLI contract**
 
 `tests/test_cli_vertical.py`는 실제 `python -m stellaris_supporter` 하위 프로세스를 통해 합성 game root에서 init→doctor→index→한국어·영어·ID 검색→exact ID show→개별 SourceRef 원문 span→snapshots→동일 index 재사용을 검사합니다. 설정 덮어쓰기·중첩 data_dir·symlink·없는 snapshot·잘못된 Query·인코딩 partial·실제 원본 read-only 및 stdout JSON 파싱을 부정 회귀로 검사합니다. R1–R6 기존 448 Ubuntu/445 Windows +3 skips 회귀는 변경하거나 skip하지 않습니다. CLI 실제 CI 결과와 미검증 취소/동시 writer/OS TOCTOU 범위는 [evidence](../harness/evidence/TASK-013-cli-vertical-slice.md)에 구분 기록합니다.
+
+E-026 저작 합성 후보는 PR #25 코드 head `e65a9cac1d05ef7a55b3d7510ef66a4fce3322a2`, PR test-merge `38b6bb2f177d134e0346993c7904fcf764982bbc`에서 Ubuntu 486 passed, Windows 483 passed + 기존 3 skips, Ruff·harness·Documentation harness 양 OS 성공했습니다. 기존 Ubuntu 448개 테스트를 모두 유지하며 신규 합성 38개를 추가했습니다. 정확한 검증 범위·미검증 게임 호환성은 `harness/evidence/TASK-013-cli-vertical-slice.md`를 참조하세요. 이후 evidence 커밋의 최신 CI는 별도로 검증해야 합니다.

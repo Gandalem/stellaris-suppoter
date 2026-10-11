@@ -34,7 +34,7 @@ python -m unittest discover -s tests_harness -v
 
 ## 구현된 개발 환경
 
-TASK-001에서 아래 흐름을 실제 CI로 검증했습니다. Python API의 inventory, lexer/ordered parser, localisation, SQLite SearchService 및 AnswerService는 합성 테스트로 구현·검증됐습니다. TASK-013 브랜치는 `init/doctor/index/search/show/snapshots` CLI를 수직 연결 중이며 E-026 완료와 main 통합 전까지 개발 후보입니다. 실제 게임 호환성은 검증되지 않았습니다.
+TASK-001에서 아래 흐름을 실제 CI로 검증했습니다. Python API의 inventory, lexer/ordered parser, localisation, SQLite SearchService 및 AnswerService는 합성 테스트로 구현·검증됐습니다. TASK-013 브랜치는 `init/doctor/index/search/show/snapshots` CLI를 수직 연결 중이며 E-026 합성 후보 CI는 통과했지만 독립 리뷰와 실제 main 통합 전까지 개발 후보입니다. 실제 게임 호환성은 검증되지 않았습니다.
 
 ```sh
 python -m venv .venv

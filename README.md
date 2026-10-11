@@ -2,7 +2,7 @@
 
 사용자가 설치한 Stellaris 데이터에 근거하여 한국어로 검색하고 설명하는 로컬 우선 도우미.
 
-> **개발 상태:** Python API의 안전한 inventory·parser·Technology adapter·한국어/영어 현지화·SQLite snapshot·검색·정적 인용은 합성 회귀로 검증했습니다. TASK-013 브랜치에서 CLI `init/doctor/index/search/show/snapshots` 수직 통합을 개발 중이며 E-026 및 독립 리뷰·main 통합 이전에는 완료된 제품으로 취급하지 않습니다. 실제 게임 설치본 호환성은 아직 검증되지 않았습니다.
+> **개발 상태:** Python API의 안전한 inventory·parser·Technology adapter·한국어/영어 현지화·SQLite snapshot·검색·정적 인용은 합성 회귀로 검증했습니다. TASK-013 브랜치에서 CLI `init/doctor/index/search/show/snapshots`의 합성 E-026 CI가 통과했습니다. 독립 리뷰와 실제 main 통합 전에는 완료된 제품으로 취급하지 않습니다. 실제 게임 설치본 호환성은 아직 검증되지 않았습니다.
 > 정확한 작업·기능·평가 상태는 각각 [작업](harness/tasks.json)·[기능](harness/features.json)·[평가](harness/evals.jsonl) 원장을 확인하세요.
 > 저장소 이름 `stellaris-suppoter`는 기존 이름을 유지합니다. Python 패키지명은 `stellaris_supporter`, 예정 CLI는 `stellaris-supporter`입니다.
 
