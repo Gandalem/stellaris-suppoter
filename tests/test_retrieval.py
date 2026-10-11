@@ -33,6 +33,7 @@ def _build(
     source_text: str = "demo_alloy = { cost = 0 }\n",
     korean: str | None = "합금 연구",
     english: str | None = "Alloy Research",
+    korean_extra: str = "",
     extra_technology: str = "",
     activate: bool = True,
 ) -> str:
@@ -43,7 +44,7 @@ def _build(
         ),
         SourceFileInput(
             "synthetic", "demo", "localisation/korean/demo.yml",
-            ('l_korean:\n' + ('' if korean is None else ' demo_alloy:0 "' + korean + '"\n')).encode(),
+            ('l_korean:\n' + ('' if korean is None else ' demo_alloy:0 "' + korean + '"\n') + korean_extra).encode(),
         ),
         SourceFileInput(
             "synthetic", "demo", "localisation/english/demo.yml",
@@ -287,3 +288,103 @@ def test_e022_many_aliases_limit_and_truncated(tmp_path: Path) -> None:
     assert result.status == "partial"
     assert all(hit.match_reason == "alias_exact" for hit in result.results)
     svc.close()
+
+
+@pytest.mark.parametrize(("raw","language","expected"), [
+    ("§Y합금§!", "korean", "not_found"),
+    ("£energy£ 합금", "korean", "not_found"),
+    ("[Scope.GetName] 합금", "korean", "not_found"),
+    (r"\\$demo_suffix$ 합금", "korean", "not_found"),
+    ("합금 $demo_suffix$", "korean", "name_exact"),
+])
+def test_r1_protected_markup_never_becomes_verified_name(
+    tmp_path: Path, raw: str, language: str, expected: str,
+) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    sid = _build(
+        repo, korean=raw, korean_extra=' demo_suffix:0 "연구"\n',
+    )
+    service = SearchService(repo, enable_fts=False)
+    query = "합금 연구" if expected == "name_exact" else raw
+    result = service.search(Query(query, language=language, snapshot_id=sid))
+    if expected == "not_found":
+        assert not result.results
+    else:
+        assert result.results[0].match_reason == expected
+        assert result.results[0].localisation_reference_source_refs
+    service.close()
+
+
+def test_r1_unsupported_icon_description_not_indexed(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    _build(repo, korean_extra=' demo_alloy_desc:0 "£energy£ 합금 설명"\n')
+    service = SearchService(repo)
+    assert not service.search(Query("energy")).results
+    service.close()
+
+
+def test_r2_other_entity_definition_cannot_prove_alias(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    _build(repo, extra_technology='demo_b = { cost = 0 }\n')
+    entities = repo.entities()
+    a = next(x for x in entities if x["game_id"] == "demo_alloy")
+    b = next(x for x in entities if x["game_id"] == "demo_b")
+    forged = VerifiedAlias(
+        a["snapshot_id"], a["entity_key"], "demo_b",
+        SourceRef(**b["candidate"]["source_ref"]),
+    )
+    failure = SearchService(repo, aliases=(forged,)).search(Query("demo_b"))
+    assert failure.status == "error"
+    assert failure.diagnostics[0].code == "SOURCE_CHANGED"
+
+
+def test_r2_other_localisation_key_cannot_prove_alias(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    _build(repo, korean_extra=' demo_other:0 "거짓 별칭"\n')
+    a = repo.entities()[0]
+    other = next(x for x in repo.localisation_entries() if x["key"] == "demo_other")
+    forged = VerifiedAlias(
+        a["snapshot_id"], a["entity_key"], "거짓 별칭",
+        SourceRef(**other["value_source_ref"]),
+    )
+    failure = SearchService(repo, aliases=(forged,)).search(Query("거짓 별칭"))
+    assert failure.status == "error"
+    assert failure.diagnostics[0].code == "SOURCE_CHANGED"
+
+
+def test_r3_multilevel_static_reference_provenance(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    _build(
+        repo, korean="합금 $demo_suffix$",
+        korean_extra=(
+            ' demo_suffix:0 "$demo_subsuffix$"\n'
+            ' demo_subsuffix:0 "연구"\n'
+        ),
+    )
+    result = SearchService(repo).search(Query("합금 연구"))
+    assert result.results and result.results[0].match_reason == "name_exact"
+    hit = result.results[0]
+    assert [s.key for s in hit.localisation_reference_selections] == [
+        "demo_suffix", "demo_subsuffix",
+    ]
+    assert all(ref.snapshot_id == hit.snapshot_id for ref in hit.localisation_reference_source_refs)
+    assert hit.localisation_source_ref is not None
+    assert len(hit.match_reference_source_refs) == 2
+
+
+def test_r3_corrupted_nested_reference_cache_is_error(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "data")
+    _build(repo, korean="합금 $demo_suffix$",
+           korean_extra=' demo_suffix:0 "연구"\n')
+    service = SearchService(repo)
+    assert service.search(Query("합금 연구")).results
+    with sqlite3.connect(repo.db_path) as conn:
+        conn.execute("PRAGMA ignore_check_constraints=ON")
+        conn.execute(
+            "UPDATE source_files SET cache_sha256=? "
+            "WHERE relative_path LIKE 'localisation/korean/%'",
+            ("b" * 64,),
+        )
+    failed = service.search(Query("합금 연구"))
+    assert failed.status == "error"
+    assert failed.diagnostics[0].code == "SOURCE_CHANGED"
