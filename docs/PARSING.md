@@ -35,7 +35,7 @@ potential, allow, prerequisites, weight, modifier 등의 이름만 보고 전체
 
 ## 현지화
 
-TASK-009 전용 localisation reader는 일반 YAML parser를 사용하지 않습니다. UTF-8 strict/BOM, CRLF/LF, 언어 header, key, 선택적 숫자 marker, quoted value, lexical `\\"`/`\\\\` escape, comment, 순서·중복 정의와 원본 byte span을 보존합니다. marker는 문자열 metadata이며 게임 패치 버전이 아닙니다. 잘못된 header, 미종결 값, 미지원 문법, 인코딩 오류는 정상 항목으로 만들지 않고 unknown span과 diagnostic으로 남깁니다.
+TASK-009 전용 localisation reader는 일반 YAML parser를 사용하지 않습니다. UTF-8 strict/BOM, CRLF/LF, 언어 header, key, 선택적 숫자 marker, quoted value, lexical `\"`/`\\` escape, comment, 순서·중복 정의와 원본 byte span을 보존합니다. marker는 문자열 metadata이며 게임 패치 버전이 아닙니다. 잘못된 header, 미종결 값, 미지원 문법, 인코딩 오류는 정상 항목으로 만들지 않고 unknown span과 diagnostic으로 남깁니다.
 
 resolver는 **요청 언어 → 영어 → 원래 ID** fallback을 적용하고 실제 사용한 언어 및 번역 SourceRef를 기록합니다. 검증되지 않은 중복 정의 우선순위는 `ambiguous`로 표시하고 마지막 값을 임의 선택하지 않습니다. **`$KEY$` 형태의 정적 참조만** 안전하게 확장하며, 참조별 key·선택 언어·SourceRef를 별도로 보존합니다. 누락 참조, 자기 참조, 다중 key 순환은 명시적 diagnostic과 `partial` 상태로 표시합니다.
 
