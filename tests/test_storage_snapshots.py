@@ -738,3 +738,365 @@ def test_e019_staging_cancellation_after_building_never_activates(tmp_path: Path
     assert exc.value.code == "CANCELLED"
     assert repo.snapshot(new).status == "failed"
     assert repo.active_snapshot_id() == old
+
+
+
+# PR #19 review follow-up: R1 live path binding, R2 Unicode fidelity,
+# R3 identity policy limits, R4 cache pointer integrity, R5 documentation.
+
+@pytest.mark.parametrize("kind", ["base", "mod"])
+def test_r1_stage_target_cannot_be_swapped_for_same_hash_copy(
+    tmp_path: Path, kind: str,
+) -> None:
+    game = tmp_path / "game"
+    game.mkdir()
+    origin, copy = game / "origin.txt", game / "copy.txt"
+    origin.write_bytes(b"original")
+    copy.write_bytes(b"original")
+    repo = SnapshotRepository(tmp_path / "data", game_root=game)
+    old = repo.stage(
+        (SourceFileInput("synthetic", "demo", "old.txt", b"old"),), _policy()
+    ).snapshot_id
+    repo.activate(old)
+    staged = SourceFileInput(
+        kind, "unique-demo-source", "logical/technology/origin.txt",
+        b"original", live_path=origin,
+    )
+    sid = repo.stage((staged,), _policy()).snapshot_id
+    origin.write_bytes(b"changed")
+    copied = replace(staged, live_path=copy)
+    with pytest.raises(SnapshotError) as swapped:
+        repo.activate(sid, sources=(copied,))
+    assert swapped.value.code == "SOURCE_CHANGED"
+    with pytest.raises(SnapshotError) as changed:
+        repo.activate(sid, sources=(staged,))
+    assert changed.value.code == "SOURCE_CHANGED"
+    assert repo.active_snapshot_id() == old
+
+
+def test_r1_stage_binding_survives_reopen_and_never_leaks_absolute_root(tmp_path: Path) -> None:
+    game = tmp_path / "game"
+    game.mkdir()
+    target = game / "physical.txt"
+    target.write_bytes(b"unchanged")
+    directory = tmp_path / "data"
+    repo = SnapshotRepository(directory, game_root=game)
+    staged = SourceFileInput(
+        "mod", "mod-source-1", "mod/script/virtual.txt", b"unchanged",
+        live_path=target,
+    )
+    identity = repo.stage((staged,), _policy())
+    with sqlite3.connect(repo.db_path) as conn:
+        row = conn.execute(
+            "SELECT live_required,live_relative_path,live_root_sha256 "
+            "FROM source_files WHERE snapshot_id=?", (identity.snapshot_id,)
+        ).fetchone()
+    assert row[0] == 1 and row[1] == "physical.txt" and len(row[2]) == 64
+    assert str(game) not in identity.policy_json
+    assert "physical.txt" not in identity.policy_json
+    reopened = SnapshotRepository(directory, game_root=game)
+    reopened.activate(identity.snapshot_id, sources=(staged,))
+    assert reopened.active_snapshot_id() == identity.snapshot_id
+
+
+def test_r1_same_relative_target_under_different_game_root_is_rejected(tmp_path: Path) -> None:
+    first = tmp_path / "game-first"
+    second = tmp_path / "game-second"
+    first.mkdir()
+    second.mkdir()
+    for root in (first, second):
+        (root / "origin.txt").write_bytes(b"same")
+    repo = SnapshotRepository(tmp_path / "data", game_root=first)
+    old = repo.stage(
+        (SourceFileInput("synthetic", "demo", "old.txt", b"old"),), _policy()
+    ).snapshot_id
+    repo.activate(old)
+    staged = SourceFileInput("base", "demo", "origin.txt", b"same", live_path=first/"origin.txt")
+    sid = repo.stage((staged,), _policy()).snapshot_id
+    reopened = SnapshotRepository(tmp_path / "data", game_root=second)
+    substituted = replace(staged, live_path=second/"origin.txt")
+    with pytest.raises(SnapshotError) as exc:
+        reopened.activate(sid, sources=(substituted,))
+    assert exc.value.code == "SOURCE_CHANGED"
+    assert reopened.active_snapshot_id() == old
+
+
+@pytest.mark.parametrize("point", ["stage", "activation"])
+def test_r1_symlink_target_cannot_be_bound_or_revalidated(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, point: str,
+) -> None:
+    import stellaris_supporter.storage.cache as cache_module
+
+    game = tmp_path / "game"
+    game.mkdir()
+    original = game / "origin.txt"
+    original.write_bytes(b"same")
+    repo = SnapshotRepository(tmp_path / "data", game_root=game)
+    old = repo.stage(
+        (SourceFileInput("synthetic", "demo", "old.txt", b"old"),), _policy()
+    ).snapshot_id
+    repo.activate(old)
+    source = SourceFileInput("base", "demo", "origin.txt", b"same", live_path=original)
+    sid = snapshot_identity((source,), _policy()).snapshot_id
+    if point == "activation":
+        repo.stage((source,), _policy())
+    # On Windows installations without symlink privileges, simulate lstat
+    # reporting a reparse point rather than adding an intentional skip.
+    target = game / "same-copy.txt"
+    target.write_bytes(b"same")
+    original.unlink()
+    try:
+        original.symlink_to(target)
+    except OSError:
+        original.write_bytes(b"same")
+        original_check = cache_module._is_unsafe_link
+        monkeypatch.setattr(
+            cache_module, "_is_unsafe_link",
+            lambda path: path == original or original_check(path),
+        )
+    with pytest.raises(SnapshotError) as exc:
+        if point == "stage":
+            repo.stage((source,), _policy())
+        else:
+            repo.activate(sid, sources=(source,))
+    assert exc.value.code == "PATH_REJECTED"
+    assert repo.active_snapshot_id() == old
+
+
+def test_r1_duplicate_logical_source_ids_are_not_rescued_by_different_live_paths(
+    tmp_path: Path,
+) -> None:
+    game = tmp_path / "game"
+    game.mkdir()
+    a, b = game / "a.txt", game / "b.txt"
+    a.write_bytes(b"same")
+    b.write_bytes(b"same")
+    repo = SnapshotRepository(tmp_path / "data", game_root=game)
+    one = SourceFileInput("base", "same-id", "logical.txt", b"same", live_path=a)
+    two = replace(one, live_path=b)
+    with pytest.raises(SnapshotError) as exc:
+        repo.stage((one, two), _policy())
+    assert exc.value.code == "COLLISION_UNRESOLVED"
+    assert repo.active_snapshot_id() is None
+
+
+@pytest.mark.parametrize(
+    ("value", "language"),
+    [
+        ("한글", "korean"),
+        ("한글", "korean"),
+        ("e\u0301", "english"),
+    ],
+    ids=["NFC-Korean", "NFD-Korean-Jamo", "Latin-combining"],
+)
+def test_r2_lossless_localisation_codepoints_bom_crlf_and_source_spans(
+    tmp_path: Path, value: str, language: str,
+) -> None:
+    from stellaris_supporter.domain import SourceRef
+
+    source_bytes = (
+        b"\xef\xbb\xbf" + f'l_{language}:\r\n demo:0 "{value}"\r\n'.encode("utf-8")
+    )
+    source = SourceFileInput(
+        "synthetic", "demo", f"localisation/{language}/demo.yml", source_bytes
+    )
+    repo = SnapshotRepository(tmp_path / "data")
+    policy = _policy()
+    sid = snapshot_identity((source,), policy).snapshot_id
+    document = parse_localisation(source_bytes, _context(source, sid))
+    assert document.complete and len(document.entries) == 1
+    assert document.entries[0].raw_value == value
+    repo.stage_from_results((source,), policy, localisation_documents=(document,))
+    repo.activate(sid)
+    stored = repo.localisation_entries()[0]
+    assert list(map(ord, stored["raw_value"])) == list(map(ord, value))
+    assert list(map(ord, stored["display_value"])) == list(map(ord, value))
+    original = SourceRef(**stored["value_source_ref"])
+    assert repo.source_bytes(original) == value.encode("utf-8")
+    assert repo.cache.read(hashlib.sha256(source_bytes).hexdigest(), len(source_bytes)) == source_bytes
+    with sqlite3.connect(repo.db_path) as conn:
+        row = conn.execute(
+            "SELECT raw_value,display_value FROM localisation_entries WHERE snapshot_id=?",
+            (sid,),
+        ).fetchone()
+    assert row == (value, value)
+
+
+def test_r2_raw_and_display_are_distinct_without_normalising_combining_marks(
+    tmp_path: Path,
+) -> None:
+    from stellaris_supporter.domain import SourceRef
+
+    raw = 'e\u0301\\"quoted'
+    display = 'e\u0301"quoted'
+    data = (f'l_english:\r\n demo:0 "{raw}"\r\n').encode("utf-8")
+    src = SourceFileInput("synthetic", "demo", "localisation/english/demo.yml", data)
+    repo = SnapshotRepository(tmp_path / "data")
+    sid = snapshot_identity((src,), _policy()).snapshot_id
+    doc = parse_localisation(data, _context(src, sid))
+    assert doc.complete and doc.entries[0].raw_value == raw
+    repo.stage_from_results((src,), _policy(), localisation_documents=(doc,))
+    repo.activate(sid)
+    stored = repo.localisation_entries()[0]
+    assert stored["raw_value"] == raw
+    assert stored["display_value"] == display
+    assert repo.source_bytes(SourceRef(**stored["value_source_ref"])) == raw.encode("utf-8")
+
+
+def test_r2_technology_raw_decomposed_unicode_roundtrip(tmp_path: Path) -> None:
+    data = 'demo_tech = { cost = "e\u0301" }\n'.encode("utf-8")
+    src = SourceFileInput("synthetic", "demo", "common/technology/nfd.txt", data)
+    repo = SnapshotRepository(tmp_path / "data")
+    sid = snapshot_identity((src,), _policy()).snapshot_id
+    parsed = parse_bytes(data)
+    adapted = adapt_technologies(parsed, data, _context(src, sid))
+    assert adapted.complete and adapted.candidates
+    repo.stage_from_results((src,), _policy(), technology_results=(adapted,))
+    repo.activate(sid)
+    candidate = repo.entities()[0]["candidate"]
+    assert "e\u0301" in candidate["fields"][0]["raw_value"]
+    from stellaris_supporter.domain import SourceRef
+
+    assert repo.source_bytes(SourceRef(**candidate["source_ref"])) == data[
+        candidate["source_ref"]["byte_start"]:candidate["source_ref"]["byte_end"]
+    ]
+
+
+def test_r2_identity_metadata_remains_nfc_strict() -> None:
+    with pytest.raises(SnapshotError) as exc:
+        snapshot_identity((), _policy(analysis_context={"name": "e\u0301"}))
+    assert exc.value.code == "SCHEMA_ERROR"
+
+
+def test_r3_policy_json_exact_byte_boundary_and_deterministic_sha() -> None:
+    from stellaris_supporter.storage.identity import MAX_POLICY_JSON_BYTES
+
+    baseline = _policy(analysis_context={"pad": ""})
+    zero_bytes = len(canonical_json(baseline.identity_fields()))
+    policy = _policy(analysis_context={"pad": "x" * (MAX_POLICY_JSON_BYTES-zero_bytes)})
+    first = snapshot_identity((), policy)
+    assert len(first.policy_json.encode("utf-8")) == MAX_POLICY_JSON_BYTES
+    assert snapshot_identity((), policy).snapshot_id == first.snapshot_id
+    assert snapshot_identity((), _policy()).snapshot_id != first.snapshot_id
+
+
+def test_r3_over_budget_policy_rejected_before_db_insert_and_active_retained(
+    tmp_path: Path,
+) -> None:
+    from stellaris_supporter.storage.identity import MAX_POLICY_JSON_BYTES
+
+    repo = SnapshotRepository(tmp_path / "data")
+    old = _seed_active(repo)
+    baseline = _policy(analysis_context={"pad": ""})
+    zero_bytes = len(canonical_json(baseline.identity_fields()))
+    too_large = _policy(
+        analysis_context={"pad": "x" * (MAX_POLICY_JSON_BYTES - zero_bytes + 1)}
+    )
+    with pytest.raises(SnapshotError) as exc:
+        repo.stage((SourceFileInput("synthetic", "demo", "n.txt", b"small"),), too_large)
+    assert exc.value.code == "LIMIT_EXCEEDED"
+    assert repo.active_snapshot_id() == old
+    with sqlite3.connect(repo.db_path) as conn:
+        assert conn.execute("SELECT count(*) FROM snapshots").fetchone()[0] == 1
+
+
+@pytest.mark.parametrize("failure", ["oversized-string", "nested", "item-count"])
+def test_r3_policy_metadata_resource_limits(tmp_path: Path, failure: str) -> None:
+    from stellaris_supporter.storage.identity import MAX_POLICY_JSON_BYTES
+
+    if failure == "oversized-string":
+        policy = _policy(dlc_state={"pad": "x" * (2 * MAX_POLICY_JSON_BYTES)})
+    elif failure == "nested":
+        context = {}
+        for _ in range(40):
+            context = {"child": context}
+        policy = _policy(analysis_context=context)
+    else:
+        policy = _policy(analysis_context={f"k{i:04d}": i for i in range(5100)})
+    with pytest.raises(SnapshotError) as error:
+        snapshot_identity((), policy)
+    assert error.value.code == "LIMIT_EXCEEDED"
+
+
+def test_r4_schema_constraint_and_source_bytes_reject_cache_pointer_swap(
+    tmp_path: Path,
+) -> None:
+    from stellaris_supporter.domain import SourceRef
+
+    repo = SnapshotRepository(tmp_path / "data")
+    files = (
+        SourceFileInput("synthetic", "demo", "A.txt", b"AAAA"),
+        SourceFileInput("synthetic", "demo", "B.txt", b"BBBB"),
+    )
+    sid = repo.stage(files, _policy()).snapshot_id
+    repo.activate(sid)
+    a_ref = SourceRef(
+        snapshot_id=sid, source_kind="synthetic", source_id="demo",
+        relative_path="A.txt", file_sha256=hashlib.sha256(b"AAAA").hexdigest(),
+        byte_start=0, byte_end=4, line_start=1, line_end=1,
+    )
+    b_hash = hashlib.sha256(b"BBBB").hexdigest()
+    assert repo.source_bytes(a_ref) == b"AAAA"
+    with sqlite3.connect(repo.db_path) as conn:
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "UPDATE source_files SET cache_sha256=? "
+                "WHERE snapshot_id=? AND relative_path='A.txt'",
+                (b_hash, sid),
+            )
+        conn.rollback()
+        # Deliberately bypass the CHECK to simulate a corrupt logical pointer.
+        conn.execute("PRAGMA ignore_check_constraints=ON")
+        conn.execute(
+            "UPDATE source_files SET cache_sha256=? "
+            "WHERE snapshot_id=? AND relative_path='A.txt'",
+            (b_hash, sid),
+        )
+    with pytest.raises(SnapshotError) as mismatch:
+        repo.source_bytes(a_ref)
+    assert mismatch.value.code == "SOURCE_CHANGED"
+    assert repo.active_snapshot_id() == sid
+    assert repo.cache.read(b_hash, 4) == b"BBBB"
+
+
+def test_r4_historical_valid_snapshot_remains_queryable_after_other_corruption(
+    tmp_path: Path,
+) -> None:
+    from stellaris_supporter.domain import SourceRef
+
+    repo = SnapshotRepository(tmp_path / "data")
+    old_data = b"original"
+    old = repo.stage(
+        (SourceFileInput("synthetic", "demo", "old.txt", old_data),), _policy()
+    ).snapshot_id
+    repo.activate(old)
+    new_files = (
+        SourceFileInput("synthetic", "demo", "A.txt", b"AAAA"),
+        SourceFileInput("synthetic", "demo", "B.txt", b"BBBB"),
+    )
+    newest = repo.stage(new_files, _policy()).snapshot_id
+    with sqlite3.connect(repo.db_path) as conn:
+        conn.execute("PRAGMA ignore_check_constraints=ON")
+        conn.execute(
+            "UPDATE source_files SET cache_sha256=? WHERE snapshot_id=? "
+            "AND relative_path='A.txt'",
+            (hashlib.sha256(b"BBBB").hexdigest(), newest),
+        )
+    ref = SourceRef(
+        snapshot_id=old, source_kind="synthetic", source_id="demo",
+        relative_path="old.txt", file_sha256=hashlib.sha256(old_data).hexdigest(),
+        byte_start=0, byte_end=len(old_data), line_start=1, line_end=1,
+    )
+    assert repo.source_bytes(ref) == old_data
+    with pytest.raises(SnapshotError) as exc:
+        repo.activate(newest)
+    assert exc.value.code in {"SCHEMA_ERROR", "SOURCE_CHANGED"}
+    assert repo.active_snapshot_id() == old
+
+
+def test_r5_adr_012_and_013_share_one_markdown_table() -> None:
+    decisions = (Path(__file__).resolve().parents[1] / "docs" / "DECISIONS.md").read_text(
+        encoding="utf-8"
+    ).splitlines()
+    previous = next(i for i, line in enumerate(decisions) if line.startswith("| ADR-012 |"))
+    assert decisions[previous + 1].startswith("| ADR-013 |")
