@@ -232,7 +232,8 @@
         "Fallback, references, cycles and duplicates have explicit outcomes."
       ],
       "evidence": [
-        "harness/evidence/TASK-009-localisation-reader-resolver.md"
+        "harness/evidence/TASK-009-localisation-reader-resolver.md",
+        "harness/evidence/TASK-009-review-followup.md"
       ]
     },
     {
