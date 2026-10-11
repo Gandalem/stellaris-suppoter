@@ -53,9 +53,13 @@ def build_localisation_catalog(
     documents: tuple[LocalisationDocument, ...],
     *,
     max_entries: int = MAX_CATALOG_ENTRIES,
+    max_diagnostics: int = 1_000,
 ) -> LocalisationCatalog:
     if isinstance(max_entries, bool) or not isinstance(max_entries, int) or max_entries < 1:
         raise ValueError("max_entries must be a positive integer")
+
+    if isinstance(max_diagnostics, bool) or not isinstance(max_diagnostics, int) or max_diagnostics < 1:
+        raise ValueError("max_diagnostics must be a positive integer")
 
     snapshot = documents[0].context.snapshot_id if documents else None
     diagnostics: list[LocalisationDiagnostic] = []
@@ -63,6 +67,12 @@ def build_localisation_catalog(
     entries: list[LocalisationEntry] = []
     index: dict[tuple[str, str], list[LocalisationEntry]] = {}
     for document in documents:
+        if len(diagnostics) + len(document.diagnostics) >= max_diagnostics:
+            diagnostics = diagnostics[: max_diagnostics - 1]
+            diagnostics.append(LocalisationDiagnostic(
+                "LIMIT_EXCEEDED", "error", "Localisation catalog diagnostic budget exceeded."
+            ))
+            return LocalisationCatalog((), tuple(diagnostics), False, snapshot, {})
         diagnostics.extend(document.diagnostics)
         complete = complete and document.complete
         if document.context.snapshot_id != snapshot:
@@ -177,9 +187,19 @@ def resolve_localisation(
     ):
         if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
             raise ValueError(f"{name} must be a positive integer")
+    if max_depth > DEFAULT_MAX_DEPTH:
+        raise ValueError("supported max_depth is 64 to avoid interpreter recursion overflow")
     requested = _language(requested_language)
     if not isinstance(key, str) or not key:
         raise ValueError("localisation key must be non-empty")
+    if len(key.encode("utf-8")) > max_output_bytes:
+        diagnostic = LocalisationDiagnostic(
+            "LIMIT_EXCEEDED", "error", "Localisation key exceeds output byte budget."
+        )
+        return LocalisationResolution(
+            key, requested, None, "", None, (), "id", "partial",
+            (diagnostic,), 0, 0, 0, True,
+        )
     languages = (requested,) if requested == "english" else (requested, "english")
 
     def select(name: str) -> tuple[LocalisationEntry | None, str | None, str]:
