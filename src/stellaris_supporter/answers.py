@@ -7,8 +7,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any
-from typing import Literal
+from typing import Any, Literal
 
 from stellaris_supporter.domain import SourceRef
 from stellaris_supporter.localisation import LocalisationReferenceSelection
