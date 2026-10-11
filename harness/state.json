@@ -4,7 +4,7 @@
   "product_implemented": false,
   "active_task": "TASK-010",
   "next_task": "TASK-010",
-  "last_session": "harness/sessions/2026-10-11-task-009-main-closure.md",
+  "last_session": "harness/sessions/2026-10-11-task-010-sqlite-snapshots.md",
   "latest_game_version": null,
   "updated_on": "2026-10-11",
   "notes": [
@@ -17,6 +17,7 @@
     "PR #17 R1-R4 follow-up: code/test/docs head 10dd9b721e13819cfa764ab30d6fe26e15ac2499; test-merge 889ef8b85321a45ebcb68a39fc48f1f0f24429e3, Package PR CI 38126968416 and Documentation CI 38126968353 success on both OS. 38 additional regression cases passed alongside existing 50 localisation tests. Follow-up evidence at harness/evidence/TASK-009-review-followup.md. PR remains unmerged; TASK-010 not started.",
     "PR #17 R5/P2 follow-up: DATA_CONTRACTS.md duplicate/broken localisation contract repaired, 11 normative documentation integrity tests added and passing alongside R1-R4. Code/test candidate eb5b68b377e7ba6566173543faf0a784de575b21; PR CI test-merge 03718d748bda4ba12ba708d3268a5c142cd4c53d; Package run 38128348984 Ubuntu 279 passed / Windows 276 passed + 3 existing skips, Ruff/harness success; Documentation run 38128348992 both OS success. Evidence harness/evidence/TASK-009-r5-document-integrity.md. Review and real main merge still pending; TASK-010 not started.",
     "PR #17 actually merged to main as f9638850dfd514790cf90c194f9ff062e7819f12 from reviewed head c4842aaae6f88216f33711d6a95b141074e2dad5. main push Package 38128971447 Ubuntu 279/Windows 276+3 success and Documentation 38128971437 success both. R1-R5 reviewed; E-015/016/017 synthetic pass preserved. This separate closure PR proposes TASK-009 done, F-006 synthetic-verified, active_task null, next_task TASK-010. Main retains previous ledger statuses until closure PR actually merges and its own main CI succeeds; TASK-010 implementation not started. latest_game_version null, product_implemented false.",
-    "TASK-010 implementation began from main d2be6af6795f7bf2b5e5e2ae1be4672f00d6618c after PR #18 actual merge and successful main Package 38130135720 and Documentation harness 38130135692. TASK-010 doing; F-007 in_progress; E-018/E-019 not_run until tests. No real game files used."
+    "TASK-010 implementation began from main d2be6af6795f7bf2b5e5e2ae1be4672f00d6618c after PR #18 actual merge and successful main Package 38130135720 and Documentation harness 38130135692. TASK-010 doing; F-007 in_progress; E-018/E-019 not_run until tests. No real game files used.",
+    "TASK-010 synthetic E-018/E-019 implementation candidate 7a72588dad8b298a4c3b52befef964484baedc10: PR Package run 38131453597 on test-merge 8df521765fd6b81b3c15f4fd492ff22dc8181614 Ubuntu Python 3.11.17 SQLite 3.45.1 337 passed and Windows Python 3.13.15 SQLite 3.50.4 334 passed + 3 existing skips. Ruff and harness passed both; Documentation run 38131453587 both OS success. Evidence harness/evidence/TASK-010-sqlite-snapshots.md. TASK-010 remains doing, F-007 in_progress pending PR #19 independent review/actual merge/main CI; real game unverified, latest_game_version null, product_implemented false."
   ]
 }
