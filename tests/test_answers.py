@@ -229,3 +229,43 @@ def test_e025_unknown_version_remains_null(tmp_path: Path) -> None:
     response = service(repo).answer(Query("demo_alloy"))
     assert response.context and response.context.game_version is None
     assert response.context.branch == "unknown"
+
+
+def test_e023_corrupted_english_dependency_only_fails_closed(tmp_path: Path) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    staged(repo, korean="합금 $demo_suffix$", suffix="Research", english_suffix=True)
+    svc = service(repo)
+    assert svc.answer(Query("합금 Research")).results
+    # The Korean root stays pristine; only the English referenced file is poisoned.
+    with sqlite3.connect(repo.db_path) as conn:
+        conn.execute("PRAGMA ignore_check_constraints=ON")
+        conn.execute(
+            "UPDATE source_files SET cache_sha256=? WHERE relative_path=?",
+            ("b" * 64, "localisation/english/demo.yml"),
+        )
+    result = svc.answer(Query("합금 Research"))
+    assert result.status == "error"
+    assert not result.results
+    assert result.diagnostics[0].code == "SOURCE_CHANGED"
+
+
+def test_e025_forged_search_hit_cross_snapshot_ref_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = SnapshotRepository(tmp_path / "db")
+    stable = staged(repo, cost="100", branch="stable")
+    beta = staged(repo, cost="200", branch="beta")
+    svc = service(repo)
+    original = svc.search.search(Query("demo_alloy", snapshot_id=stable))
+    assert original.results
+    forged = replace(
+        original.results[0],
+        definition_source_ref=replace(original.results[0].definition_source_ref,
+                                      snapshot_id=beta),
+    )
+    monkeypatch.setattr(svc.search, "search",
+                        lambda query: replace(original, results=(forged,)))
+    result = svc.answer(Query("demo_alloy", snapshot_id=stable))
+    assert result.status == "error"
+    assert result.results == ()
+    assert result.diagnostics[0].code == "SOURCE_CHANGED"
