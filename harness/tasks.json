@@ -299,7 +299,7 @@
     {
       "id": "TASK-012",
       "title": "Static answers and citations",
-      "status": "doing",
+      "status": "done",
       "feature_ids": [
         "F-009"
       ],
@@ -319,7 +319,9 @@
         "Every fact has a correct source; unknown and mixed-version claims are blocked."
       ],
       "evidence": [
-        "harness/evidence/TASK-012-static-answers-citations.md"
+        "harness/evidence/TASK-012-static-answers-citations.md",
+        "harness/evidence/TASK-012-review-followup.md",
+        "harness/evidence/TASK-012-main-integration.md"
       ]
     },
     {
