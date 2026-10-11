@@ -34,3 +34,17 @@ Base main: `d2be6af6795f7bf2b5e5e2ae1be4672f00d6618c` (PR #18 actual merge)
 ## Work and merge state
 
 This development branch proposes TASK-010=`doing`, F-007=`in_progress`. E-018/E-019 remain `not_run` until successful CI and evidence links, when only those evaluation statuses may change to `pass`. Neither TASK-010=done nor F-007=verified is permitted before independent technical review, actual main merge and its main CI. PR #19 is not auto-merged and review threads are untouched.
+
+
+## Successful synthetic E-018/E-019 evidence (code/test/doc candidate)
+
+- Code+test candidate head `7a72588dad8b298a4c3b52befef964484baedc10`; exact PR test-merge checkout `8df521765fd6b81b3c15f4fd492ff22dc8181614` (not a real main merge).
+- PR Package run `38131453597`: Ubuntu Python 3.11.17 / SQLite 3.45.1 **337 passed**; Windows Python 3.13.15 / SQLite 3.50.4 **334 passed + original POSIX-only 3 skips**. Ruff and `scripts/check_harness.py` success both OS.
+- PR Documentation harness `38131453587`: both OS success.
+- E-018/E-019: `pass` for authored synthetic cases with detailed failure-injection matrix, identity canonicalisation, origin/cache/FK typed round-trip in [TASK-010 SQLite evidence](../evidence/TASK-010-sqlite-snapshots.md).
+- Existing 279 baseline tests and old R1–R5 tests preserved, **58 new pytest cases**, no new skips.
+- These results precede final evidence-only commits. Final head and test-merge/CI run IDs will be appended to PR #19 body after re-validation.
+
+## Review and integration gate
+
+TASK-010 remains `doing` and F-007 `in_progress` even if all PR CI is green. Neither will transition to done/verified until independent review, actual GitHub merge and main push CI. F-005 remains `in_progress`, TASK-009 `done`, F-006 `verified`, game version `null`, product_implemented false. PR #19 stays **not merged**. No TASK-011/012/013 implementation.
