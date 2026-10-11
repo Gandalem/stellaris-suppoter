@@ -224,7 +224,7 @@ class SearchService:
                 candidate_resolution TEXT NOT NULL,
                 korean TEXT, korean_ref TEXT, english TEXT, english_ref TEXT,
                 chosen_resolution TEXT NOT NULL, warning TEXT,
-                korean_references TEXT NOT NULL, english_references TEXT NOT NULL
+                korean_ref_selections TEXT NOT NULL, english_references TEXT NOT NULL
             );
             CREATE INDEX projection_by_id ON projection(game_id,kind);
             CREATE TABLE names (
@@ -486,16 +486,16 @@ class SearchService:
             SELECT p.entity_key,1 AS rank,'game_id_exact' AS reason,'' AS matched_language,
                    p.definition_ref AS match_ref,'[]' AS match_references FROM projection p WHERE p.game_id=?
             UNION ALL
-            SELECT n.entity_key,2,'name_exact',n.language,n.source_ref,n.references
+            SELECT n.entity_key,2,'name_exact',n.language,n.source_ref,n.ref_selections
               FROM names n WHERE n.normalized=? AND n.language IN ({languages})
             UNION ALL
             SELECT a.entity_key,3,'alias_exact','',a.source_ref,'[]'
               FROM aliases a WHERE a.normalized=?
             UNION ALL
-            SELECT n.entity_key,4,'name_prefix',n.language,n.source_ref,n.references
+            SELECT n.entity_key,4,'name_prefix',n.language,n.source_ref,n.ref_selections
               FROM names n WHERE n.normalized LIKE ? ESCAPE char(92) AND n.language IN ({languages})
             UNION ALL
-            SELECT n.entity_key,5,'name_substring',n.language,n.source_ref,n.references
+            SELECT n.entity_key,5,'name_substring',n.language,n.source_ref,n.ref_selections
               FROM names n WHERE n.normalized LIKE ? ESCAPE char(92) AND n.language IN ({languages})
             UNION ALL
             SELECT d.entity_key,6,'description_lexical','',d.source_ref,'[]'
@@ -662,4 +662,7 @@ class SearchService:
             except SnapshotError as exc:
                 return self._error(query, exc.code, str(exc), context)
             except (sqlite3.DatabaseError, ValueError, KeyError, TypeError, UnicodeError):
-                raise  # transient synthetic CI trace; replace before review
+                return self._error(
+                    query, "SQLITE_ERROR",
+                    "Search projection or its stored provenance is invalid.", context,
+                )
