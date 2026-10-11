@@ -421,14 +421,16 @@ def test_r4_request_global_fact_limit_and_cache_reuse(
     technology = "".join(
         f"demo_{i:03d} = {{ cost = {i} tier = 2 }}\n" for i in range(100)
     )
-    _synthetic_multi(repo, (("tech.txt", technology),))
+    _synthetic_multi(repo, (("tech.txt", technology),),
+                     translations=tuple((f"demo_{i:03d}", "Demo Technology")
+                                        for i in range(100)))
     original = repo.cache.read
     reads = []
     def tracked(digest, size):
         reads.append((digest, size))
         return original(digest, size)
     monkeypatch.setattr(repo.cache, "read", tracked)
-    result = service(repo).answer(Query("demo_", limit=100))
+    result = service(repo).answer(Query("Demo Technology", language="english", limit=100))
     assert result.status == "partial" and result.truncated
     assert sum(len(hit.facts) for hit in result.results) <= 64
     assert all(len(hit.source_refs) <= 256 for hit in result.results)
