@@ -61,21 +61,20 @@ def _context(source: SourceFileInput, sid: str) -> SourceContext:
 
 def _records(sources, policy):
     sid = snapshot_identity(sources, policy).snapshot_id
-    technology = next(x for x in sources if "technology" in x.relative_path)
-    adapted = adapt_technologies(
-        parse_bytes(technology.data), technology.data, _context(technology, sid)
-    )
+    adapted = [
+        adapt_technologies(parse_bytes(x.data), x.data, _context(x, sid))
+        for x in sources if "technology" in x.relative_path
+    ]
     documents = [
         parse_localisation(x.data, _context(x, sid))
         for x in sources if "localisation" in x.relative_path
     ]
-    assert adapted.complete
+    assert all(result.complete for result in adapted)
     assert all(doc.complete for doc in documents)
-    names = tuple(
-        resolve_technology_name(candidate, build_localisation_catalog(tuple(documents)))
-        for candidate in adapted.candidates
-    )
-    return adapted.candidates, tuple(e for doc in documents for e in doc.entries), names
+    candidates = tuple(c for result in adapted for c in result.candidates)
+    catalog = build_localisation_catalog(tuple(documents))
+    names = tuple(resolve_technology_name(c, catalog) for c in candidates)
+    return candidates, tuple(e for doc in documents for e in doc.entries), names
 
 
 def _stage(repo, sources=None, policy=None, **kwargs):
@@ -201,7 +200,7 @@ def test_e018_sqlite_typed_round_trip_source_ref_localisation_and_relations(tmp_
     assert repo.source_bytes(source_ref) == TECH_SOURCE[
         source_ref.byte_start:source_ref.byte_end
     ]
-    assert len(repo.cache.read(hashlib.sha256(LOC_SOURCE).hexdigest(), len(LOC_SOURCE))) == len(LOC_SOURCE)
+    assert len(repo.cache.read(hashlib.sha256(LOC_DUPLICATE).hexdigest(), len(LOC_DUPLICATE))) == len(LOC_DUPLICATE)
     with sqlite3.connect(repo.db_path) as conn:
         conn.execute("PRAGMA foreign_keys=ON")
         assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
