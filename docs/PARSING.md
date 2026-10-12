@@ -115,3 +115,10 @@ Scripted Trigger/Effect는 이번 합성 규칙에서 **표시 이름 현지화 
 **Phase C2 추가 수용 조건 — 동적 표현식의 명시적 partial**
 
 이 두 scripted 합성 규칙에서는 최상위 ID가 정적이더라도 내부의 **원문 `@variable` / `@dynamic`과 같은 `@`로 시작하는 스칼라 표현식**을 찾으면 `DOMAIN_DYNAMIC_EXPRESSION_UNSUPPORTED` 진단과 해당 값의 정확한 SourceRef를 남기고 후보를 `partial`로 표시합니다. 평가·치환·수정은 하지 않으며, `"@dynamic"`처럼 따옴표 안에 있는 문자열과 주석은 동적 실행 표현식으로 오인하지 않습니다. 이 합성 검사는 Parser가 이미 제한한 AST의 구조만 확인하며 기존 다른 11개 도메인에는 적용하지 않습니다. 실제 Stellaris 동적 변수 문법 전체를 구현하거나 확인한 것은 아닙니다.
+
+
+**TASK-014 C2 R1/P2 — scripted 변수 PairNode 키의 원본 위치 검증**
+
+이 규칙은 설치된 Stellaris의 스크립트 실행 규칙이 아니라 직접 작성한 **합성 정적 구문 탐지 정책**입니다. Scripted Trigger·Scripted Effect의 `authored_rule = { nested = { @dynamic = yes } }`에서 `@dynamic`은 스칼라 값이 아니라 `PairNode.key_kind="variable"`의 **키**입니다. 키가 `@`로 시작하면 해당 `key_span`의 원본 SourceRef로 `DOMAIN_DYNAMIC_EXPRESSION_UNSUPPORTED` 경고를 남기고 정의를 `partial`로 유지합니다. 값 위치의 `value = @dynamic`도 기존처럼 `partial` 처리합니다. 직계·중첩 변수 키, 변수 값 모두 실행·평가·정규화하지 않고 순서가 있는 RawNodeRef, 전체 source SHA 및 정확한 원본 바이트를 보존합니다. `"@dynamic" = yes`처럼 따옴표 안의 문자열 키, 문자열 값 및 주석을 동적 변수로 오인하지 않습니다.
+
+이 C2 검사에는 기존 진단 한도 1,000, R1 items/field/condition/children 개별 backing 검증, R2 canonical ParseResult 전체 출처 바인딩이 그대로 적용되며 다른 11개 도메인의 ID·localisation 정책에는 영향을 주지 않습니다. 수정 전후 실제 재현과 최종 CI SHA는 `harness/evidence/TASK-014-scripted-review-followup.md` 및 PR #33에 남깁니다. 후보별 전체 canonical reparse P3 개선은 R1/R2 검증을 약화하지 않는 별도 최적화 후보로 유지합니다.
