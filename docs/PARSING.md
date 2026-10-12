@@ -50,3 +50,11 @@ resolver 기본·지원 최대 참조 depth는 64, visits는 4,096, 누적 sourc
 ## 로컬 조사 보고
 
 파일 수, encoding 분포, 성공/부분/실패 수, 미지원 구문 유형, 상대 경로 진단만 공개합니다. 원문·DLC 콘텐츠·세이브·개인 경로는 올리지 않습니다. 재현이 필요하면 직접 만든 최소 합성 사례를 사용합니다.
+
+**TASK-014 foundation (partial; authored synthetic grammars only)**
+
+`domain/generic.py` provides opt-in `DOMAIN_REGISTRY` entries for component templates (`common/component_templates/`, unique static `key` field), buildings (`common/buildings/`, top-level literal ID), districts (`common/districts/`, top-level literal ID), and pop jobs (`common/pop_jobs/`, top-level literal ID). These paths and rules are **authored synthetic fixtures**, not verified mappings from an installed Stellaris version. Unrecognised top-level syntax remains `unhandled` with a diagnostic. No actual game precedence or cost/condition evaluation is inferred.
+
+The non-technology `DomainCandidate` contract carries `game_id|None`, `kind`, `definition_occurrence`, raw ordered `items`, `fields`, `conditions`, definition/ID `SourceRef`, diagnostics, resolution, support level and explicit synthetic `localisation_key`. The new adapter validates source SHA, candidate path, token/node spans, parser budgets and raw serialization budgets; a separate `verify_domain_candidate` re-parses to reject tampered identifiers, kind, spans and occurrences. The old `TechnologyCandidate` and SQLite v1 contracts remain unchanged, as do SearchService/AnswerService/CLI implementations. A successful adapter extraction does **not** mean indexed, searchable or citeable product support.
+
+Remaining TASK-014 domains (traits, governments, civics, origins, traditions, ascension perks, events, scripted triggers/effects) are not yet implemented. E-027 remains `not_run` until the entire authored synthetic domain matrix including localisation, collisions, limits and citation attacks passes. Real installation grammar and localisation key conventions remain unverified.
