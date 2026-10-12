@@ -35,7 +35,7 @@ def event_result(
 @pytest.mark.parametrize("event_type", ["country_event", "planet_event"])
 @pytest.mark.parametrize(
     "event_id",
-    ["authored.", "authored..1", "authored.1."],
+    ["authored.", "authored..1", "authored.1.", "authored.1.2"],
 )
 def test_r1_event_invalid_qualified_id_is_never_complete(event_type, event_id):
     raw, ctx, result = event_result(
@@ -65,7 +65,7 @@ def test_r1_event_invalid_qualified_id_is_never_complete(event_type, event_id):
 
 
 @pytest.mark.parametrize("event_type", ["country_event", "planet_event"])
-@pytest.mark.parametrize("event_id", ["authored.1", "authored.example"])
+@pytest.mark.parametrize("event_id", ["authored.1", "authored.example", "authored.alpha_2"])
 def test_r1_event_valid_qualified_ids_remain_complete(event_type, event_id):
     raw, ctx, result = event_result(event_id, event_type=event_type)
     assert result.complete and not result.blocked
