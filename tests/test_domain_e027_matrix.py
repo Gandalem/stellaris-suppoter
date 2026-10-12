@@ -116,7 +116,7 @@ def adapt(
 def translation(
     key: str, text: str, language: str, *, snapshot: str = "A"
 ):
-    raw = f'l_{language}:\n {key}:0 "{text}"\n'.encode("utf-8")
+    raw = f'l_{language}:\n {key}:0 "{text}"\n'.encode()
     return parse_localisation(
         raw, SourceContext(
             snapshot, "synthetic", "authored",
