@@ -39,7 +39,7 @@ LIMIT = DEFAULT_PARSER_MAX_DIAGNOSTICS
 def sample(kind: str, *, game_id: str = "shared_x", body: str = "") -> str:
     extra = f"name = {game_id}_name cost = 100 potential = {{ flag = yes }} {body}"
     if kind == "tradition":
-        return f"traditions = {{ {game_id} = {{ {extra} }} }}"
+        return f"traditions = {{ group_entry = {{ id = {game_id} {extra} }} }}"
     if kind == "ascension_perk":
         return f"ascension_perk = {{ id = {game_id} {extra} }}"
     raise AssertionError("unregistered test kind")
@@ -79,7 +79,7 @@ def test_wave3_registry_extends_exact_eight_original_kinds(kind: str):
     assert spec.path_prefix == PATHS[kind]
     assert spec.localisation_rule == "name_field"
     assert spec.id_rule == (
-        "nested_identifier" if kind == "tradition" else "literal_id_field"
+        "nested_id_field" if kind == "tradition" else "literal_id_field"
     )
 
 
@@ -97,7 +97,7 @@ def test_wave3_exact_source_spans_ids_and_distinct_localisation(kind: str):
     assert c.id_source_ref is not None
     assert c.id_source_ref.raw_bytes(raw) == b"shared_x"
     assert c.source_ref.raw_bytes(raw).startswith(
-        b"shared_x =" if kind == "tradition" else b"ascension_perk ="
+        b"group_entry =" if kind == "tradition" else b"ascension_perk ="
     )
     assert c.source_ref.relative_path == ctx.relative_path
     assert [f.raw_value for f in c.conditions] == ["{ flag = yes }"]
@@ -145,6 +145,16 @@ def test_wave3_missing_dynamic_duplicate_ids_not_guessed(kind: str):
             _, _, result = adapted(kind, value)
             assert not result.complete and result.unhandled
             assert not result.candidates
+        for fragment in (
+            "", "id = @dynamic", "id = shared_x id = second", "id > shared_x"
+        ):
+            _, _, result = adapted(
+                kind, sample(kind).replace("id = shared_x", fragment)
+            )
+            assert len(result.candidates) == 1
+            assert result.candidates[0].game_id is None
+            assert result.candidates[0].resolution == "partial"
+            assert any(d.code == "DOMAIN_UNRESOLVED_ID" for d in result.diagnostics)
     else:
         for fragment in (
             "", "id = @dynamic", "id = shared_x id = second",
@@ -436,7 +446,7 @@ def test_wave3_localisation_ambiguous_cycle_dynamic_budget_and_bad_source(kind: 
 def test_wave3_diagnostic_budget_stops_at_child_or_root_boundary(kind: str, count: int):
     if kind == "tradition":
         source = "traditions = { " + " ".join(
-            f"tr_{i} = {{}}" for i in range(count)
+            f"group_{i} = {{ id = tr_{i} }}" for i in range(count)
         ) + " }"
     else:
         source = " ".join(
@@ -460,7 +470,7 @@ def test_wave3_diagnostic_budget_stops_at_child_or_root_boundary(kind: str, coun
 def test_wave3_many_valid_definitions_and_nested_unsupported_budget(kind: str):
     if kind == "tradition":
         source = "traditions = { " + " ".join(
-            f"tr_{i} = {{ name = tr_{i}_name }}" for i in range(LIMIT + 200)
+            f"group_{i} = {{ id = tr_{i} name = tr_{i}_name }}" for i in range(LIMIT + 200)
         ) + " }"
     else:
         source = " ".join(
@@ -488,7 +498,7 @@ def test_wave3_many_valid_definitions_and_nested_unsupported_budget(kind: str):
 def test_wave3_parser_diagnostics_share_budget_with_adapter(kind: str):
     if kind == "tradition":
         text = "traditions = { bad ^ = 2 " + " ".join(
-            f"tr_{i} = {{}}" for i in range(LIMIT + 100)
+            f"group_{i} = {{ id = tr_{i} }}" for i in range(LIMIT + 100)
         ) + " }"
     else:
         text = "bad ^ = 2 " + " ".join(
@@ -516,3 +526,20 @@ def test_wave3_single_parse_per_file_vs_per_candidate_verification(kind: str):
     with patch.object(domain, "parse_bytes", wraps=parse_bytes) as parse:
         assert all(verify_domain_candidate(c, raw, ctx) for c in result.candidates)
     assert parse.call_count == 2
+
+
+def test_wave3_tradition_group_tree_name_never_becomes_candidate_id():
+    raw, ctx, result = adapted(
+        "tradition",
+        "traditions = { tree_alpha = { "
+        "name = tree_label child_tradition = { id = tr_alpha } "
+        "} }",
+    )
+    assert len(result.candidates) == 1
+    c = result.candidates[0]
+    assert c.game_id is None and c.id_source_ref is None
+    assert c.localisation_key is None
+    assert c.resolution == "partial"
+    assert any(d.code == "DOMAIN_UNRESOLVED_ID" for d in c.diagnostics)
+    assert c.source_ref.raw_bytes(raw).startswith(b"tree_alpha =")
+    assert verify_domain_candidate(c, raw, ctx)
