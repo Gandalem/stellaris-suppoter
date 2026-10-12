@@ -354,7 +354,7 @@
     {
       "id": "TASK-014",
       "title": "Remaining domain adapters",
-      "status": "todo",
+      "status": "doing",
       "feature_ids": [
         "F-005"
       ],
@@ -371,7 +371,9 @@
       "acceptance": [
         "Each scoped domain has normal, error, collision and localisation coverage."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-014-foundation.md"
+      ]
     },
     {
       "id": "TASK-015",
