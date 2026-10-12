@@ -46,7 +46,7 @@ IdRule = Literal["root_identifier", "literal_key_field"]
 Resolution = Literal["raw_definition", "partial", "ambiguous"]
 SupportLevel = Literal["synthetic_static", "partial", "unsupported"]
 
-_ID = re.compile(r"[A-Za-z_][A-Za-z0-9_.-]*\\Z")
+_ID = re.compile(r"[A-Za-z_][A-Za-z0-9_.-]*\Z")
 _HARD_PARSE_CODES = frozenset(
     {"LIMIT_EXCEEDED", "PARSE_DEPTH_LIMIT", "PARSE_NODE_LIMIT", "PARSE_DIAGNOSTIC_LIMIT"}
 )
