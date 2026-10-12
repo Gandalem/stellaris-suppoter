@@ -69,3 +69,6 @@ jobs:
       - name: Measure synthetic Phase B verification parse cost (non-gating)
         run: python scripts/bench_domain_wave3.py
         continue-on-error: true
+      - name: Measure synthetic event candidate parse cost (non-gating)
+        run: python scripts/bench_domain_event.py
+        continue-on-error: true

@@ -1,6 +1,6 @@
 """Bounded, source-grounded adapters for explicitly registered non-technology fixtures.
 
-Only ten opt-in authored synthetic grammars are supported here. Registry paths are
+Only eleven opt-in authored synthetic grammars are supported here. Registry paths are
 investigation candidates, not claims of compatibility with an installed game.
 The existing technology/SQLite/search/CLI contracts are intentionally unchanged.
 """
@@ -43,7 +43,7 @@ from stellaris_supporter.parsing.parser import (
 DomainKind = Literal[
     "component_template", "building", "district", "pop_job",
     "trait", "government", "civic", "origin",
-    "tradition", "ascension_perk",
+    "tradition", "ascension_perk", "event",
 ]
 IdRule = Literal[
     "root_identifier", "nested_identifier", "nested_id_field",
@@ -71,7 +71,7 @@ class DomainSpec:
     id_rule: IdRule
     wrapper: str | None = None
     condition_fields: tuple[str, ...] = ()
-    localisation_rule: Literal["id_key", "name_field"] = "id_key"
+    localisation_rule: Literal["id_key", "name_field", "title_field"] = "id_key"
     flat_files_only: bool = False
 
 
@@ -152,6 +152,16 @@ DOMAIN_REGISTRY: dict[str, DomainSpec] = {
         wrapper="ascension_perk",
         condition_fields=("potential", "allow", "possible", "prerequisites"),
         localisation_rule="name_field",
+    ),
+    # Authored synthetic country_event/planet_event only. The event parser
+    # validates file-global namespace declarations separately; only an
+    # explicit unique literal id field can identify the event.
+    "event": DomainSpec(
+        "event",
+        "events/",
+        "literal_id_field",
+        condition_fields=("trigger", "potential", "allow"),
+        localisation_rule="title_field",
     ),
 }
 
@@ -568,11 +578,12 @@ def _make_candidate(
     # display-name field is different from a game ID and must be a *unique*
     # static literal; an unknown/dynamic name remains unresolved, not guessed.
     localisation_key = game_id
-    if spec.localisation_rule == "name_field":
+    if spec.localisation_rule in ("name_field", "title_field"):
+        name_field = "title" if spec.localisation_rule == "title_field" else "name"
         names = (
             [
                 item for item in pair.value.items
-                if isinstance(item, PairNode) and item.key_text == "name"
+                if isinstance(item, PairNode) and item.key_text == name_field
             ]
             if isinstance(pair.value, BlockNode) else []
         )
@@ -649,6 +660,13 @@ def _adapt_bound_domain(
     if any(d.code in _HARD_PARSE_CODES for d in parse_diagnostics):
         # A resource stop is never a partial candidate that callers may activate.
         return DomainAdaptResult((), parse_diagnostics, (), False, blocked=True)
+
+    if spec.kind == "event":
+        # The namespace-aware adapter receives only an already validated
+        # whole-file canonical ParseResult; no weaker parsing path is exposed.
+        from stellaris_supporter.domain.event import adapt_events_bound
+
+        return adapt_events_bound(parsed, source, context, spec, parse_diagnostics)
 
     candidates: list[DomainCandidate] = []
     diagnostics: list[DomainDiagnostic] = list(parse_diagnostics)

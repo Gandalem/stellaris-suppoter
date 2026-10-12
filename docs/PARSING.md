@@ -74,3 +74,28 @@ Trait의 현지화 key는 명시적 합성 `game_id` 규칙이고, Government/Ci
 경로 `common/traditions/`와 `common/ascension_perks/`는 *직접 작성한 synthetic fixture 전용 조사 후보*입니다. 전통은 `traditions = { group_entry = { id = tr_a name = tr_a_name ... } }` 형식으로, 바깥 `traditions` 블록과 `group_entry`의 이름을 ID로 **사용하지 않습니다**. 직계 자식 블록 내부의 고유하고 정적인 `id` 값만 `game_id`로 기록합니다. 승천 특전은 `ascension_perk = { id = perk_a name = perk_a_name ... }`의 정적 고유 `id` 필드만 ID로 사용합니다. 다른 계층·파일명·동적/중복 ID로 추측하지 않고 `partial` 또는 명시적 `unhandled`와 원문·진단을 남깁니다.
 
 두 범주 모두 단일한 정적 `name` 필드가 `localisation_key`라는 *합성 정책*을 사용하며 게임 ID와 별개입니다. 현지화 key가 없으면 이름 해석을 거부하고, key는 있으나 한국어·영어 번역이 없을 때는 그 key로 fallback합니다. 출처의 SHA·snapshot·path·ordered AST·field/condition raw backing(R1) 및 canonical ParseResult 전체 결합(R2)을 기존과 동일하게 검증합니다. 그룹 내부 child마다 진단 한도 1,000을 검사하고, 단일 후보 내부에서 너무 많은 operator/unknown 진단이 발생할 때도 원문 raw 투영을 만들기 전에 차단합니다. 실제 적용 우선순위·비용/효과 계산은 수행하지 않습니다. 별도 `bench_domain_wave3.py`는 32개 합성 후보의 적응 호출 1회 vs 개별 검증 32회 재파싱과 경과시간을 비차단 측정하며 TASK-019 공식 성능 평가는 아닙니다.
+
+
+**TASK-014 Phase C1 — Event 합성 namespace 어댑터 (실제 게임 문법 미검증)**
+
+조사 후보 경로 `events/`는 authored synthetic fixture일 뿐 실제 Stellaris 설치본 호환성 증거가 아닙니다. 등록된 이벤트 유형은 `country_event`와 `planet_event`뿐입니다. 두 유형 모두 고유한 정적 `id` 필드를 통해서만 `game_id`를 추출하고, `namespace = authored` 선언과 접두어를 대조합니다. 이벤트 유형, namespace 자체, 파일명·순번·중첩 이벤트 표현식을 독립 ID로 추측하지 않습니다.
+
+동일한 namespace의 반복 선언은 각각 `DOMAIN_EVENT_NAMESPACE` info 진단의 SourceRef로 보존합니다. 선언 누락·동적·무효·충돌, 다른 namespace 접두어, 정적 ID·title 누락은 명시적 부분 결과로 유지하며 다른 파일에 있는 선언이 현재 파일에도 적용된다고 추론하지 않습니다. 미등록 event wrapper는 원본 unhandled로 남습니다. `trigger`는 조건 원문이며 `immediate` 등 중첩 이벤트 관련 내용은 실행하거나 별도 이벤트로 생성하지 않고 ordered AST/raw로 보존합니다. 고유한 정적 `title`은 `game_id`와 별개의 합성 `localisation_key`로만 사용합니다.
+
+Event C1도 기존 `adapt_domain`의 정확한 SHA/path/snapshot 및 canonical 전체 ParseResult 검증(R2), `verify_domain_candidate`의 items/fields/conditions/RawNodeRef 하위 트리 개별 backing 검사(R1)를 그대로 사용합니다. namespace provenance, parser 진단, adapter 진단은 전체 1,000개 예산을 공유하고, 한도 도달 시 `LIMIT_EXCEEDED`·`blocked=True`·빈 후보로 중단합니다. 단일 후보 내부의 미지원 operator/unknown 노드 대량 진단 사전 검사도 유지됩니다.
+
+별도 `scripts/bench_domain_event.py`는 동일 합성 원문의 이벤트 32개를 적응할 때 1회, 각 후보를 독립 검증할 때 32회의 canonical reparse를 관찰하는 비차단 측정입니다. 반복 파싱의 개선은 source_id/snapshot/path/SHA와 완전한 raw backing 무결성을 유지하는 검증된 읽기 전용 컨텍스트가 필요하며 TASK-019/E-035 통과 근거가 아닙니다. 이 C1 결과로 scripted trigger/effect 및 13개 전 도메인의 E-027 평가가 완료되는 것은 아닙니다. TASK-014=doing, F-005=in_progress, E-027=not_run을 유지합니다.
+
+
+**TASK-014 Phase C1 — 이벤트 ID 형식 R1/P2 후속 검증**
+
+다음은 실제 설치본에서 검증한 게임 이벤트 문법이 아닌, **PR #32의 직접 작성한 synthetic fixture 전용** 정적 ID 규칙입니다.
+
+- 형식: `<namespace>.<suffix>` (마침표 구분자 정확히 한 개)
+- namespace: `[A-Za-z_][A-Za-z0-9_]*`
+- suffix: `[A-Za-z0-9_]+` (한 글자 이상; 영문 ASCII·숫자·밑줄)
+- `authored.1`, `authored.example`은 정상입니다. `authored.`(빈 suffix), `authored..1`(중복 마침표), `authored.1.`(후행 마침표), `.1`(빈 namespace), `authored.1.2`(복수 분리)는 완전한 합성 ID가 아닙니다. 하이픈 또는 다른 구분자도 이 **제한된 합성 규칙**에는 포함하지 않습니다.
+- 접두 namespace가 해당 파일에서 출처를 검증한 선언과 다르면 `DOMAIN_EVENT_NAMESPACE_MISMATCH`, 마침표가 전혀 없으면 `DOMAIN_EVENT_UNQUALIFIED_ID`, 구분자가 있어도 정적 형식이 맞지 않으면 `DOMAIN_EVENT_INVALID_QUALIFIED_ID` warning으로 `partial` 처리하며 `complete=True`로 승격하지 않습니다. 원본 `game_id`, `id_source_ref`, 원본 바이트와 필드 순서/occurrence는 바꾸지 않습니다.
+- 선언 누락·중복 동일 namespace·서로 다른 namespace 충돌 등 기존 처리는 유지합니다. 유효 ID에서도 namespace 추측이나 게임 엔진의 실제 문법 해석은 하지 않습니다. 다른 10개 도메인의 공통 `_ID` 검증은 변경하지 않습니다.
+
+재현 및 회귀 근거: `harness/evidence/TASK-014-event-review-followup.md`. 필수 R1/R2 출처 검증과 1,000개 공유 진단 예산도 그대로 유지합니다.
