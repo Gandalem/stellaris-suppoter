@@ -354,7 +354,7 @@
     {
       "id": "TASK-014",
       "title": "Remaining domain adapters",
-      "status": "doing",
+      "status": "done",
       "feature_ids": [
         "F-005"
       ],
@@ -383,7 +383,8 @@
         "harness/evidence/TASK-014-scripted-review-followup.md",
         "harness/evidence/TASK-014-main-integration-after-pr33.md",
         "harness/evidence/TASK-014-e027-phase-c3.md",
-        "harness/evidence/TASK-014-closure-readiness-plan.md"
+        "harness/evidence/TASK-014-closure-readiness-plan.md",
+        "harness/evidence/TASK-014-main-integration-closure.md"
       ]
     },
     {
