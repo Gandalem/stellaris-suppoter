@@ -70,6 +70,7 @@ class DomainSpec:
     wrapper: str | None = None
     condition_fields: tuple[str, ...] = ()
     localisation_rule: Literal["id_key", "name_field"] = "id_key"
+    flat_files_only: bool = False
 
 
 # These are opt-in synthetic grammars. Never silently infer paths or ID rules.
@@ -112,6 +113,7 @@ DOMAIN_REGISTRY: dict[str, DomainSpec] = {
         wrapper="governments",
         condition_fields=("potential", "allow", "possible"),
         localisation_rule="name_field",
+        flat_files_only=True,
     ),
     "civic": DomainSpec(
         "civic",
@@ -353,6 +355,7 @@ def _validate_inputs(
         or any(part in ("..", ".", "") for part in path.split("/"))
         or not path.startswith(spec.path_prefix)
         or not path.endswith(".txt")
+        or (spec.flat_files_only and "/" in path[len(spec.path_prefix):])
     ):
         raise ValueError("source path is not registered for this domain")
     if (
