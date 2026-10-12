@@ -617,7 +617,22 @@ def _adapt_bound_domain(
             _source_ref(context, item.span),
         ))
 
+    def stop_at_diagnostic_limit(item: AstNode) -> DomainAdaptResult | None:
+        # The nested-government branch must check every direct child, not only
+        # the enclosing wrapper. Stop before projecting another candidate once
+        # the shared parser+adapter diagnostic budget has been reached.
+        if len(diagnostics) < DEFAULT_PARSER_MAX_DIAGNOSTICS:
+            return None
+        hard = DomainDiagnostic(
+            "LIMIT_EXCEEDED", "error",
+            "Domain diagnostic budget exhausted; no candidates accepted.",
+            _source_ref(context, item.span),
+        )
+        return DomainAdaptResult((), (hard,), (), False, blocked=True)
+
     for node in parsed.document.items:
+        if (stopped := stop_at_diagnostic_limit(node)) is not None:
+            return stopped
         is_assignment = (
             isinstance(node, PairNode)
             and node.key_kind == "identifier"
@@ -641,6 +656,8 @@ def _adapt_bound_domain(
                     accept(child)
                 else:
                     retain_unsupported(child)
+                if (stopped := stop_at_diagnostic_limit(child)) is not None:
+                    return stopped
         elif is_assignment and (
             (spec.id_rule == "root_identifier" and _ID.fullmatch(node.key_text))
             or (
@@ -651,13 +668,8 @@ def _adapt_bound_domain(
             accept(node)
         else:
             retain_unsupported(node)
-        if len(diagnostics) >= DEFAULT_PARSER_MAX_DIAGNOSTICS:
-            hard = DomainDiagnostic(
-                "LIMIT_EXCEEDED", "error",
-                "Domain diagnostic budget exhausted; no candidates accepted.",
-                _source_ref(context, node.span),
-            )
-            return DomainAdaptResult((), (hard,), (), False, blocked=True)
+        if (stopped := stop_at_diagnostic_limit(node)) is not None:
+            return stopped
 
     # Duplicates are ambiguous and never resolved by input/file order.
     if occurrences:
