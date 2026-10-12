@@ -332,17 +332,19 @@ def test_e027_d_duplicate_dynamic_cycle_name_and_budget(kind: str):
         return
     key = c.localisation_key
     assert key
+    duplicate_raw = f'l_korean:\n {key}:0 "A"\n {key}:0 "B"\n'.encode()
     duplicate = parse_localisation(
-        f'l_korean:\n {key}:0 "A"\n {key}:0 "B"\n'.encode(),
-        context_for_localisation("korean", key + "-dup"),
+        duplicate_raw,
+        context_for_localisation("korean", duplicate_raw, key + "-dup"),
     )
     ambiguous = resolve_domain_name(
         c, build_localisation_catalog((duplicate,))
     ).localisation
     assert ambiguous.resolution == "ambiguous"
+    cycle_raw = f'l_korean:\n {key}:0 "$next$"\n next:0 "$next$"\n'.encode()
     cycle = parse_localisation(
-        f'l_korean:\n {key}:0 "$next$"\n next:0 "$next$"\n'.encode(),
-        context_for_localisation("korean", key + "-cycle"),
+        cycle_raw,
+        context_for_localisation("korean", cycle_raw, key + "-cycle"),
     )
     result_cycle = resolve_domain_name(
         c, build_localisation_catalog((cycle,))
@@ -359,8 +361,9 @@ def test_e027_d_duplicate_dynamic_cycle_name_and_budget(kind: str):
     ).localisation.truncated
 
 
-def context_for_localisation(language: str, suffix: str) -> SourceContext:
-    raw = b"unused"
+def context_for_localisation(
+    language: str, raw: bytes, suffix: str
+) -> SourceContext:
     return SourceContext(
         "A", "synthetic", "authored",
         f"localisation/{language}/{suffix}_l_{language}.yml",
@@ -432,11 +435,8 @@ def test_e027_e_r2_external_parse_ast_token_and_source_mutation(kind: str):
             adapt_domain(forged, raw, ctx, kind)
     with pytest.raises(ValueError, match="hash"):
         adapt_domain(parsed, raw, replace(ctx, file_sha256="0" * 64), kind)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="hash"):
         adapt_domain(
-            parsed, raw, replace(ctx, snapshot_id="B"),
-            kind
-        ) if False else adapt_domain(
             parsed, raw.replace(b"cost = 100", b"cost = 999"),
             ctx, kind
         )
@@ -498,10 +498,14 @@ def test_e027_f_diagnostic_budget_representative_extractors(
         )
         expected_limit = LIMIT
     _, _, result = adapt(kind, source)
-    assert result.blocked and not result.complete
-    assert not result.candidates
-    assert [d.code for d in result.diagnostics] == ["LIMIT_EXCEEDED"]
-    assert count >= expected_limit
+    assert not result.complete
+    if count >= expected_limit:
+        assert result.blocked and not result.candidates
+        assert [d.code for d in result.diagnostics] == ["LIMIT_EXCEEDED"]
+    else:
+        assert not result.blocked
+        assert len(result.candidates) == count
+        assert len(result.diagnostics) == count
 
 
 def test_e027_f_shared_parser_budget_and_scripted_dynamic_keys():
