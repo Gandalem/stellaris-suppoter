@@ -9,13 +9,12 @@ from __future__ import annotations
 
 import hashlib
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Literal
 
 from stellaris_supporter.domain.technology import (
     DEFAULT_ADAPTER_MAX_RAW_OUTPUT_BYTES,
-    AdapterSerializationLimitError,
     RawNodeRef,
     SourceContext,
     SourceRef,
