@@ -85,3 +85,17 @@ Trait의 현지화 key는 명시적 합성 `game_id` 규칙이고, Government/Ci
 Event C1도 기존 `adapt_domain`의 정확한 SHA/path/snapshot 및 canonical 전체 ParseResult 검증(R2), `verify_domain_candidate`의 items/fields/conditions/RawNodeRef 하위 트리 개별 backing 검사(R1)를 그대로 사용합니다. namespace provenance, parser 진단, adapter 진단은 전체 1,000개 예산을 공유하고, 한도 도달 시 `LIMIT_EXCEEDED`·`blocked=True`·빈 후보로 중단합니다. 단일 후보 내부의 미지원 operator/unknown 노드 대량 진단 사전 검사도 유지됩니다.
 
 별도 `scripts/bench_domain_event.py`는 동일 합성 원문의 이벤트 32개를 적응할 때 1회, 각 후보를 독립 검증할 때 32회의 canonical reparse를 관찰하는 비차단 측정입니다. 반복 파싱의 개선은 source_id/snapshot/path/SHA와 완전한 raw backing 무결성을 유지하는 검증된 읽기 전용 컨텍스트가 필요하며 TASK-019/E-035 통과 근거가 아닙니다. 이 C1 결과로 scripted trigger/effect 및 13개 전 도메인의 E-027 평가가 완료되는 것은 아닙니다. TASK-014=doing, F-005=in_progress, E-027=not_run을 유지합니다.
+
+
+## TASK-014 Phase C1 — 이벤트 ID 형식 R1/P2 후속 검증
+
+다음은 실제 설치본에서 검증한 게임 이벤트 문법이 아닌, **PR #32의 직접 작성한 synthetic fixture 전용** 정적 ID 규칙입니다.
+
+- 형식: `<namespace>.<suffix>` (마침표 구분자 정확히 한 개)
+- namespace: `[A-Za-z_][A-Za-z0-9_]*`
+- suffix: `[A-Za-z0-9_]+` (한 글자 이상; 영문 ASCII·숫자·밑줄)
+- `authored.1`, `authored.example`은 정상입니다. `authored.`(빈 suffix), `authored..1`(중복 마침표), `authored.1.`(후행 마침표), `.1`(빈 namespace), `authored.1.2`(복수 분리)는 완전한 합성 ID가 아닙니다. 하이픈 또는 다른 구분자도 이 **제한된 합성 규칙**에는 포함하지 않습니다.
+- 접두 namespace가 해당 파일에서 출처를 검증한 선언과 다르면 `DOMAIN_EVENT_NAMESPACE_MISMATCH`, 마침표가 전혀 없으면 `DOMAIN_EVENT_UNQUALIFIED_ID`, 구분자가 있어도 정적 형식이 맞지 않으면 `DOMAIN_EVENT_INVALID_QUALIFIED_ID` warning으로 `partial` 처리하며 `complete=True`로 승격하지 않습니다. 원본 `game_id`, `id_source_ref`, 원본 바이트와 필드 순서/occurrence는 바꾸지 않습니다.
+- 선언 누락·중복 동일 namespace·서로 다른 namespace 충돌 등 기존 처리는 유지합니다. 유효 ID에서도 namespace 추측이나 게임 엔진의 실제 문법 해석은 하지 않습니다. 다른 10개 도메인의 공통 `_ID` 검증은 변경하지 않습니다.
+
+재현 및 회귀 근거: `harness/evidence/TASK-014-event-review-followup.md`. 필수 R1/R2 출처 검증과 1,000개 공유 진단 예산도 그대로 유지합니다.
