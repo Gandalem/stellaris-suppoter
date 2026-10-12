@@ -66,3 +66,6 @@ jobs:
       - name: Measure authored synthetic domain candidate reparse cost (non-gating)
         run: python scripts/bench_domain_wave2.py
         continue-on-error: true
+      - name: Measure synthetic Phase B verification parse cost (non-gating)
+        run: python scripts/bench_domain_wave3.py
+        continue-on-error: true
