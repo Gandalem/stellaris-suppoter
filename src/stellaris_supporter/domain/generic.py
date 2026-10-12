@@ -1,6 +1,6 @@
 """Bounded, source-grounded adapters for explicitly registered non-technology fixtures.
 
-Only eight opt-in authored synthetic grammars are supported here. Registry paths are
+Only ten opt-in authored synthetic grammars are supported here. Registry paths are
 investigation candidates, not claims of compatibility with an installed game.
 The existing technology/SQLite/search/CLI contracts are intentionally unchanged.
 """
@@ -43,6 +43,7 @@ from stellaris_supporter.parsing.parser import (
 DomainKind = Literal[
     "component_template", "building", "district", "pop_job",
     "trait", "government", "civic", "origin",
+    "tradition", "ascension_perk",
 ]
 IdRule = Literal[
     "root_identifier", "nested_identifier", "literal_key_field", "literal_id_field",
@@ -129,6 +130,26 @@ DOMAIN_REGISTRY: dict[str, DomainSpec] = {
         "literal_id_field",
         wrapper="origin",
         condition_fields=("potential", "allow", "possible"),
+        localisation_rule="name_field",
+    ),
+    # Authored synthetic only: the 'traditions' group itself is not an ID.
+    # Only its direct child identifier is a candidate tradition definition.
+    "tradition": DomainSpec(
+        "tradition",
+        "common/traditions/",
+        "nested_identifier",
+        wrapper="traditions",
+        condition_fields=("potential", "allow", "prerequisites", "weight"),
+        localisation_rule="name_field",
+    ),
+    # Authored synthetic only: an ascension_perk wrapper has a unique literal
+    # ID field; the type name, filename and order cannot substitute for it.
+    "ascension_perk": DomainSpec(
+        "ascension_perk",
+        "common/ascension_perks/",
+        "literal_id_field",
+        wrapper="ascension_perk",
+        condition_fields=("potential", "allow", "possible", "prerequisites"),
         localisation_rule="name_field",
     ),
 }
@@ -471,8 +492,8 @@ def _make_candidate(
     game_id: str | None = None
     id_ref: SourceRef | None = None
     if spec.id_rule in ("root_identifier", "nested_identifier"):
-        # The nested-government grammar uses the child definition's key, not
-        # the enclosing 'governments' wrapper as an ID.
+        # Each explicitly registered nested synthetic grammar uses its
+        # direct child's ID, never the enclosing group/wrapper name.
         game_id = _literal(ScalarNode(
             "scalar", pair.key_kind, pair.key_text, pair.key_span
         ))
@@ -618,8 +639,8 @@ def _adapt_bound_domain(
         ))
 
     def stop_at_diagnostic_limit(item: AstNode) -> DomainAdaptResult | None:
-        # The nested-government branch must check every direct child, not only
-        # the enclosing wrapper. Stop before projecting another candidate once
+        # Nested domain wrappers must check every direct child, not only the
+        # enclosing wrapper. Stop before projecting another candidate once
         # the shared parser+adapter diagnostic budget has been reached.
         if len(diagnostics) < DEFAULT_PARSER_MAX_DIAGNOSTICS:
             return None
@@ -644,8 +665,8 @@ def _adapt_bound_domain(
             and node.key_text == spec.wrapper
             and isinstance(node.value, BlockNode)
         ):
-            # Only direct child definitions of the explicitly registered
-            # wrapper are government candidates in this synthetic grammar.
+            # Only direct child definitions of an explicitly registered
+            # wrapper qualify; its name is never a domain candidate ID.
             for child in node.value.items:
                 if (
                     isinstance(child, PairNode)
