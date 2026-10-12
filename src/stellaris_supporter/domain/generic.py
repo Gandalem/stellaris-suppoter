@@ -18,8 +18,8 @@ from stellaris_supporter.domain.technology import (
     RawNodeRef,
     SourceContext,
     SourceRef,
-    _RawOutputBudget,
     _raw_node,
+    _RawOutputBudget,
     _source_ref,
 )
 from stellaris_supporter.parsing import (
