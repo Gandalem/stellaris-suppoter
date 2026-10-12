@@ -4,7 +4,7 @@
   "product_implemented": false,
   "active_task": "TASK-014",
   "next_task": "TASK-014",
-  "last_session": "harness/sessions/2026-10-12-task-014-phase-c1-event.md",
+  "last_session": "harness/sessions/2026-10-12-task-014-phase-c2-scripted.md",
   "latest_game_version": null,
   "updated_on": "2026-10-12",
   "notes": [
@@ -36,6 +36,7 @@
     "TASK-013 official closeout proposed on separate PR after PR #25 actual merge 8d77794c95d3fe39e3b66f0a8e402efec5a10966 from reviewed head 381c667ffd3246e0ebc2e6ec8ec1bfb2463f30f0. Real main push Package 38150169069 Ubuntu 509 passed, Windows 506 passed + existing 3 skipped, Ruff and harness both OS success; Documentation harness 38150169206 both OS success, exact main checkout confirmed in all four jobs. E-026 synthetic pass retained; TASK-013 done only proposed on closure PR, F-011 remains in_progress pending TASK-015 refs and TASK-016 diff. active_task null / next_task TASK-014 proposed, but TASK-014 remains todo until owner merges closure and new main CI succeeds. No real game data, latest_game_version null and product_implemented false.",
     "TASK-014 foundation started on dedicated branch at main 526cad817a1fbde65fcb6d89758c9017d5b92bde after TASK-013 closure and overlay docs main CI. Only four authored synthetic adapters prepared; E-027 remains not_run until all required domains and negative/localisation tests pass. No CLI/SQLite multi-domain exposure or real-game compatibility claim.",
     "TASK-014 Phase B authored synthetic tradition/ascension_perk partial implementation on separate branch from 1944e5725cb2680799107dcfde017b0d57d4baa0. PR #30 overlay dependency pruning remains separate and unmerged; E-027 not_run; do not start Phase C until Phase B owner merge and actual main CI.",
-    "TASK-014 Phase C1 event extractor started from real main 57ac44ce594ec5090f69b76d68db52db8d0afe48 after owner merges PR #31 2f35fb958ce1472efb460fac1cc3704eb809b7a6 and PR #30 57ac44ce594ec5090f69b76d68db52db8d0afe48. Real main Package 38237779265 and Documentation 38237779261 both OS passed. Earlier PR30 unmerged note was historically correct and retained. C1 authored synthetic only; C2 scripted domains and C3 E-027 still pending. No real game version validated."
+    "TASK-014 Phase C1 event extractor started from real main 57ac44ce594ec5090f69b76d68db52db8d0afe48 after owner merges PR #31 2f35fb958ce1472efb460fac1cc3704eb809b7a6 and PR #30 57ac44ce594ec5090f69b76d68db52db8d0afe48. Real main Package 38237779265 and Documentation 38237779261 both OS passed. Earlier PR30 unmerged note was historically correct and retained. C1 authored synthetic only; C2 scripted domains and C3 E-027 still pending. No real game version validated.",
+    "TASK-014 Phase C2 scripted_trigger/scripted_effect authored-synthetic adapter work started from verified main e77b38dd3d568ee368d07e3a18777d4aacee8ce2 after PR #32 owner merge, main Package 38248847704 and Documentation 38248847705 success both OS and all 4 checkout SHAs. New scripted kinds have no inferred localisation key. E-027 all-domains matrix remains not_run and C3 must await C2 merge+main CI."
   ]
 }

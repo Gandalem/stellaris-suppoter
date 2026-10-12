@@ -99,3 +99,26 @@ Event C1도 기존 `adapt_domain`의 정확한 SHA/path/snapshot 및 canonical �
 - 선언 누락·중복 동일 namespace·서로 다른 namespace 충돌 등 기존 처리는 유지합니다. 유효 ID에서도 namespace 추측이나 게임 엔진의 실제 문법 해석은 하지 않습니다. 다른 10개 도메인의 공통 `_ID` 검증은 변경하지 않습니다.
 
 재현 및 회귀 근거: `harness/evidence/TASK-014-event-review-followup.md`. 필수 R1/R2 출처 검증과 1,000개 공유 진단 예산도 그대로 유지합니다.
+
+
+**TASK-014 Phase C2 — Scripted Trigger·Scripted Effect 정적 추출 (실제 게임 미검증)**
+
+`common/scripted_triggers/` 및 `common/scripted_effects/`는 직접 작성한 authored **합성 조사 경로**이며 실제 Stellaris 설치본에서 파일 배치·엔진 문법을 확인했다는 의미가 아닙니다. 이번 단계에서 두 도메인 모두 `scripted_rule = { limit = { flag = yes } if = { amount = 100 } }`처럼 **최상위 정적 식별자와 할당 블록**만 정의 ID로 추출합니다. 별도 wrapper·filename·순번·동적 토큰을 ID로 추측하지 않습니다. 중첩 `limit`/`if`/`potential`/`trigger`/`allow`는 합성 조건 표시용 field filter로 지정하지만 조건 평가, 분기 실행, 효과 적용, weight/cost 계산은 전혀 수행하지 않고 ordered AST 원문 바이트와 각 SourceRef만 보존합니다. 나머지 중첩 효과 역시 원문 필드로 유지합니다.
+
+Scripted Trigger/Effect는 이번 합성 규칙에서 **표시 이름 현지화 key가 필요하지 않습니다**. 공통 registry의 `localisation_rule="none"`을 이 두 종류에만 지정하여 `game_id`, 소스에 쓰인 `name` 또는 `title`에서 임의의 `localisation_key`를 생성하지 않습니다. `localisation_key=None`인 후보를 `resolve_domain_name`에 전달하면 안전하게 이름 해석을 거부합니다. 이는 한국어/영어 번역 누락이나 ID 추측을 감추기 위한 fallback 생성과 다릅니다. 기존 11개 도메인의 localisation 정책은 변경하지 않습니다.
+
+같은 파일의 중복 정적 ID는 `definition_occurrence`와 모든 SourceRef를 보존한 `ambiguous` 결과로, 파일 간 중복은 `find_domain_collisions`로 확인합니다. 종류가 다른 같은 ID는 별개의 kind로 취급합니다. 정적 ID가 아닌 최상위 지시자, 미지원 operator, unknown AST, 미완성 블록, UTF-8 오류는 `partial`, `unhandled` 또는 `blocked`와 원문 진단으로 남기며 적용 우선순위를 추측하지 않습니다. 이전 R1 검증의 items/fields/conditions/children 개별 raw backing·SourceRef, R2 whole-file canonical ParseResult·SHA/snapshot/path 결합, parser+adapter 1,000개 진단 예산과 단일 후보 내부 조기 차단은 계속 적용됩니다.
+
+`scripts/bench_domain_scripted.py`는 각 scripted 종류의 합성 후보 32개를 파일당 한 번 적응하고 후보별 검증을 각각 32번 수행하는 재파싱 호출 수와 시간을 양 OS에서 비차단 관찰합니다. source/snapshot/path/SHA 바인딩과 재귀 backing 무결성을 유지하는 bounded read-only 검증 컨텍스트 재사용은 P3 후보로만 기록합니다. TASK-019/E-035 공식 성능 검증이 아니며, 실제 게임 파일 검증·SQLite/CLI 다도메인 통합·E-027 전체 13개 평가 완료 주장도 아닙니다. Phase C2 제출 시 TASK-014=`doing`, F-005=`in_progress`, E-027=`not_run` 상태를 유지합니다.
+
+
+**Phase C2 추가 수용 조건 — 동적 표현식의 명시적 partial**
+
+이 두 scripted 합성 규칙에서는 최상위 ID가 정적이더라도 내부의 **원문 `@variable` / `@dynamic`과 같은 `@`로 시작하는 스칼라 표현식**을 찾으면 `DOMAIN_DYNAMIC_EXPRESSION_UNSUPPORTED` 진단과 해당 값의 정확한 SourceRef를 남기고 후보를 `partial`로 표시합니다. 평가·치환·수정은 하지 않으며, `"@dynamic"`처럼 따옴표 안에 있는 문자열과 주석은 동적 실행 표현식으로 오인하지 않습니다. 이 합성 검사는 Parser가 이미 제한한 AST의 구조만 확인하며 기존 다른 11개 도메인에는 적용하지 않습니다. 실제 Stellaris 동적 변수 문법 전체를 구현하거나 확인한 것은 아닙니다.
+
+
+**TASK-014 C2 R1/P2 — scripted 변수 PairNode 키의 원본 위치 검증**
+
+이 규칙은 설치된 Stellaris의 스크립트 실행 규칙이 아니라 직접 작성한 **합성 정적 구문 탐지 정책**입니다. Scripted Trigger·Scripted Effect의 `authored_rule = { nested = { @dynamic = yes } }`에서 `@dynamic`은 스칼라 값이 아니라 `PairNode.key_kind="variable"`의 **키**입니다. 키가 `@`로 시작하면 해당 `key_span`의 원본 SourceRef로 `DOMAIN_DYNAMIC_EXPRESSION_UNSUPPORTED` 경고를 남기고 정의를 `partial`로 유지합니다. 값 위치의 `value = @dynamic`도 기존처럼 `partial` 처리합니다. 직계·중첩 변수 키, 변수 값 모두 실행·평가·정규화하지 않고 순서가 있는 RawNodeRef, 전체 source SHA 및 정확한 원본 바이트를 보존합니다. `"@dynamic" = yes`처럼 따옴표 안의 문자열 키, 문자열 값 및 주석을 동적 변수로 오인하지 않습니다.
+
+이 C2 검사에는 기존 진단 한도 1,000, R1 items/field/condition/children 개별 backing 검증, R2 canonical ParseResult 전체 출처 바인딩이 그대로 적용되며 다른 11개 도메인의 ID·localisation 정책에는 영향을 주지 않습니다. 수정 전후 실제 재현과 최종 CI SHA는 `harness/evidence/TASK-014-scripted-review-followup.md` 및 PR #33에 남깁니다. 후보별 전체 canonical reparse P3 개선은 R1/R2 검증을 약화하지 않는 별도 최적화 후보로 유지합니다.

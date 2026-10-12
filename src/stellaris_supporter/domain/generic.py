@@ -1,6 +1,6 @@
 """Bounded, source-grounded adapters for explicitly registered non-technology fixtures.
 
-Only eleven opt-in authored synthetic grammars are supported here. Registry paths are
+Only thirteen opt-in authored synthetic grammars are supported here. Registry paths are
 investigation candidates, not claims of compatibility with an installed game.
 The existing technology/SQLite/search/CLI contracts are intentionally unchanged.
 """
@@ -28,6 +28,7 @@ from stellaris_supporter.parsing import (
     PairNode,
     ParseResult,
     ScalarNode,
+    SourceSpan,
     UnknownNode,
     parse_bytes,
 )
@@ -44,6 +45,7 @@ DomainKind = Literal[
     "component_template", "building", "district", "pop_job",
     "trait", "government", "civic", "origin",
     "tradition", "ascension_perk", "event",
+    "scripted_trigger", "scripted_effect",
 ]
 IdRule = Literal[
     "root_identifier", "nested_identifier", "nested_id_field",
@@ -71,7 +73,7 @@ class DomainSpec:
     id_rule: IdRule
     wrapper: str | None = None
     condition_fields: tuple[str, ...] = ()
-    localisation_rule: Literal["id_key", "name_field", "title_field"] = "id_key"
+    localisation_rule: Literal["id_key", "name_field", "title_field", "none"] = "id_key"
     flat_files_only: bool = False
 
 
@@ -162,6 +164,23 @@ DOMAIN_REGISTRY: dict[str, DomainSpec] = {
         "literal_id_field",
         condition_fields=("trigger", "potential", "allow"),
         localisation_rule="title_field",
+    ),
+    # C2 authored synthetic only: top-level static pair identifiers name the
+    # definitions. Conditions/effects and expressions remain ordered raw AST,
+    # never interpreted or executed. Scripted names are NOT localisation keys.
+    "scripted_trigger": DomainSpec(
+        "scripted_trigger",
+        "common/scripted_triggers/",
+        "root_identifier",
+        condition_fields=("limit", "trigger", "potential", "allow", "if"),
+        localisation_rule="none",
+    ),
+    "scripted_effect": DomainSpec(
+        "scripted_effect",
+        "common/scripted_effects/",
+        "root_identifier",
+        condition_fields=("limit", "if", "trigger", "potential", "allow"),
+        localisation_rule="none",
     ),
 }
 
@@ -445,6 +464,29 @@ def _unknown_nodes(node: AstNode):
         yield from _unknown_nodes(node.value)
 
 
+def _first_scripted_dynamic(node: AstNode) -> SourceSpan | None:
+    """Find the source span of an authored @-expression in verified raw AST.
+
+    Both variable PairNode *keys* and scalar values can be dynamic. Quote
+    literals and comments are not variable keys. This is a syntax-only marker
+    for the two scripted kinds, never script interpretation or execution.
+    """
+
+    if isinstance(node, ScalarNode):
+        return node.span if node.text.startswith("@") else None
+    if isinstance(node, PairNode):
+        if node.key_kind == "variable" and node.key_text.startswith("@"):
+            return node.key_span
+        if node.value is not None:
+            return _first_scripted_dynamic(node.value)
+    if isinstance(node, BlockNode):
+        for child in node.items:
+            found = _first_scripted_dynamic(child)
+            if found is not None:
+                return found
+    return None
+
+
 class _DomainDiagnosticBudget(Exception):
     """Internal early-stop signal; never leak incomplete candidates."""
 
@@ -577,7 +619,10 @@ def _make_candidate(
     # This is an explicit authored-synthetic localisation-key policy. A
     # display-name field is different from a game ID and must be a *unique*
     # static literal; an unknown/dynamic name remains unresolved, not guessed.
-    localisation_key = game_id
+    # Scripted trigger/effect definitions have no authored display-name field.
+    # In particular, never promote a static script ID, "name" or "title" to
+    # an unverified localisation key. Other existing kinds retain their rule.
+    localisation_key = None if spec.localisation_rule == "none" else game_id
     if spec.localisation_rule in ("name_field", "title_field"):
         name_field = "title" if spec.localisation_rule == "title_field" else "name"
         names = (
@@ -598,6 +643,22 @@ def _make_candidate(
                 "DOMAIN_UNRESOLVED_LOCALISATION_KEY",
                 "A unique literal display-name localisation key was not established.",
                 ref,
+            )
+
+    # A static *definition ID* does not imply that a nested scripted
+    # expression can be resolved. Explicit authored @-prefixed scalars stay
+    # verbatim and make only these two script domains partial. Quoted strings
+    # and comments never count as executable expressions.
+    if (
+        spec.kind in ("scripted_trigger", "scripted_effect")
+        and isinstance(pair.value, BlockNode)
+    ):
+        dynamic = _first_scripted_dynamic(pair.value)
+        if dynamic is not None:
+            warning(
+                "DOMAIN_DYNAMIC_EXPRESSION_UNSUPPORTED",
+                "Dynamic scripted expression retained as raw AST without evaluation.",
+                _source_ref(context, dynamic),
             )
 
     partial = bool(diagnostics)

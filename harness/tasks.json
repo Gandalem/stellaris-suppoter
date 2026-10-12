@@ -378,7 +378,9 @@
         "harness/evidence/TASK-014-wave2-review-followup.md",
         "harness/evidence/TASK-014-domain-adapters-wave3.md",
         "harness/evidence/TASK-014-domain-adapters-wave4.md",
-        "harness/evidence/TASK-014-event-review-followup.md"
+        "harness/evidence/TASK-014-event-review-followup.md",
+        "harness/evidence/TASK-014-domain-adapters-wave5-scripted.md",
+        "harness/evidence/TASK-014-scripted-review-followup.md"
       ]
     },
     {
