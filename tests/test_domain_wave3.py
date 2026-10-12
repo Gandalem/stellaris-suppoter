@@ -543,3 +543,23 @@ def test_wave3_tradition_group_tree_name_never_becomes_candidate_id():
     assert any(d.code == "DOMAIN_UNRESOLVED_ID" for d in c.diagnostics)
     assert c.source_ref.raw_bytes(raw).startswith(b"tree_alpha =")
     assert verify_domain_candidate(c, raw, ctx)
+
+
+@pytest.mark.parametrize("kind", KINDS)
+def test_wave3_single_definition_many_invalid_fields_stop_before_raw_projection(
+    kind: str,
+):
+    # Parser remains within token/node limits; adapter alone could otherwise
+    # generate 1,200 operator warnings inside just one candidate.
+    invalid_fields = " ".join(f"invalid_{i} > yes" for i in range(LIMIT + 200))
+    raw = sample(kind, body=invalid_fields).encode()
+    ctx = context(kind, raw)
+    parsed = parse_bytes(raw)
+    assert not parsed.diagnostics
+    with patch.object(domain, "_raw_node", wraps=domain._raw_node) as raw_node:
+        result = adapt_domain(parsed, raw, ctx, kind)
+    assert result.blocked and not result.candidates and not result.complete
+    assert [d.code for d in result.diagnostics] == ["LIMIT_EXCEEDED"]
+    # More than a full diagnostic budget of raw projections is a resource
+    # overshoot even when the adapter ultimately returns blocked.
+    assert raw_node.call_count <= LIMIT
