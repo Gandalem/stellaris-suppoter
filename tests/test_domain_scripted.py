@@ -142,8 +142,19 @@ def test_c2_duplicate_ids_fields_conditions_and_occurrences(kind: str):
     assert all(c.resolution == "ambiguous" for c in result.candidates)
     assert [f.raw_value for f in result.candidates[0].fields
             if f.name == "weight"] == ["100", "200"]
-    assert len([f for f in result.candidates[0].conditions
-                if f.name == "limit"]) >= 2
+    top_level_limits = [
+        f for f in result.candidates[0].conditions if f.name == "limit"
+    ]
+    # The effect's other "limit" lives inside the raw "if" AST; it must
+    # NOT become a fabricated second top-level condition.
+    assert len(top_level_limits) == (
+        2 if kind == "scripted_trigger" else 1
+    )
+    if kind == "scripted_effect":
+        enclosing_if = next(
+            f for f in result.candidates[0].conditions if f.name == "if"
+        )
+        assert "limit = { has_country_flag = active }" in enclosing_if.raw_value
     assert any(d.code == "DOMAIN_DUPLICATE_ID" for d in result.diagnostics)
     assert all(verify_domain_candidate(c, raw, context) for c in result.candidates)
 
