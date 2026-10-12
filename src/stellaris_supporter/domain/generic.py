@@ -1,6 +1,6 @@
 """Bounded, source-grounded adapters for explicitly registered non-technology fixtures.
 
-Only four authored synthetic grammars are supported here. Registry paths are
+Only eight opt-in authored synthetic grammars are supported here. Registry paths are
 investigation candidates, not claims of compatibility with an installed game.
 The existing technology/SQLite/search/CLI contracts are intentionally unchanged.
 """
@@ -40,8 +40,13 @@ from stellaris_supporter.parsing.parser import (
     DEFAULT_PARSER_MAX_NODES,
 )
 
-DomainKind = Literal["component_template", "building", "district", "pop_job"]
-IdRule = Literal["root_identifier", "literal_key_field"]
+DomainKind = Literal[
+    "component_template", "building", "district", "pop_job",
+    "trait", "government", "civic", "origin",
+]
+IdRule = Literal[
+    "root_identifier", "nested_identifier", "literal_key_field", "literal_id_field",
+]
 Resolution = Literal["raw_definition", "partial", "ambiguous"]
 SupportLevel = Literal["synthetic_static", "partial", "unsupported"]
 
@@ -64,7 +69,7 @@ class DomainSpec:
     id_rule: IdRule
     wrapper: str | None = None
     condition_fields: tuple[str, ...] = ()
-    localisation_rule: Literal["id_key"] = "id_key"
+    localisation_rule: Literal["id_key", "name_field"] = "id_key"
 
 
 # These are opt-in synthetic grammars. Never silently infer paths or ID rules.
@@ -93,6 +98,36 @@ DOMAIN_REGISTRY: dict[str, DomainSpec] = {
         "common/pop_jobs/",
         "root_identifier",
         condition_fields=("possible", "potential", "weight", "trigger"),
+    ),
+    "trait": DomainSpec(
+        "trait",
+        "common/traits/",
+        "root_identifier",
+        condition_fields=("potential", "allow", "species_potential"),
+    ),
+    "government": DomainSpec(
+        "government",
+        "common/governments/",
+        "nested_identifier",
+        wrapper="governments",
+        condition_fields=("potential", "allow", "possible"),
+        localisation_rule="name_field",
+    ),
+    "civic": DomainSpec(
+        "civic",
+        "common/governments/civics/",
+        "literal_key_field",
+        wrapper="civic",
+        condition_fields=("potential", "allow", "possible"),
+        localisation_rule="name_field",
+    ),
+    "origin": DomainSpec(
+        "origin",
+        "common/governments/origins/",
+        "literal_id_field",
+        wrapper="origin",
+        condition_fields=("potential", "allow", "possible"),
+        localisation_rule="name_field",
     ),
 }
 
@@ -432,23 +467,29 @@ def _make_candidate(
 
     game_id: str | None = None
     id_ref: SourceRef | None = None
-    if spec.id_rule == "root_identifier":
+    if spec.id_rule in ("root_identifier", "nested_identifier"):
+        # The nested-government grammar uses the child definition's key, not
+        # the enclosing 'governments' wrapper as an ID.
         game_id = _literal(ScalarNode(
             "scalar", pair.key_kind, pair.key_text, pair.key_span
         ))
         if game_id is not None:
             id_ref = _source_ref(context, pair.key_span)
     else:
-        keys = [item for item in fields if item.name == "key"]
-        if len(keys) == 1 and keys[0].operator == "=":
-            # ID is the *value* of the key field, not the wrapper name.
-            id_node = next(
-                item.value for item in pair.value.items
-                if isinstance(item, PairNode) and item.key_text == "key"
-            ) if isinstance(pair.value, BlockNode) else None
-            game_id = _literal(id_node)
-            if game_id is not None and id_node is not None:
-                id_ref = _source_ref(context, id_node.span)
+        # Unique literal ID-bearing field; a dynamic/duplicate/missing ID is
+        # never inferred from a wrapper, filename or definition occurrence.
+        id_name = "key" if spec.id_rule == "literal_key_field" else "id"
+        id_pairs = (
+            [
+                item for item in pair.value.items
+                if isinstance(item, PairNode) and item.key_text == id_name
+            ]
+            if isinstance(pair.value, BlockNode) else []
+        )
+        if len(id_pairs) == 1 and id_pairs[0].operator_kind == "assign":
+            game_id = _literal(id_pairs[0].value)
+            if game_id is not None and id_pairs[0].value is not None:
+                id_ref = _source_ref(context, id_pairs[0].value.span)
 
     if game_id is None:
         diagnostics.append(DomainDiagnostic(
@@ -462,6 +503,31 @@ def _make_candidate(
             "Unclosed definition cannot be treated as fully supported.",
             ref,
         ))
+
+    # This is an explicit authored-synthetic localisation-key policy. A
+    # display-name field is different from a game ID and must be a *unique*
+    # static literal; an unknown/dynamic name remains unresolved, not guessed.
+    localisation_key = game_id
+    if spec.localisation_rule == "name_field":
+        names = (
+            [
+                item for item in pair.value.items
+                if isinstance(item, PairNode) and item.key_text == "name"
+            ]
+            if isinstance(pair.value, BlockNode) else []
+        )
+        localisation_key = (
+            _literal(names[0].value)
+            if len(names) == 1 and names[0].operator_kind == "assign"
+            else None
+        )
+        if localisation_key is None or game_id is None:
+            localisation_key = None
+            diagnostics.append(DomainDiagnostic(
+                "DOMAIN_UNRESOLVED_LOCALISATION_KEY", "warning",
+                "A unique literal display-name localisation key was not established.",
+                ref,
+            ))
 
     partial = bool(diagnostics)
     conditions = tuple(f for f in fields if f.name in spec.condition_fields)
@@ -477,7 +543,7 @@ def _make_candidate(
         diagnostics=tuple(diagnostics),
         resolution="partial" if partial else "raw_definition",
         support_level="partial" if partial else "synthetic_static",
-        localisation_key=game_id,
+        localisation_key=localisation_key,
     )
 
 
@@ -528,38 +594,60 @@ def _adapt_bound_domain(
     diagnostics: list[DomainDiagnostic] = list(parse_diagnostics)
     unhandled: list[RawNodeRef] = []
     occurrences: dict[str, int] = {}
+    def accept(pair: PairNode) -> None:
+        from dataclasses import replace
+
+        candidate = _make_candidate(pair, spec, source, context, parse_diagnostics)
+        if candidate.game_id is not None:
+            occurrences[candidate.game_id] = occurrences.get(candidate.game_id, 0) + 1
+            candidate = replace(
+                candidate, definition_occurrence=occurrences[candidate.game_id]
+            )
+        candidates.append(candidate)
+        diagnostics.extend(d for d in candidate.diagnostics if d.origin == "adapter")
+
+    def retain_unsupported(item: AstNode) -> None:
+        unhandled.append(_raw_node(item, source, context))
+        diagnostics.append(DomainDiagnostic(
+            "DOMAIN_UNSUPPORTED_TOP_LEVEL", "warning",
+            "Unrecognised domain definition or directive was retained.",
+            _source_ref(context, item.span),
+        ))
+
     for node in parsed.document.items:
-        if (
+        is_assignment = (
             isinstance(node, PairNode)
             and node.key_kind == "identifier"
             and node.operator_kind == "assign"
-            and (
-                (spec.id_rule == "root_identifier" and _ID.fullmatch(node.key_text))
-                or (spec.id_rule == "literal_key_field" and node.key_text == spec.wrapper)
+        )
+        if (
+            spec.id_rule == "nested_identifier"
+            and is_assignment
+            and node.key_text == spec.wrapper
+            and isinstance(node.value, BlockNode)
+        ):
+            # Only direct child definitions of the explicitly registered
+            # wrapper are government candidates in this synthetic grammar.
+            for child in node.value.items:
+                if (
+                    isinstance(child, PairNode)
+                    and child.key_kind == "identifier"
+                    and child.operator_kind == "assign"
+                    and _ID.fullmatch(child.key_text)
+                ):
+                    accept(child)
+                else:
+                    retain_unsupported(child)
+        elif is_assignment and (
+            (spec.id_rule == "root_identifier" and _ID.fullmatch(node.key_text))
+            or (
+                spec.id_rule in ("literal_key_field", "literal_id_field")
+                and node.key_text == spec.wrapper
             )
         ):
-            candidate = _make_candidate(
-                node, spec, source, context, parse_diagnostics
-            )
-            if candidate.game_id is not None:
-                from dataclasses import replace
-
-                occurrences[candidate.game_id] = (
-                    occurrences.get(candidate.game_id, 0) + 1
-                )
-                candidate = replace(
-                    candidate,
-                    definition_occurrence=occurrences[candidate.game_id],
-                )
-            candidates.append(candidate)
-            diagnostics.extend(d for d in candidate.diagnostics if d.origin == "adapter")
+            accept(node)
         else:
-            unhandled.append(_raw_node(node, source, context))
-            diagnostics.append(DomainDiagnostic(
-                "DOMAIN_UNSUPPORTED_TOP_LEVEL", "warning",
-                "Unrecognised top-level definition or directive was retained.",
-                _source_ref(context, node.span),
-            ))
+            retain_unsupported(node)
         if len(diagnostics) >= DEFAULT_PARSER_MAX_DIAGNOSTICS:
             hard = DomainDiagnostic(
                 "LIMIT_EXCEEDED", "error",
