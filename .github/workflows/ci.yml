@@ -63,3 +63,6 @@ jobs:
       - name: Measure synthetic SQLite read preflight (non-gating)
         run: python scripts/bench_storage_schema.py
         continue-on-error: true
+      - name: Measure authored synthetic domain candidate reparse cost (non-gating)
+        run: python scripts/bench_domain_wave2.py
+        continue-on-error: true
