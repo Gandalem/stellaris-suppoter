@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import replace
+from unittest.mock import patch
 
 import pytest
 
@@ -161,3 +162,21 @@ def test_r2_hard_parser_depth_and_lexer_token_limits_still_block():
         result = adapt_domain(parsed, raw, ctx, "building")
         assert result.blocked and not result.complete and not result.candidates
         assert any(d.code in {"PARSE_DEPTH_LIMIT", "LIMIT_EXCEEDED"} for d in result.diagnostics)
+
+
+def test_r2_full_parse_comparison_happens_once_per_adaptation():
+    raw = b"building_x = { cost = 100 }\nbuilding_y = { cost = 200 }"
+    ctx = _context(raw)
+    parsed = parse_bytes(raw)
+    with patch(
+        "stellaris_supporter.domain.generic.parse_bytes", wraps=parse_bytes
+    ) as canonical_parse:
+        result = adapt_domain(parsed, raw, ctx, "building")
+    assert len(result.candidates) == 2 and result.complete
+    assert canonical_parse.call_count == 1
+
+    with patch(
+        "stellaris_supporter.domain.generic.parse_bytes", wraps=parse_bytes
+    ) as canonical_parse:
+        assert verify_domain_candidate(result.candidates[0], raw, ctx)
+    assert canonical_parse.call_count == 1
