@@ -10,7 +10,10 @@ import pytest
 
 from stellaris_supporter.domain import generic as domain
 from stellaris_supporter.domain.generic import (
-    adapt_domain, find_domain_collisions, resolve_domain_name, verify_domain_candidate,
+    adapt_domain,
+    find_domain_collisions,
+    resolve_domain_name,
+    verify_domain_candidate,
 )
 from stellaris_supporter.domain.technology import SourceContext
 from stellaris_supporter.localisation import build_localisation_catalog, parse_localisation
