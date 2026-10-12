@@ -19,6 +19,14 @@ from stellaris_supporter.parsing import PairNode, ParseResult
 _SUPPORTED_EVENT_TYPES = frozenset({"country_event", "planet_event"})
 _NAMESPACE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 
+# C1 authored-synthetic syntax ONLY, not a claim about the game's ID grammar.
+# Exactly one dot separates namespace from a nonempty ASCII alnum/underscore
+# suffix. No empty segments, repeated/trailing dots, or leading/trailing
+# punctuation in the suffix. Keep generic._ID untouched for other domains.
+_EVENT_QUALIFIED_ID = re.compile(
+    r"(?P<namespace>[A-Za-z_][A-Za-z0-9_]*)\.(?P<suffix>[A-Za-z0-9_]+)\Z"
+)
+
 
 def adapt_events_bound(
     parsed: ParseResult,
@@ -163,6 +171,45 @@ def adapt_events_bound(
             )
             return add(code, "warning", message, source_ref)
 
+        # Validate the *entire* explicit ID even when a file-local namespace
+        # is missing or invalid. A prefix match alone used to accept "authored."
+        # as a complete synthetic event, despite its empty suffix. Never
+        # normalise or invent a suffix: the original game_id and ID SourceRef
+        # remain available on the partial candidate for forensic inspection.
+        qualified_id = (
+            None if candidate.game_id is None
+            else _EVENT_QUALIFIED_ID.fullmatch(candidate.game_id)
+        )
+        if candidate.game_id is not None:
+            if "." not in candidate.game_id:
+                stopped = candidate_warning(
+                    "DOMAIN_EVENT_UNQUALIFIED_ID",
+                    "Explicit event ID has no namespace separator.",
+                    candidate.id_source_ref or ref,
+                )
+                if stopped is not None:
+                    return stopped
+            elif qualified_id is None:
+                stopped = candidate_warning(
+                    "DOMAIN_EVENT_INVALID_QUALIFIED_ID",
+                    "Synthetic event ID needs exactly one namespace separator "
+                    "and a nonempty ASCII alphanumeric/underscore suffix.",
+                    candidate.id_source_ref or ref,
+                )
+                if stopped is not None:
+                    return stopped
+            elif (
+                declared_namespace is not None
+                and qualified_id.group("namespace") != declared_namespace
+            ):
+                stopped = candidate_warning(
+                    "DOMAIN_EVENT_NAMESPACE_MISMATCH",
+                    "Static event ID prefix does not match the local namespace.",
+                    candidate.id_source_ref or ref,
+                )
+                if stopped is not None:
+                    return stopped
+
         if declared_namespace is None:
             reason = (
                 "Conflicting/invalid local declarations; external namespace "
@@ -175,23 +222,6 @@ def adapt_events_bound(
             )
             if stopped is not None:
                 return stopped
-        elif candidate.game_id is not None:
-            if "." not in candidate.game_id:
-                stopped = candidate_warning(
-                    "DOMAIN_EVENT_UNQUALIFIED_ID",
-                    "Explicit event ID is not namespace-qualified.",
-                    candidate.id_source_ref or ref,
-                )
-                if stopped is not None:
-                    return stopped
-            elif candidate.game_id.split(".", 1)[0] != declared_namespace:
-                stopped = candidate_warning(
-                    "DOMAIN_EVENT_NAMESPACE_MISMATCH",
-                    "Static event ID prefix does not match the local namespace.",
-                    candidate.id_source_ref or ref,
-                )
-                if stopped is not None:
-                    return stopped
 
         if candidate.game_id is not None:
             occurrences[candidate.game_id] = (
