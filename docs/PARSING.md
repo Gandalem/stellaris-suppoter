@@ -110,3 +110,8 @@ Scripted Trigger/Effect는 이번 합성 규칙에서 **표시 이름 현지화 
 같은 파일의 중복 정적 ID는 `definition_occurrence`와 모든 SourceRef를 보존한 `ambiguous` 결과로, 파일 간 중복은 `find_domain_collisions`로 확인합니다. 종류가 다른 같은 ID는 별개의 kind로 취급합니다. 정적 ID가 아닌 최상위 지시자, 미지원 operator, unknown AST, 미완성 블록, UTF-8 오류는 `partial`, `unhandled` 또는 `blocked`와 원문 진단으로 남기며 적용 우선순위를 추측하지 않습니다. 이전 R1 검증의 items/fields/conditions/children 개별 raw backing·SourceRef, R2 whole-file canonical ParseResult·SHA/snapshot/path 결합, parser+adapter 1,000개 진단 예산과 단일 후보 내부 조기 차단은 계속 적용됩니다.
 
 `scripts/bench_domain_scripted.py`는 각 scripted 종류의 합성 후보 32개를 파일당 한 번 적응하고 후보별 검증을 각각 32번 수행하는 재파싱 호출 수와 시간을 양 OS에서 비차단 관찰합니다. source/snapshot/path/SHA 바인딩과 재귀 backing 무결성을 유지하는 bounded read-only 검증 컨텍스트 재사용은 P3 후보로만 기록합니다. TASK-019/E-035 공식 성능 검증이 아니며, 실제 게임 파일 검증·SQLite/CLI 다도메인 통합·E-027 전체 13개 평가 완료 주장도 아닙니다. Phase C2 제출 시 TASK-014=`doing`, F-005=`in_progress`, E-027=`not_run` 상태를 유지합니다.
+
+
+**Phase C2 추가 수용 조건 — 동적 표현식의 명시적 partial**
+
+이 두 scripted 합성 규칙에서는 최상위 ID가 정적이더라도 내부의 **원문 `@variable` / `@dynamic`과 같은 `@`로 시작하는 스칼라 표현식**을 찾으면 `DOMAIN_DYNAMIC_EXPRESSION_UNSUPPORTED` 진단과 해당 값의 정확한 SourceRef를 남기고 후보를 `partial`로 표시합니다. 평가·치환·수정은 하지 않으며, `"@dynamic"`처럼 따옴표 안에 있는 문자열과 주석은 동적 실행 표현식으로 오인하지 않습니다. 이 합성 검사는 Parser가 이미 제한한 AST의 구조만 확인하며 기존 다른 11개 도메인에는 적용하지 않습니다. 실제 Stellaris 동적 변수 문법 전체를 구현하거나 확인한 것은 아닙니다.

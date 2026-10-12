@@ -463,6 +463,25 @@ def _unknown_nodes(node: AstNode):
         yield from _unknown_nodes(node.value)
 
 
+def _first_scripted_dynamic(node: AstNode) -> ScalarNode | None:
+    """Find an authored @-expression in a verified raw AST, not in quotes.
+
+    Parser token/node/depth bounds already apply. This is a *syntax marker*
+    for the two scripted kinds only; it does not evaluate expressions.
+    """
+
+    if isinstance(node, ScalarNode):
+        return node if node.text.startswith("@") else None
+    if isinstance(node, PairNode) and node.value is not None:
+        return _first_scripted_dynamic(node.value)
+    if isinstance(node, BlockNode):
+        for child in node.items:
+            found = _first_scripted_dynamic(child)
+            if found is not None:
+                return found
+    return None
+
+
 class _DomainDiagnosticBudget(Exception):
     """Internal early-stop signal; never leak incomplete candidates."""
 
@@ -619,6 +638,22 @@ def _make_candidate(
                 "DOMAIN_UNRESOLVED_LOCALISATION_KEY",
                 "A unique literal display-name localisation key was not established.",
                 ref,
+            )
+
+    # A static *definition ID* does not imply that a nested scripted
+    # expression can be resolved. Explicit authored @-prefixed scalars stay
+    # verbatim and make only these two script domains partial. Quoted strings
+    # and comments never count as executable expressions.
+    if (
+        spec.kind in ("scripted_trigger", "scripted_effect")
+        and isinstance(pair.value, BlockNode)
+    ):
+        dynamic = _first_scripted_dynamic(pair.value)
+        if dynamic is not None:
+            warning(
+                "DOMAIN_DYNAMIC_EXPRESSION_UNSUPPORTED",
+                "Dynamic scripted expression retained as raw AST without evaluation.",
+                _source_ref(context, dynamic.span),
             )
 
     partial = bool(diagnostics)
