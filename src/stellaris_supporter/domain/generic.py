@@ -1,6 +1,6 @@
 """Bounded, source-grounded adapters for explicitly registered non-technology fixtures.
 
-Only eleven opt-in authored synthetic grammars are supported here. Registry paths are
+Only thirteen opt-in authored synthetic grammars are supported here. Registry paths are
 investigation candidates, not claims of compatibility with an installed game.
 The existing technology/SQLite/search/CLI contracts are intentionally unchanged.
 """
@@ -44,6 +44,7 @@ DomainKind = Literal[
     "component_template", "building", "district", "pop_job",
     "trait", "government", "civic", "origin",
     "tradition", "ascension_perk", "event",
+    "scripted_trigger", "scripted_effect",
 ]
 IdRule = Literal[
     "root_identifier", "nested_identifier", "nested_id_field",
@@ -71,7 +72,7 @@ class DomainSpec:
     id_rule: IdRule
     wrapper: str | None = None
     condition_fields: tuple[str, ...] = ()
-    localisation_rule: Literal["id_key", "name_field", "title_field"] = "id_key"
+    localisation_rule: Literal["id_key", "name_field", "title_field", "none"] = "id_key"
     flat_files_only: bool = False
 
 
@@ -162,6 +163,23 @@ DOMAIN_REGISTRY: dict[str, DomainSpec] = {
         "literal_id_field",
         condition_fields=("trigger", "potential", "allow"),
         localisation_rule="title_field",
+    ),
+    # C2 authored synthetic only: top-level static pair identifiers name the
+    # definitions. Conditions/effects and expressions remain ordered raw AST,
+    # never interpreted or executed. Scripted names are NOT localisation keys.
+    "scripted_trigger": DomainSpec(
+        "scripted_trigger",
+        "common/scripted_triggers/",
+        "root_identifier",
+        condition_fields=("limit", "trigger", "potential", "allow", "if"),
+        localisation_rule="none",
+    ),
+    "scripted_effect": DomainSpec(
+        "scripted_effect",
+        "common/scripted_effects/",
+        "root_identifier",
+        condition_fields=("limit", "if", "trigger", "potential", "allow"),
+        localisation_rule="none",
     ),
 }
 
@@ -577,7 +595,10 @@ def _make_candidate(
     # This is an explicit authored-synthetic localisation-key policy. A
     # display-name field is different from a game ID and must be a *unique*
     # static literal; an unknown/dynamic name remains unresolved, not guessed.
-    localisation_key = game_id
+    # Scripted trigger/effect definitions have no authored display-name field.
+    # In particular, never promote a static script ID, "name" or "title" to
+    # an unverified localisation key. Other existing kinds retain their rule.
+    localisation_key = None if spec.localisation_rule == "none" else game_id
     if spec.localisation_rule in ("name_field", "title_field"):
         name_field = "title" if spec.localisation_rule == "title_field" else "name"
         names = (
