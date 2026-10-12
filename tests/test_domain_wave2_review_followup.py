@@ -19,7 +19,7 @@ LIMIT = DEFAULT_PARSER_MAX_DIAGNOSTICS
 
 
 def _fixture(children: str):
-    source = f"governments = {{ {children} }}".encode("utf-8")
+    source = f"governments = {{ {children} }}".encode()
     context = SourceContext(
         "A", "synthetic", "authored", "common/governments/limit.txt",
         hashlib.sha256(source).hexdigest(),
