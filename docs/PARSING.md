@@ -87,7 +87,7 @@ Event C1도 기존 `adapt_domain`의 정확한 SHA/path/snapshot 및 canonical �
 별도 `scripts/bench_domain_event.py`는 동일 합성 원문의 이벤트 32개를 적응할 때 1회, 각 후보를 독립 검증할 때 32회의 canonical reparse를 관찰하는 비차단 측정입니다. 반복 파싱의 개선은 source_id/snapshot/path/SHA와 완전한 raw backing 무결성을 유지하는 검증된 읽기 전용 컨텍스트가 필요하며 TASK-019/E-035 통과 근거가 아닙니다. 이 C1 결과로 scripted trigger/effect 및 13개 전 도메인의 E-027 평가가 완료되는 것은 아닙니다. TASK-014=doing, F-005=in_progress, E-027=not_run을 유지합니다.
 
 
-## TASK-014 Phase C1 — 이벤트 ID 형식 R1/P2 후속 검증
+**TASK-014 Phase C1 — 이벤트 ID 형식 R1/P2 후속 검증**
 
 다음은 실제 설치본에서 검증한 게임 이벤트 문법이 아닌, **PR #32의 직접 작성한 synthetic fixture 전용** 정적 ID 규칙입니다.
 
