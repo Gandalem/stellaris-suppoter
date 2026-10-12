@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import replace
+from typing import Literal
 
 from stellaris_supporter.domain import generic as domain
 from stellaris_supporter.domain.technology import SourceContext, SourceRef
@@ -46,7 +47,7 @@ def adapt_events_bound(
 
     def add(
         code: str,
-        severity: domain.Literal["info", "warning", "error"],
+        severity: Literal["info", "warning", "error"],
         message: str,
         ref: SourceRef,
     ) -> domain.DomainAdaptResult | None:
