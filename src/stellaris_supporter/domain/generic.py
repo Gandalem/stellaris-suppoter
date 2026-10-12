@@ -47,7 +47,13 @@ SupportLevel = Literal["synthetic_static", "partial", "unsupported"]
 
 _ID = re.compile(r"[A-Za-z_][A-Za-z0-9_.-]*\Z")
 _HARD_PARSE_CODES = frozenset(
-    {"LIMIT_EXCEEDED", "PARSE_DEPTH_LIMIT", "PARSE_NODE_LIMIT", "PARSE_DIAGNOSTIC_LIMIT"}
+    {
+        "ENCODING_ERROR",
+        "LIMIT_EXCEEDED",
+        "PARSE_DEPTH_LIMIT",
+        "PARSE_NODE_LIMIT",
+        "PARSE_DIAGNOSTIC_LIMIT",
+    }
 )
 
 
@@ -487,6 +493,28 @@ def adapt_domain(
     if spec is None:
         raise ValueError("unregistered domain adapter")
     _validate_inputs(parsed, source, context, spec)
+
+    # Validate the whole token/document/diagnostic/coordinate contract exactly
+    # once per input file, not once for each candidate. Span-only checks cannot
+    # detect a different (or empty) ParseResult that omits valid definitions.
+    # Hard resource/encoding stops remain blocked without raising their limits
+    # or re-parsing hostile input with more generous limits.
+    if not any(d.code in _HARD_PARSE_CODES for d in parsed.diagnostics):
+        if parsed != parse_bytes(source):
+            raise ValueError(
+                "ParseResult does not match the complete verified source bytes."
+            )
+    return _adapt_bound_domain(parsed, source, context, spec)
+
+
+def _adapt_bound_domain(
+    parsed: ParseResult,
+    source: bytes,
+    context: SourceContext,
+    spec: DomainSpec,
+) -> DomainAdaptResult:
+    """Internal extraction for an already validated, source-bound parse."""
+
     parse_diagnostics = tuple(
         DomainDiagnostic(d.code, d.severity, d.message,
                          _source_ref(context, d.span), d.origin)
@@ -602,20 +630,40 @@ def verify_domain_candidate(
     """Fail closed on modified IDs, kinds, spans, occurrences or source hashes."""
 
     try:
+        spec = DOMAIN_REGISTRY.get(candidate.kind)
+        if spec is None:
+            return False
+        # One canonical parse per verification call. Do not reparse again in
+        # adapt_domain, and do not add a full-file parse per field or child.
         parsed = parse_bytes(source)
-        rebuilt = adapt_domain(parsed, source, context, candidate.kind)
+        _validate_inputs(parsed, source, context, spec)
+        rebuilt = _adapt_bound_domain(parsed, source, context, spec)
     except (TypeError, ValueError, UnicodeError):
         return False
     for expected in rebuilt.candidates:
         if expected != candidate:
             continue
-        # RawNodeRef excludes its backing bytes from structural equality.
+
+        # RawNodeRef._source is intentionally excluded from dataclass equality.
+        # Each independent projection (items, fields, conditions) and every
+        # nested child must instead agree with the validated source bytes.
         def source_matches(node: RawNodeRef) -> bool:
             return (
                 node.raw_bytes() == node.source_ref.raw_bytes(source)
                 and all(source_matches(child) for child in node.children)
             )
-        return all(source_matches(item) for item in candidate.items)
+
+        return (
+            all(source_matches(item) for item in candidate.items)
+            and all(
+                item.value is None or source_matches(item.value)
+                for item in candidate.fields
+            )
+            and all(
+                item.value is None or source_matches(item.value)
+                for item in candidate.conditions
+            )
+        )
     return False
 
 
