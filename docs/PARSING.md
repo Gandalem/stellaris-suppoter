@@ -67,4 +67,10 @@ Trait의 현지화 key는 명시적 합성 `game_id` 규칙이고, Government/Ci
 
 모든 8개 synthetic adapter는 동일한 `adapt_domain`의 파일 SHA·경로·canonical ParseResult 전체 바인딩(R2)과 `verify_domain_candidate`의 ordered items, field/condition value, nested raw backing 검증(R1)을 사용합니다. Government의 하위 후보도 별도 약한 검증 경로로 우회하지 않습니다. 공개 `DomainCandidate/DomainField/DomainDiagnostic`의 기존 필드·직렬화·4개 기존 도메인 동작은 보존했습니다. `scripts/bench_domain_wave2.py`는 동일 파일의 후보별 재파싱 호출 횟수와 경과시간을 양 OS에서 비차단 측정하는 authored 합성 microbenchmark이며 TASK-019의 공식 성능 기준선이 아닙니다.
 
-Phase B·C 범주(전통, 승천 특전, 이벤트, scripted trigger/effect), 전 도메인 E-027, 실제 게임 문법·버전, SQLite 다도메인 영속화, CLI 다도메인 검색과 UI는 아직 이 단계에서 지원하지 않습니다. TASK-014=`doing`, F-005=`in_progress`, E-027=`not_run`을 유지합니다.
+이 문단은 Phase A 작성 당시 잔여 범주를 기록한 역사적 내용입니다. **Phase B 구현 PR**에서는 전통(tradition)과 승천 특전(ascension_perk)의 합성 정적 추출을 추가했습니다. 아직 구현되지 않은 도메인은 이벤트(event), scripted trigger, scripted effect입니다. 전 도메인 E-027 전체 평가, 실제 게임 문법·버전, SQLite 다도메인 영속화, CLI 다도메인 검색과 UI는 이번 PR 범위 밖입니다. TASK-014=`doing`, F-005=`in_progress`, E-027=`not_run`입니다.
+
+**TASK-014 Phase B — 전통·승천 특전 합성 어댑터 (실제 게임 미검증)**
+
+경로 `common/traditions/`와 `common/ascension_perks/`는 *직접 작성한 synthetic fixture 전용 조사 후보*입니다. 전통은 `traditions = { group_entry = { id = tr_a name = tr_a_name ... } }` 형식으로, 바깥 `traditions` 블록과 `group_entry`의 이름을 ID로 **사용하지 않습니다**. 직계 자식 블록 내부의 고유하고 정적인 `id` 값만 `game_id`로 기록합니다. 승천 특전은 `ascension_perk = { id = perk_a name = perk_a_name ... }`의 정적 고유 `id` 필드만 ID로 사용합니다. 다른 계층·파일명·동적/중복 ID로 추측하지 않고 `partial` 또는 명시적 `unhandled`와 원문·진단을 남깁니다.
+
+두 범주 모두 단일한 정적 `name` 필드가 `localisation_key`라는 *합성 정책*을 사용하며 게임 ID와 별개입니다. 현지화 key가 없으면 이름 해석을 거부하고, key는 있으나 한국어·영어 번역이 없을 때는 그 key로 fallback합니다. 출처의 SHA·snapshot·path·ordered AST·field/condition raw backing(R1) 및 canonical ParseResult 전체 결합(R2)을 기존과 동일하게 검증합니다. 그룹 내부 child마다 진단 한도 1,000을 검사하고, 단일 후보 내부에서 너무 많은 operator/unknown 진단이 발생할 때도 원문 raw 투영을 만들기 전에 차단합니다. 실제 적용 우선순위·비용/효과 계산은 수행하지 않습니다. 별도 `bench_domain_wave3.py`는 32개 합성 후보의 적응 호출 1회 vs 개별 검증 32회 재파싱과 경과시간을 비차단 측정하며 TASK-019 공식 성능 평가는 아닙니다.
