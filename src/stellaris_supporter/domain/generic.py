@@ -28,6 +28,7 @@ from stellaris_supporter.parsing import (
     PairNode,
     ParseResult,
     ScalarNode,
+    SourceSpan,
     UnknownNode,
     parse_bytes,
 )
@@ -463,17 +464,21 @@ def _unknown_nodes(node: AstNode):
         yield from _unknown_nodes(node.value)
 
 
-def _first_scripted_dynamic(node: AstNode) -> ScalarNode | None:
-    """Find an authored @-expression in a verified raw AST, not in quotes.
+def _first_scripted_dynamic(node: AstNode) -> SourceSpan | None:
+    """Find the source span of an authored @-expression in verified raw AST.
 
-    Parser token/node/depth bounds already apply. This is a *syntax marker*
-    for the two scripted kinds only; it does not evaluate expressions.
+    Both variable PairNode *keys* and scalar values can be dynamic. Quote
+    literals and comments are not variable keys. This is a syntax-only marker
+    for the two scripted kinds, never script interpretation or execution.
     """
 
     if isinstance(node, ScalarNode):
-        return node if node.text.startswith("@") else None
-    if isinstance(node, PairNode) and node.value is not None:
-        return _first_scripted_dynamic(node.value)
+        return node.span if node.text.startswith("@") else None
+    if isinstance(node, PairNode):
+        if node.key_kind == "variable" and node.key_text.startswith("@"):
+            return node.key_span
+        if node.value is not None:
+            return _first_scripted_dynamic(node.value)
     if isinstance(node, BlockNode):
         for child in node.items:
             found = _first_scripted_dynamic(child)
@@ -653,7 +658,7 @@ def _make_candidate(
             warning(
                 "DOMAIN_DYNAMIC_EXPRESSION_UNSUPPORTED",
                 "Dynamic scripted expression retained as raw AST without evaluation.",
-                _source_ref(context, dynamic.span),
+                _source_ref(context, dynamic),
             )
 
     partial = bool(diagnostics)
