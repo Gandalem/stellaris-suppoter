@@ -362,3 +362,16 @@ def test_wave2_path_and_sha_boundaries_stay_fail_closed(kind: str):
     ):
         with pytest.raises(ValueError):
             adapt_domain(parsed, source, damaged, kind)
+
+
+
+@pytest.mark.parametrize("nested_subdir", ("civics", "origins"))
+def test_wave2_government_does_not_capture_other_domain_subfolders(nested_subdir: str):
+    raw = sample("government").encode("utf-8")
+    ctx = context("government", raw)
+    spoofed = replace(
+        ctx,
+        relative_path=f"common/governments/{nested_subdir}/not_a_government.txt",
+    )
+    with pytest.raises(ValueError, match="path"):
+        adapt_domain(parse_bytes(raw), raw, spoofed, "government")
