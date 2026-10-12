@@ -734,7 +734,7 @@
         "F-020"
       ],
       "depends_on": [
-        "TASK-029",
+        "TASK-020",
         "TASK-032"
       ],
       "eval_ids": [
@@ -791,7 +791,7 @@
         "F-020"
       ],
       "depends_on": [
-        "TASK-022"
+        "TASK-020"
       ],
       "eval_ids": [
         "E-048"
@@ -802,7 +802,7 @@
         "SECURITY.md"
       ],
       "acceptance": [
-        "After TASK-022, test separate-process Windows borderless/windowed overlay and hotkey register/conflict/unregister.",
+        "After TASK-020 is merged and its main CI succeeds, test separate-process Windows borderless/windowed overlay and hotkey register/conflict/unregister.",
         "Test folded input passthrough, minimize/exit hide, stale window identity, DPI/monitor transitions on real Windows.",
         "Document unsupported cases and do not claim final UI release."
       ],
