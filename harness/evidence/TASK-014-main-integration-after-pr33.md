@@ -1,0 +1,13 @@
+# TASK-014 Phase C2 real-main integration gate (PR #33)
+
+2026-10-12 Asia/Seoul. Recorded after reading actual GitHub API responses and **downloaded job logs**, not inferred from a PR temporary test-merge.
+
+- [PR #33](https://github.com/Gandalem/stellaris-suppoter/pull/33) is **closed / merged=true**. Source head **`bf21c070942d82a58463e77663887028129de334`** matches the reviewed head in [final technical review #5491330176](https://github.com/Gandalem/stellaris-suppoter/pull/33#pullrequestreview-5491330176). Actual owner merge SHA/current main **`b3533f8c97e106adbf7d94119aac2d612f61040f`**, *not* temporary PR test-merge `618f822ce4c3caedbbcfe0d14e3839ca69c86677`.
+- The final technical review cleared prior scripted variable-key R1/P2 holds but is **COMMENTED by the PR author's same account `Gandalem`**, not an external `APPROVED`. The user/owner separately merged the PR. No review thread was resolved by this work.
+- [Real main Package #38256524518](https://github.com/Gandalem/stellaris-suppoter/actions/runs/38256524518) = `event=push`, `head_branch=main`, correct actual merge SHA, `completed/success`:
+  - **Ubuntu Python 3.11 job 114835918365**, exact checked-out `b3533f8c97e106adbf7d94119aac2d612f61040f`, `769 passed`, Ruff `All checks passed!`, harness `harness_valid=true`.
+  - **Windows Python 3.13 job 114835918068**, exact checkout same SHA, `766 passed, 3 skipped` (same old POSIX-only skips), Ruff `All checks passed!`, harness `harness_valid=true`.
+- [Real main Documentation #38256524387](https://github.com/Gandalem/stellaris-suppoter/actions/runs/38256524387) = `event=push`, correct main SHA, `completed/success`:
+  - **Ubuntu job 114835917541** and **Windows job 114835917901**, both downloaded logs confirm the *same actual main SHA* and `harness_valid=true`. Documentation runs harness only; it does not execute product pytest.
+- GitHub main branch: `protected=false`; GET /branches/main/protection returned **403 Resource not accessible by integration**, so specific settings cannot be asserted from that endpoint. Accessible GET /rulesets returned `[]`. The owner should consider PR-only changes, real Package/Documentation job status checks, minimum external reviewer approvals when collaborators exist, block failed-CI bypasses, and narrow exceptions **after** confirming exact check contexts, runner permissions and repository plan support. **No branch protection/settings were changed.**
+- Gate result: C3 branch `task/TASK-014-domain-adapters-wave6-e027` created from actual main SHA only after all four real integration jobs succeeded. This is proof of C2 integration, **not** E-027 pass or TASK-014 closure. Real installed Stellaris version remains unverified.

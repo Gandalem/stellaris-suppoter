@@ -122,3 +122,10 @@ Scripted Trigger/Effect는 이번 합성 규칙에서 **표시 이름 현지화 
 이 규칙은 설치된 Stellaris의 스크립트 실행 규칙이 아니라 직접 작성한 **합성 정적 구문 탐지 정책**입니다. Scripted Trigger·Scripted Effect의 `authored_rule = { nested = { @dynamic = yes } }`에서 `@dynamic`은 스칼라 값이 아니라 `PairNode.key_kind="variable"`의 **키**입니다. 키가 `@`로 시작하면 해당 `key_span`의 원본 SourceRef로 `DOMAIN_DYNAMIC_EXPRESSION_UNSUPPORTED` 경고를 남기고 정의를 `partial`로 유지합니다. 값 위치의 `value = @dynamic`도 기존처럼 `partial` 처리합니다. 직계·중첩 변수 키, 변수 값 모두 실행·평가·정규화하지 않고 순서가 있는 RawNodeRef, 전체 source SHA 및 정확한 원본 바이트를 보존합니다. `"@dynamic" = yes`처럼 따옴표 안의 문자열 키, 문자열 값 및 주석을 동적 변수로 오인하지 않습니다.
 
 이 C2 검사에는 기존 진단 한도 1,000, R1 items/field/condition/children 개별 backing 검증, R2 canonical ParseResult 전체 출처 바인딩이 그대로 적용되며 다른 11개 도메인의 ID·localisation 정책에는 영향을 주지 않습니다. 수정 전후 실제 재현과 최종 CI SHA는 `harness/evidence/TASK-014-scripted-review-followup.md` 및 PR #33에 남깁니다. 후보별 전체 canonical reparse P3 개선은 R1/R2 검증을 약화하지 않는 별도 최적화 후보로 유지합니다.
+
+
+**TASK-014 Phase C3 — E-027 전체 13종 합성 정적 어댑터 통합 수용 평가**
+
+`tests/test_domain_e027_matrix.py`는 기존 foundation, Phase A/B/C1/C2 구현을 복제하지 않고 **13개 opt-in authored synthetic 범주**를 하나의 공통 테스트 행렬 A–F(정상 정의·오류·충돌·현지화·원본 출처 R1/R2·진단/자원 한도)에서 교차 검사합니다. 실제 게임의 정의, 엔진 해석, 적용 우선순위, 게임 버전, 설치본 경로를 검증했다는 의미가 아닙니다. 이벤트는 파일 단위 `namespace`와 고유 `id`, scripted trigger/effect는 표시 이름 localisation 없이 원문 정적 정의 키로 평가합니다. 종류별 특수 문법에 동일한 잘못된 가정을 강요하지 않으며 보안 변조 차단과 resource hard stop은 이전과 동일합니다.
+
+E-027은 검증된 신규 PR head의 전체 pytest/Ruff/harness/Documentation, **독립 리뷰·소유자 병합·실제 새 main 양 OS CI**가 모두 확인된 후에만 `pass` 전환을 제안합니다. C3 PR 자체에서는 `not_run`, TASK-014 `doing`, F-005 `in_progress`를 유지하고, 별도 closure-readiness Evidence를 통해 향후 상태 전환을 계획합니다. R1/R2를 우회하지 않는 후보별 canonical reparse P3 개선은 [Issue #34](https://github.com/Gandalem/stellaris-suppoter/issues/34)로 분리합니다.

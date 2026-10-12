@@ -85,7 +85,9 @@
         "harness/evidence/TASK-014-domain-adapters-wave4.md",
         "harness/evidence/TASK-014-event-review-followup.md",
         "harness/evidence/TASK-014-domain-adapters-wave5-scripted.md",
-        "harness/evidence/TASK-014-scripted-review-followup.md"
+        "harness/evidence/TASK-014-scripted-review-followup.md",
+        "harness/evidence/TASK-014-main-integration-after-pr33.md",
+        "harness/evidence/TASK-014-e027-phase-c3.md"
       ]
     },
     {
