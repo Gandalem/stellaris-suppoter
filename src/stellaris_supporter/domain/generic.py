@@ -46,7 +46,8 @@ DomainKind = Literal[
     "tradition", "ascension_perk",
 ]
 IdRule = Literal[
-    "root_identifier", "nested_identifier", "literal_key_field", "literal_id_field",
+    "root_identifier", "nested_identifier", "nested_id_field",
+    "literal_key_field", "literal_id_field",
 ]
 Resolution = Literal["raw_definition", "partial", "ambiguous"]
 SupportLevel = Literal["synthetic_static", "partial", "unsupported"]
@@ -132,12 +133,12 @@ DOMAIN_REGISTRY: dict[str, DomainSpec] = {
         condition_fields=("potential", "allow", "possible"),
         localisation_rule="name_field",
     ),
-    # Authored synthetic only: the 'traditions' group itself is not an ID.
-    # Only its direct child identifier is a candidate tradition definition.
+    # Authored synthetic only: neither the outer group nor a child group
+    # key becomes an ID. A direct child must carry a unique static id field.
     "tradition": DomainSpec(
         "tradition",
         "common/traditions/",
-        "nested_identifier",
+        "nested_id_field",
         wrapper="traditions",
         condition_fields=("potential", "allow", "prerequisites", "weight"),
         localisation_rule="name_field",
@@ -492,8 +493,8 @@ def _make_candidate(
     game_id: str | None = None
     id_ref: SourceRef | None = None
     if spec.id_rule in ("root_identifier", "nested_identifier"):
-        # Each explicitly registered nested synthetic grammar uses its
-        # direct child's ID, never the enclosing group/wrapper name.
+        # Only identifier-based rules use a pair key as the game ID.
+        # Nested id-field rules use the unique value of an explicit id field.
         game_id = _literal(ScalarNode(
             "scalar", pair.key_kind, pair.key_text, pair.key_span
         ))
@@ -660,7 +661,7 @@ def _adapt_bound_domain(
             and node.operator_kind == "assign"
         )
         if (
-            spec.id_rule == "nested_identifier"
+            spec.id_rule in ("nested_identifier", "nested_id_field")
             and is_assignment
             and node.key_text == spec.wrapper
             and isinstance(node.value, BlockNode)
