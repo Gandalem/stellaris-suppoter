@@ -435,14 +435,38 @@ def _unknown_nodes(node: AstNode):
         yield from _unknown_nodes(node.value)
 
 
+class _DomainDiagnosticBudget(Exception):
+    """Internal early-stop signal; never leak incomplete candidates."""
+
+    def __init__(self, source_ref: SourceRef) -> None:
+        self.source_ref = source_ref
+
+
 def _make_candidate(
     pair: PairNode,
     spec: DomainSpec,
     source: bytes,
     context: SourceContext,
     parse_diagnostics: tuple[DomainDiagnostic, ...],
+    *,
+    remaining_diagnostics: int = DEFAULT_PARSER_MAX_DIAGNOSTICS,
 ) -> DomainCandidate:
     ref = _source_ref(context, pair.span)
+
+    # A single definition can itself contain thousands of warning-producing
+    # fields. Preflight the same unsupported operators and unknown nodes before
+    # allocating any RawNodeRef projections. This preserves the overall parser
+    # and adapter diagnostic budget even for just one candidate.
+    if isinstance(pair.value, BlockNode):
+        pending = 0
+        for item in pair.value.items:
+            if isinstance(item, PairNode) and item.operator_kind != "assign":
+                pending += 1
+            for _ in _unknown_nodes(item):
+                pending += 1
+            if pending >= remaining_diagnostics:
+                raise _DomainDiagnosticBudget(_source_ref(context, item.span))
+
     raw_items = (
         tuple(_raw_node(item, source, context) for item in pair.value.items)
         if isinstance(pair.value, BlockNode) else ()
@@ -458,6 +482,17 @@ def _make_candidate(
             and ref.byte_start <= d.source_ref.byte_start <= ref.byte_end
         )
     ]
+    added_warnings = 0
+
+    def warning(code: str, message: str, source_ref: SourceRef) -> None:
+        nonlocal added_warnings
+        # Reserve the warning slot *before* creating the object. Reaching the
+        # existing shared limit is a hard stop, not a truncated partial result.
+        if added_warnings + 1 >= remaining_diagnostics:
+            raise _DomainDiagnosticBudget(source_ref)
+        diagnostics.append(DomainDiagnostic(code, "warning", message, source_ref))
+        added_warnings += 1
+
     occurrences: dict[str, int] = {}
     if isinstance(pair.value, BlockNode):
         for item, raw in zip(pair.value.items, raw_items, strict=True):
@@ -472,23 +507,23 @@ def _make_candidate(
                 _source_ref(context, item.span),
             ))
             if item.operator_kind != "assign":
-                diagnostics.append(DomainDiagnostic(
-                    "DOMAIN_UNSUPPORTED_OPERATOR", "warning",
+                warning(
+                    "DOMAIN_UNSUPPORTED_OPERATOR",
                     "Non-assignment field retained without evaluated semantics.",
                     _source_ref(context, item.span),
-                ))
+                )
         for node in _unknown_nodes(pair.value):
-            diagnostics.append(DomainDiagnostic(
-                "DOMAIN_UNKNOWN_STRUCTURE", "warning",
+            warning(
+                "DOMAIN_UNKNOWN_STRUCTURE",
                 "Unsupported nested syntax retained as raw AST.",
                 _source_ref(context, node.span),
-            ))
+            )
     else:
-        diagnostics.append(DomainDiagnostic(
-            "DOMAIN_INVALID_DEFINITION", "warning",
+        warning(
+            "DOMAIN_INVALID_DEFINITION",
             "Domain definition is not a block; raw pair retained.",
             ref,
-        ))
+        )
 
     game_id: str | None = None
     id_ref: SourceRef | None = None
@@ -517,17 +552,17 @@ def _make_candidate(
                 id_ref = _source_ref(context, id_pairs[0].value.span)
 
     if game_id is None:
-        diagnostics.append(DomainDiagnostic(
-            "DOMAIN_UNRESOLVED_ID", "warning",
+        warning(
+            "DOMAIN_UNRESOLVED_ID",
             "A unique non-dynamic literal ID was not established.",
             ref,
-        ))
+        )
     if isinstance(pair.value, BlockNode) and not pair.value.closed:
-        diagnostics.append(DomainDiagnostic(
-            "DOMAIN_UNCLOSED_BLOCK", "warning",
+        warning(
+            "DOMAIN_UNCLOSED_BLOCK",
             "Unclosed definition cannot be treated as fully supported.",
             ref,
-        ))
+        )
 
     # This is an explicit authored-synthetic localisation-key policy. A
     # display-name field is different from a game ID and must be a *unique*
@@ -548,11 +583,11 @@ def _make_candidate(
         )
         if localisation_key is None or game_id is None:
             localisation_key = None
-            diagnostics.append(DomainDiagnostic(
-                "DOMAIN_UNRESOLVED_LOCALISATION_KEY", "warning",
+            warning(
+                "DOMAIN_UNRESOLVED_LOCALISATION_KEY",
                 "A unique literal display-name localisation key was not established.",
                 ref,
-            ))
+            )
 
     partial = bool(diagnostics)
     conditions = tuple(f for f in fields if f.name in spec.condition_fields)
@@ -619,10 +654,27 @@ def _adapt_bound_domain(
     diagnostics: list[DomainDiagnostic] = list(parse_diagnostics)
     unhandled: list[RawNodeRef] = []
     occurrences: dict[str, int] = {}
-    def accept(pair: PairNode) -> None:
+
+    def diagnostic_limit_result(ref: SourceRef) -> DomainAdaptResult:
+        hard = DomainDiagnostic(
+            "LIMIT_EXCEEDED", "error",
+            "Domain diagnostic budget exhausted; no candidates accepted.",
+            ref,
+        )
+        return DomainAdaptResult((), (hard,), (), False, blocked=True)
+
+    def accept(pair: PairNode) -> DomainAdaptResult | None:
         from dataclasses import replace
 
-        candidate = _make_candidate(pair, spec, source, context, parse_diagnostics)
+        try:
+            candidate = _make_candidate(
+                pair, spec, source, context, parse_diagnostics,
+                remaining_diagnostics=(
+                    DEFAULT_PARSER_MAX_DIAGNOSTICS - len(diagnostics)
+                ),
+            )
+        except _DomainDiagnosticBudget as exceeded:
+            return diagnostic_limit_result(exceeded.source_ref)
         if candidate.game_id is not None:
             occurrences[candidate.game_id] = occurrences.get(candidate.game_id, 0) + 1
             candidate = replace(
@@ -630,6 +682,7 @@ def _adapt_bound_domain(
             )
         candidates.append(candidate)
         diagnostics.extend(d for d in candidate.diagnostics if d.origin == "adapter")
+        return None
 
     def retain_unsupported(item: AstNode) -> None:
         unhandled.append(_raw_node(item, source, context))
@@ -645,12 +698,7 @@ def _adapt_bound_domain(
         # the shared parser+adapter diagnostic budget has been reached.
         if len(diagnostics) < DEFAULT_PARSER_MAX_DIAGNOSTICS:
             return None
-        hard = DomainDiagnostic(
-            "LIMIT_EXCEEDED", "error",
-            "Domain diagnostic budget exhausted; no candidates accepted.",
-            _source_ref(context, item.span),
-        )
-        return DomainAdaptResult((), (hard,), (), False, blocked=True)
+        return diagnostic_limit_result(_source_ref(context, item.span))
 
     for node in parsed.document.items:
         if (stopped := stop_at_diagnostic_limit(node)) is not None:
@@ -675,7 +723,8 @@ def _adapt_bound_domain(
                     and child.operator_kind == "assign"
                     and _ID.fullmatch(child.key_text)
                 ):
-                    accept(child)
+                    if (stopped := accept(child)) is not None:
+                        return stopped
                 else:
                     retain_unsupported(child)
                 if (stopped := stop_at_diagnostic_limit(child)) is not None:
@@ -687,7 +736,8 @@ def _adapt_bound_domain(
                 and node.key_text == spec.wrapper
             )
         ):
-            accept(node)
+            if (stopped := accept(node)) is not None:
+                return stopped
         else:
             retain_unsupported(node)
         if (stopped := stop_at_diagnostic_limit(node)) is not None:
