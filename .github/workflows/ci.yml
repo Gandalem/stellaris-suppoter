@@ -72,3 +72,6 @@ jobs:
       - name: Measure synthetic event candidate parse cost (non-gating)
         run: python scripts/bench_domain_event.py
         continue-on-error: true
+      - name: Measure scripted domain candidate parse cost (non-gating)
+        run: python scripts/bench_domain_scripted.py
+        continue-on-error: true

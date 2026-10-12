@@ -99,3 +99,14 @@ Event C1도 기존 `adapt_domain`의 정확한 SHA/path/snapshot 및 canonical �
 - 선언 누락·중복 동일 namespace·서로 다른 namespace 충돌 등 기존 처리는 유지합니다. 유효 ID에서도 namespace 추측이나 게임 엔진의 실제 문법 해석은 하지 않습니다. 다른 10개 도메인의 공통 `_ID` 검증은 변경하지 않습니다.
 
 재현 및 회귀 근거: `harness/evidence/TASK-014-event-review-followup.md`. 필수 R1/R2 출처 검증과 1,000개 공유 진단 예산도 그대로 유지합니다.
+
+
+**TASK-014 Phase C2 — Scripted Trigger·Scripted Effect 정적 추출 (실제 게임 미검증)**
+
+`common/scripted_triggers/` 및 `common/scripted_effects/`는 직접 작성한 authored **합성 조사 경로**이며 실제 Stellaris 설치본에서 파일 배치·엔진 문법을 확인했다는 의미가 아닙니다. 이번 단계에서 두 도메인 모두 `scripted_rule = { limit = { flag = yes } if = { amount = 100 } }`처럼 **최상위 정적 식별자와 할당 블록**만 정의 ID로 추출합니다. 별도 wrapper·filename·순번·동적 토큰을 ID로 추측하지 않습니다. 중첩 `limit`/`if`/`potential`/`trigger`/`allow`는 합성 조건 표시용 field filter로 지정하지만 조건 평가, 분기 실행, 효과 적용, weight/cost 계산은 전혀 수행하지 않고 ordered AST 원문 바이트와 각 SourceRef만 보존합니다. 나머지 중첩 효과 역시 원문 필드로 유지합니다.
+
+Scripted Trigger/Effect는 이번 합성 규칙에서 **표시 이름 현지화 key가 필요하지 않습니다**. 공통 registry의 `localisation_rule="none"`을 이 두 종류에만 지정하여 `game_id`, 소스에 쓰인 `name` 또는 `title`에서 임의의 `localisation_key`를 생성하지 않습니다. `localisation_key=None`인 후보를 `resolve_domain_name`에 전달하면 안전하게 이름 해석을 거부합니다. 이는 한국어/영어 번역 누락이나 ID 추측을 감추기 위한 fallback 생성과 다릅니다. 기존 11개 도메인의 localisation 정책은 변경하지 않습니다.
+
+같은 파일의 중복 정적 ID는 `definition_occurrence`와 모든 SourceRef를 보존한 `ambiguous` 결과로, 파일 간 중복은 `find_domain_collisions`로 확인합니다. 종류가 다른 같은 ID는 별개의 kind로 취급합니다. 정적 ID가 아닌 최상위 지시자, 미지원 operator, unknown AST, 미완성 블록, UTF-8 오류는 `partial`, `unhandled` 또는 `blocked`와 원문 진단으로 남기며 적용 우선순위를 추측하지 않습니다. 이전 R1 검증의 items/fields/conditions/children 개별 raw backing·SourceRef, R2 whole-file canonical ParseResult·SHA/snapshot/path 결합, parser+adapter 1,000개 진단 예산과 단일 후보 내부 조기 차단은 계속 적용됩니다.
+
+`scripts/bench_domain_scripted.py`는 각 scripted 종류의 합성 후보 32개를 파일당 한 번 적응하고 후보별 검증을 각각 32번 수행하는 재파싱 호출 수와 시간을 양 OS에서 비차단 관찰합니다. source/snapshot/path/SHA 바인딩과 재귀 backing 무결성을 유지하는 bounded read-only 검증 컨텍스트 재사용은 P3 후보로만 기록합니다. TASK-019/E-035 공식 성능 검증이 아니며, 실제 게임 파일 검증·SQLite/CLI 다도메인 통합·E-027 전체 13개 평가 완료 주장도 아닙니다. Phase C2 제출 시 TASK-014=`doing`, F-005=`in_progress`, E-027=`not_run` 상태를 유지합니다.
