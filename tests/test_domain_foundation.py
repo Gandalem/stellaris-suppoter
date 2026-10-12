@@ -100,7 +100,7 @@ def test_snapshot_isolation_and_parser_resource_stop():
     _, _, b = case("building", "one = {}", snapshot="B")
     with pytest.raises(ValueError):
         find_domain_collisions((*a.candidates, *b.candidates))
-    source = ("one = { x = { y = { z = 1 } } }").encode()
+    source = b"one = { x = { y = { z = 1 } } }"
     ctx = SourceContext("A", "synthetic", "authored", "common/buildings/sample.txt", hashlib.sha256(source).hexdigest())
     result = adapt_domain(parse_bytes(source, max_depth=1), source, ctx, "building")
     assert result.blocked and not result.candidates
