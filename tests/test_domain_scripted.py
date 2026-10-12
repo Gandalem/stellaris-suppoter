@@ -184,7 +184,7 @@ def test_c2_dynamic_root_key_and_unsupported_wrapper_never_guessed(kind: str):
     for source in (
         "@dynamic = { limit = { flag = yes } }",
         "123 = { limit = { flag = yes } }",
-        "scripted = { @dynamic }",
+        "scripted > { limit = { flag = yes } }",
     ):
         raw, context, result = adapted(kind, source)
         assert not result.candidates or any(
