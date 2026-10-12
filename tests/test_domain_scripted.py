@@ -40,13 +40,13 @@ def sample(kind: str, game_id: str = "authored_rule", body: str = "") -> str:
     if kind == "scripted_trigger":
         return (
             f"{game_id} = {{ limit = {{ has_country_flag = active }} "
-            f"AND = {{ always = yes custom_trigger = @dynamic }} "
+            f"AND = {{ always = yes custom_trigger = static_flag }} "
             f"weight = 100 {body} }}"
         )
     assert kind == "scripted_effect"
     return (
         f"{game_id} = {{ if = {{ limit = {{ has_country_flag = active }} "
-        f"add_modifier = {{ modifier = @dynamic }} }} "
+        f"add_modifier = {{ modifier = scripted_modifier }} }} "
         f"random = {{ chance = 50 set_country_flag = activated }} "
         f"weight = 100 {body} }}"
     )
@@ -404,3 +404,42 @@ def test_c2_exact_canonical_parse_once_per_file_and_per_verify(kind: str):
             for c in result.candidates
         )
     assert parsed.call_count == 2
+
+
+@pytest.mark.parametrize("kind", KINDS)
+@pytest.mark.parametrize("runtime", ("@dynamic", "@variable"))
+def test_c2_nested_authored_dynamic_expression_must_be_explicit_partial(
+    kind: str, runtime: str
+):
+    raw, context, result = adapted(
+        kind, sample(kind, body=f"deferred = {{ runtime = {runtime} }}")
+    )
+    assert len(result.candidates) == 1 and not result.blocked
+    candidate = result.candidates[0]
+    assert candidate.game_id == "authored_rule"
+    assert candidate.id_source_ref.raw_bytes(raw) == b"authored_rule"
+    assert candidate.localisation_key is None
+    assert candidate.resolution == "partial"
+    assert candidate.support_level == "partial"
+    assert not result.complete
+    assert any(
+        d.code == "DOMAIN_DYNAMIC_EXPRESSION_UNSUPPORTED"
+        and d.source_ref.raw_bytes(raw) == runtime.encode("ascii")
+        for d in result.diagnostics
+    )
+    assert runtime in next(
+        f.raw_value for f in candidate.fields if f.name == "deferred"
+    )
+    assert verify_domain_candidate(candidate, raw, context)
+
+
+@pytest.mark.parametrize("kind", KINDS)
+def test_c2_quoted_dynamic_looking_text_and_comments_are_not_executed(kind: str):
+    raw, context, result = adapted(
+        kind, sample(kind, body='description = "@dynamic is quoted"')
+        + "\n# runtime = @dynamic"
+    )
+    assert result.complete and not result.diagnostics
+    assert len(result.candidates) == 1
+    assert result.candidates[0].localisation_key is None
+    assert verify_domain_candidate(result.candidates[0], raw, context)
