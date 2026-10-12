@@ -372,7 +372,8 @@
         "Each scoped domain has normal, error, collision and localisation coverage."
       ],
       "evidence": [
-        "harness/evidence/TASK-014-foundation.md"
+        "harness/evidence/TASK-014-foundation.md",
+        "harness/evidence/TASK-014-foundation-review-followup.md"
       ]
     },
     {
