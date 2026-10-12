@@ -95,11 +95,6 @@ def test_wave2_four_distinct_id_grammars_and_source_spans(kind: str):
 def test_wave2_duplicate_fields_and_duplicate_ids_are_not_merged(kind: str):
     first = sample(kind, body="cost = 200 potential = { other = yes }")
     second = sample(kind, body="cost = 300")
-    if kind == "government":
-        first = first[:-2] + f" {sample(kind, body='cost = 300').split(' = { ', 1)[1]}"
-        # Keep this test independent of wrapper formatting by constructing two
-        # top-level wrappers, each holding the same inner ID.
-        first = sample(kind, body="cost = 200 potential = { other = yes }")
     raw, ctx, result = adapted(kind, first + "\n" + second)
     assert [c.game_id for c in result.candidates] == ["shared_x", "shared_x"]
     assert [c.definition_occurrence for c in result.candidates] == [1, 2]
@@ -226,7 +221,9 @@ def test_wave2_bad_operators_unclosed_unknown_and_strings_are_partial(kind: str)
     _, _, broken = adapted(kind, sample(kind)[:-2])
     assert not broken.complete
     assert any(d.code == "PARSE_UNCLOSED_BLOCK" for d in broken.diagnostics)
-    raw, _, safe = adapted(kind, sample(kind, body='description = "fake = { # }" # comment'))
+    raw, _, safe = adapted(
+        kind, sample(kind, body='description = "fake = { # }"') + "\n# ignored = { cost = 999 }"
+    )
     assert safe.complete
     assert len(safe.candidates) == 1
     assert b'fake = { # }' in raw
@@ -290,9 +287,8 @@ def test_wave2_utf8_bom_crlf_hangul_source_and_raw_budget(kind: str):
     c = result.candidates[0]
     assert c.resolution == "raw_definition"
     assert any(f.raw_value == '"한글 # {}"' for f in c.fields)
-    assert c.source_ref.raw_bytes(raw).startswith(
-        b"shared_x" if kind == "trait" else b"governments" if kind == "government" else kind.encode()
-    ) is False if kind == "government" else c.source_ref.raw_bytes(raw) != b""
+    expected = b"shared_x" if kind in ("trait", "government") else f"{kind} =".encode()
+    assert c.source_ref.raw_bytes(raw).startswith(expected)
     with pytest.raises(ValueError):
         result.to_dict(include_raw=True, max_raw_bytes=1)
     bad = b"\xff"
