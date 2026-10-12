@@ -2,9 +2,9 @@
   "schema_version": 1,
   "phase": "implementation",
   "product_implemented": false,
-  "active_task": "TASK-014",
-  "next_task": "TASK-014",
-  "last_session": "harness/sessions/2026-10-12-task-014-phase-c3-e027.md",
+  "active_task": null,
+  "next_task": "TASK-015",
+  "last_session": "harness/sessions/2026-10-12-task-014-main-integration-closure.md",
   "latest_game_version": null,
   "updated_on": "2026-10-12",
   "notes": [
@@ -38,6 +38,7 @@
     "TASK-014 Phase B authored synthetic tradition/ascension_perk partial implementation on separate branch from 1944e5725cb2680799107dcfde017b0d57d4baa0. PR #30 overlay dependency pruning remains separate and unmerged; E-027 not_run; do not start Phase C until Phase B owner merge and actual main CI.",
     "TASK-014 Phase C1 event extractor started from real main 57ac44ce594ec5090f69b76d68db52db8d0afe48 after owner merges PR #31 2f35fb958ce1472efb460fac1cc3704eb809b7a6 and PR #30 57ac44ce594ec5090f69b76d68db52db8d0afe48. Real main Package 38237779265 and Documentation 38237779261 both OS passed. Earlier PR30 unmerged note was historically correct and retained. C1 authored synthetic only; C2 scripted domains and C3 E-027 still pending. No real game version validated.",
     "TASK-014 Phase C2 scripted_trigger/scripted_effect authored-synthetic adapter work started from verified main e77b38dd3d568ee368d07e3a18777d4aacee8ce2 after PR #32 owner merge, main Package 38248847704 and Documentation 38248847705 success both OS and all 4 checkout SHAs. New scripted kinds have no inferred localisation key. E-027 all-domains matrix remains not_run and C3 must await C2 merge+main CI.",
-    "TASK-014 Phase C3 evaluation matrix proposed on dedicated branch after PR #33 actual owner merge b3533f8c97e106adbf7d94119aac2d612f61040f and real main Package 38256524518 plus Documentation 38256524387 on Ubuntu/Windows both succeeded; all 4 jobs actually checked out main SHA. E-027 status remains not_run until independent C3 review, owner merge and new true-main CI; synthetic game rules only. F-005 in_progress, TASK-014 doing. P3 canonical parse reuse tracked separately in GitHub Issue #34."
+    "TASK-014 Phase C3 evaluation matrix proposed on dedicated branch after PR #33 actual owner merge b3533f8c97e106adbf7d94119aac2d612f61040f and real main Package 38256524518 plus Documentation 38256524387 on Ubuntu/Windows both succeeded; all 4 jobs actually checked out main SHA. E-027 status remains not_run until independent C3 review, owner merge and new true-main CI; synthetic game rules only. F-005 in_progress, TASK-014 doing. P3 canonical parse reuse tracked separately in GitHub Issue #34.",
+    "TASK-014 closure ledger transition proposed on separate PR after PR #35 actual owner merge aed7e11fae9d19bae62401fa69eaa35b9a841c6b and real main Package 38263803353 (Ubuntu 927 / Windows 924+3 skipped, Ruff/harness success) and Documentation 38263803250 (both success), four actual main job checkout SHAs verified. Authored synthetic 13-domain E-027 A-F only; TASK-014 done / F-005 verified / E-027 pass proposed in closure PR, not yet merged. TASK-015 remains todo until closure owner merge and new main CI. Installed Stellaris version remains null; product_implemented false."
   ]
 }

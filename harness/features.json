@@ -69,7 +69,7 @@
       "id": "F-005",
       "title": "Domain adapters",
       "milestone": "v0.1",
-      "status": "in_progress",
+      "status": "verified",
       "docs": [
         "docs/REQUIREMENTS.md",
         "docs/PARSING.md"
@@ -87,7 +87,8 @@
         "harness/evidence/TASK-014-domain-adapters-wave5-scripted.md",
         "harness/evidence/TASK-014-scripted-review-followup.md",
         "harness/evidence/TASK-014-main-integration-after-pr33.md",
-        "harness/evidence/TASK-014-e027-phase-c3.md"
+        "harness/evidence/TASK-014-e027-phase-c3.md",
+        "harness/evidence/TASK-014-main-integration-closure.md"
       ]
     },
     {
