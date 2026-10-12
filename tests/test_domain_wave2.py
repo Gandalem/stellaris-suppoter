@@ -297,3 +297,68 @@ def test_wave2_utf8_bom_crlf_hangul_source_and_raw_budget(kind: str):
         adapt_domain(parse_bytes(b""), bad, bad_ctx, kind)
     stopped = adapt_domain(parse_bytes(bad), bad, bad_ctx, kind)
     assert stopped.blocked and not stopped.candidates
+
+
+
+def test_wave2_government_multiple_direct_children_and_unhandled_contents():
+    source = (
+        "governments = { first_government = { name = first_name potential = { flag = yes } } "
+        "second_government = { name = second_name } @unsupported = dynamic }"
+    )
+    raw, ctx, result = adapted("government", source)
+    assert [c.game_id for c in result.candidates] == [
+        "first_government", "second_government",
+    ]
+    assert len(result.unhandled) == 1 and not result.complete
+    assert result.unhandled[0].raw.startswith("@unsupported")
+    assert all(verify_domain_candidate(c, raw, ctx) for c in result.candidates)
+    _, _, wrong_wrapper = adapted(
+        "government", "civics = { first_government = { name = first_name } }"
+    )
+    assert not wrong_wrapper.candidates and not wrong_wrapper.complete
+    assert len(wrong_wrapper.unhandled) == 1
+
+
+@pytest.mark.parametrize("kind", ("government", "civic", "origin"))
+@pytest.mark.parametrize("replacement", ("", "name = @dynamic", "name = duplicate name = other"))
+def test_wave2_display_name_key_is_distinct_from_id_and_never_guessed(
+    kind: str, replacement: str
+):
+    original = sample(kind)
+    _, _, result = adapted(
+        kind, original.replace("name = shared_x_display", replacement)
+    )
+    assert len(result.candidates) == 1
+    candidate = result.candidates[0]
+    assert candidate.game_id == "shared_x"
+    assert candidate.localisation_key is None
+    assert candidate.resolution == "partial"
+    assert any(
+        d.code == "DOMAIN_UNRESOLVED_LOCALISATION_KEY"
+        for d in candidate.diagnostics
+    )
+    with pytest.raises(ValueError, match="localisation key"):
+        resolve_domain_name(candidate, build_localisation_catalog(()))
+
+
+def test_wave2_identical_ids_in_different_kinds_are_not_collisions():
+    candidates = tuple(
+        adapted(kind, sample(kind))[2].candidates[0] for kind in KINDS
+    )
+    assert [c.kind for c in candidates] == list(KINDS)
+    assert {c.game_id for c in candidates} == {"shared_x"}
+    assert not find_domain_collisions(candidates)
+
+
+@pytest.mark.parametrize("kind", KINDS)
+def test_wave2_path_and_sha_boundaries_stay_fail_closed(kind: str):
+    source = sample(kind).encode("utf-8")
+    ctx = context(kind, source)
+    parsed = parse_bytes(source)
+    for damaged in (
+        replace(ctx, relative_path="other/wave2.txt"),
+        replace(ctx, relative_path="../common/traits/wave2.txt"),
+        replace(ctx, file_sha256="0" * 64),
+    ):
+        with pytest.raises(ValueError):
+            adapt_domain(parsed, source, damaged, kind)
