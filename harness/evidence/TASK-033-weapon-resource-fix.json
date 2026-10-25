@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-25",
+  "task": "TASK-033",
+  "scope": "resource control classification and repeated mutation notice correction",
+  "feature_code_completed_before_validation": true,
+  "tests": [
+    {
+      "command": "pytest tests/test_weapons.py tests/test_weapon_cards.py -q --basetemp=.venv/resource-fix-regression",
+      "passed": 34,
+      "seconds": 148.16
+    },
+    {
+      "command": "pytest tests/test_weapon_resource_fix.py tests/test_normative_document_integrity.py -q --basetemp=.venv/resource-fix-focused",
+      "passed": 17,
+      "seconds": 33.74
+    }
+  ],
+  "audit": {
+    "snapshot_id": "e06ec2d7e9ca4e6928a64246f1761f7fe246a794cad59a7bac18d1cf7777a425",
+    "definitions": 555,
+    "known_resources": 26,
+    "resource_control_leaks": false,
+    "field_statuses": {
+      "resolved": 4087,
+      "missing": 472,
+      "policy_required": 3211
+    },
+    "resource_scope_flags": {
+      "ambiguous": 43,
+      "trigger": 73,
+      "mult": 172,
+      "inline_script": 494
+    },
+    "mutation_definitions": 247,
+    "dynamic_resource_definitions": 300,
+    "duplicate_resource_definitions": 43,
+    "unknown_resource_ids": {},
+    "errors": [],
+    "other_field_states": [],
+    "elapsed_seconds": 111.638
+  },
+  "render": {
+    "SMALL_XRAY_LASER": {
+      "detail_notice_count": 0,
+      "card_lines": [
+        "소형 · 추가 조건",
+        "X-선 레이저",
+        "기본 피해  13.00–35.00",
+        "최대 사거리  40.00",
+        "기본 명중률  90.00% · 기본 추적률  50.00%",
+        "소비 전력  13.00",
+        "제작 비용 · 합금  23",
+        "제작 비용 · 희귀 크리스탈  0.250",
+        "기본 게임 파일 기준 · 일부 자료"
+      ]
+    },
+    "XRAY_EYE_BEAM_SMALL": {
+      "detail_notice_count": 1,
+      "card_lines": [
+        "소형",
+        "X선 안구 광선",
+        "변이 수치 · 적용 규칙 확인 필요",
+        "제작 비용 · 동적 계산 필요",
+        "기본 게임 파일 기준 · 일부 자료"
+      ]
+    }
+  },
+  "packaged": {
+    "mutation_exit": 0,
+    "standard_exit": 0,
+    "archive_modules": 52,
+    "source_match": true,
+    "exe_sha256": "1d6a0a45aedff5d2f64f71afa66704e8caa0cf620037b9db237c893d66796f36"
+  },
+  "wheel_sha256": "6757d599b6be12b5ff3a410dd92a534e53e0efcd5ebd9aec91e83a07aea6c9e9",
+  "source_files_sha256": {
+    "src/stellaris_supporter/__init__.py": "6992f8a968a4c883ccb8119726ef259b450a26aa25ebd082ebb3e80e41cd4e02",
+    "src/stellaris_supporter/__main__.py": "fce7d75cace65d7f6f079e69b656de494cf555da5fca0eb6ac685952e5cdbb7f",
+    "src/stellaris_supporter/answers.py": "496c22fe5cb6021c3c496bb8499cf6e0763304fddccee04f7af4de14c9053da3",
+    "src/stellaris_supporter/card_information.py": "3f3161c785c1dbb31bce79c6452f4cb230283fccf952de43b80aed0b8613113c",
+    "src/stellaris_supporter/cli.py": "c692a2a04bdc1279ae1b9ae508fbaa52c96d604c65f506c17e8ee08f8be63d6e",
+    "src/stellaris_supporter/cli_index.py": "4fb5236662a84e2c5fbd9d2c8f74d347a2b5e2db0ff7940a62b5bbe88261f335",
+    "src/stellaris_supporter/cli_setup.py": "bcf7bcb6cf824b5074c3ffea0bb9723ae4d75ac2db2aaede90a03dc1d016f552",
+    "src/stellaris_supporter/comparison.py": "a301f8f0dcbdad5d6b5b93b2ab2d6eda243aa60dc9f2c44c82c1c055e10c4d12",
+    "src/stellaris_supporter/config.py": "1615157fddbf5ff9da4c5f73c1aea5111b30cad8d4d63c7957396f4c81e54ebe",
+    "src/stellaris_supporter/desktop/__init__.py": "d6fb2a047d1b739fe65f9e453b080cc35bb62c81e2e59aa32c4aaf35b40577e0",
+    "src/stellaris_supporter/desktop/__main__.py": "5cb26d1fa030bdeff482d5f4280a7913ac02908a5cd6808264a7f194c9989004",
+    "src/stellaris_supporter/desktop/app.py": "9ae8e0da91079b129b2aae055e2450ecc612cea1214bb541e8705ec17bb7ded5",
+    "src/stellaris_supporter/desktop/diagnostics.py": "155c358fbdb8c486a8b5c000c894bcff261ad7f5cbf27f4aea92644b9528914b",
+    "src/stellaris_supporter/desktop/model.py": "4c1d7dd665d6a02e3c79e7ecddd86b0579cfe90920148862699b648651036057",
+    "src/stellaris_supporter/desktop/presentation.py": "3b7f07c6466d1786d21b3186c5b7503605dcceeedcbf962ca45741a6ac6c0ebc",
+    "src/stellaris_supporter/desktop/settings.py": "a22afbaf1e14a44775d640c5c9142cae1ac278e2849feaeeaa66c227ce058608",
+    "src/stellaris_supporter/desktop/steam.py": "f07ef8b991156d72e7428fbf291000c23b02623b71f279aa067b9178e82ca0d8",
+    "src/stellaris_supporter/desktop/technology_card.py": "781afc8ff91526fc1fadd4589b55d675004873430659af4abb7e8c5c5e3c7eeb",
+    "src/stellaris_supporter/desktop/weapon_browser.py": "dad8a1c87014def27a757005a32622217ddde35fc3bcd501a4a259c487c933c0",
+    "src/stellaris_supporter/desktop/weapon_card.py": "47461e1539e942623f6ee82cbfcb779517f4dd904401e6ec8628d75739a91f0d",
+    "src/stellaris_supporter/desktop/windows.py": "5dbb92daf6a397f00dbe8f3729bc2c175934c01e7d41e92895dcb890e7481d6d",
+    "src/stellaris_supporter/desktop/worker.py": "714883dc8324613b07dea11c09152b6a8c088feda9a28fafd6e79153b723696c",
+    "src/stellaris_supporter/diagnostics.py": "23cfa240178000c8317e98822a3b6e72a6804290dca835d6c76705a9b3c88e97",
+    "src/stellaris_supporter/discovery/__init__.py": "e8e201bd47523e85724bf703012adedb5bfcdaedb5a9982ca01af42b8bda8211",
+    "src/stellaris_supporter/discovery/inventory.py": "366deaa813ddcad2dd21bd31431301bcc349b1d529fb20975e45e2f4ff1541a6",
+    "src/stellaris_supporter/discovery/versioning.py": "75bd9aaeef8ac1f9a8d5f7f5df4e7de313f7b117ce88625acb778a4e8f9445af",
+    "src/stellaris_supporter/disk_index.py": "c3e8b608f7a9532a28bd9bc8f2797f7e96c4ca31b7234195310cdc56cb2dbe24",
+    "src/stellaris_supporter/doctor.py": "d18f6f7724e20e03eb6e7ca48fb1b7b35a904fdc8027abee94a40fd1126d594e",
+    "src/stellaris_supporter/domain/__init__.py": "72bb33ea00be816a7a8ead4073088c87a5be88826821fc90015442ae9b82f756",
+    "src/stellaris_supporter/domain/event.py": "3d8973c43429eb943e3cf1d68aaed1e9707a8f5b5899046487509f65eb6531b6",
+    "src/stellaris_supporter/domain/event_references.py": "db4304e30ce28a991e5685074dd0ed3b667df9c0efd945f8361784b64246b77f",
+    "src/stellaris_supporter/domain/generic.py": "60bbfda8f173fa4eda4cdf1d2946caa8058156f46c804beaa722b40f0ef3dc35",
+    "src/stellaris_supporter/domain/technology.py": "c353f649c950a89fd4305f76f05492cc5679ddea6c7871f68d946e01a5a544b3",
+    "src/stellaris_supporter/evaluation.py": "68d545897784bd136d10408255c1bac565b568cb2c8d012782188bbc2b68aa92",
+    "src/stellaris_supporter/incremental.py": "4254f4f2bfdc5a0499ca75e5f63b4de7adaac1ac149231f4dd2ee25033bf3a29",
+    "src/stellaris_supporter/localisation/__init__.py": "72d089f13a3f976b8f04cdd1277c938adf53e478cba0ab58879dad721ca248fb",
+    "src/stellaris_supporter/localisation/reader.py": "e9ac925b9921b52a617651e415a736c48378f6891d9d1a5736a66da0a5539e0a",
+    "src/stellaris_supporter/localisation/resolver.py": "72a12ed1f0ecd13268ac84079463cf0c700d6c6aec69eebe8423d227fbe60f6e",
+    "src/stellaris_supporter/parsing/__init__.py": "94b815377bdb03aa39d4d07284606d82ac501a549d1401e6d9e6509b01d43a47",
+    "src/stellaris_supporter/parsing/lexer.py": "f81d9d71d89fb1a63f85ef3e30bb08e37f327682e03fcb93b3f689d768e0ea9e",
+    "src/stellaris_supporter/parsing/parser.py": "f65271dcc3bdd551bcf6a524fca9bb40e3c099a8073e867ca504f0a7e6721917",
+    "src/stellaris_supporter/references.py": "b71ada32021fe1ff143482dd27933fab2846628de6924fb351aa43e66f729cf7",
+    "src/stellaris_supporter/retrieval.py": "c6e352f1e678efe7768b9718c2122fd0076770be08d6b27987462831f7c6aaec",
+    "src/stellaris_supporter/static_values.py": "f9e28170b4e48f3541bea71d9fa5076482e693eca7f3ebc472f3b91b9050999d",
+    "src/stellaris_supporter/storage/__init__.py": "14b648c4923c888d40308613b55611a945cebf80af5e7f6bb75247362b17906c",
+    "src/stellaris_supporter/storage/cache.py": "1b0539c45ded5bb9e7fcef761b2db49efffb72b603701d652d30d1730ed1b5d9",
+    "src/stellaris_supporter/storage/catalogue.py": "a97a660ca9ba4c0e99bfa995274a813331337331e029300110f0048c51e4c50b",
+    "src/stellaris_supporter/storage/disk_comparison.py": "f7ba9b7337377e137bec9eb4abb1ea646964831e6c702ac42de0e36978440f6b",
+    "src/stellaris_supporter/storage/identity.py": "45a9fc1a026750fd1458a92b948afee911b3026311f44efee82b108c3a31823f",
+    "src/stellaris_supporter/storage/projection.py": "22b9e78203f2387c5cd060533b6328027459bb1878a14b65044c6441bddf8e38",
+    "src/stellaris_supporter/storage/reference_reader.py": "adff0fb7540497274801a666d41b7a407fa5fb03c177160e3246ae6e0773602c",
+    "src/stellaris_supporter/storage/repository.py": "515730ef451eb7cc66e1154084975faf2eb5836986a8becf5fa83aaf5e5009f9",
+    "src/stellaris_supporter/storage/schema.py": "9867715d189123c3ca0f4c3983a203254b2dadf35cf098ac1aaeba731658bdaa",
+    "src/stellaris_supporter/storage/source_pool.py": "44697247c52527d523352a3b05f432ee4ca51627e0b5860c62371f8b68f18a69",
+    "src/stellaris_supporter/weapon_cards.py": "0a09a008db5213bd224127378dc53e274bdb77c6eda33f1b157cd167e2fbe3c9",
+    "src/stellaris_supporter/weapon_data.py": "69b5be453d51a3ccb5fc2cfd770b7d8793a1005cdb4c141a9986bca7230b1a64",
+    "src/stellaris_supporter/weapons.py": "0be0d85c2fb33ca5234de9b1ede93d1147de707cf85914b2813527493fe7481f"
+  },
+  "default_user_data_changed": false,
+  "new_index_required": false,
+  "git_integration": false,
+  "remaining_data_scope": {
+    "mutation_numeric_rules": 247,
+    "dynamic_or_conditional_resources": 300,
+    "duplicate_resource_declarations_in_dynamic_scope": 43,
+    "counts_overlap": true
+  },
+  "final_checks": {
+    "ruff_pass": true,
+    "harness_valid": true,
+    "wheel_build": true,
+    "windows_build": true,
+    "packaged_mutation_exit": 0,
+    "packaged_standard_exit": 0
+  }
+}

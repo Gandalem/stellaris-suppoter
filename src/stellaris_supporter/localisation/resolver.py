@@ -363,10 +363,11 @@ def resolve_localisation(
                 break
 
             if ch == "\\":
-                if cursor + 1 < len(value) and value[cursor + 1] in {'"', "\\"}:
+                if cursor + 1 < len(value) and value[cursor + 1] in ({'"', "\\", "n", "t", "r"} if getattr(entry, "_game_escapes", False) else {'"', "\\"}):
                     # Supported lexical escape: append decoded character;
                     # static references after this escape remain eligible.
-                    append(value[cursor + 1])
+                    escaped = value[cursor + 1]
+                    append({"n": "\n", "t": "\t", "r": "\r"}.get(escaped, escaped) if getattr(entry, "_game_escapes", False) else escaped)
                     cursor += 2
                 elif cursor + 1 < len(value) and value[cursor + 1] == "$":
                     # Unsupported \$KEY$ is one protected literal region.

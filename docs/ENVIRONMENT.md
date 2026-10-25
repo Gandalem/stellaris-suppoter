@@ -59,4 +59,4 @@ TASK-003에서 stdlib `tomllib` 기반 설정과 `doctor`를 구현했습니다.
 
 ## TASK-013 안전한 CLI 워크플로 후보
 
-`init`은 명시 game_root와 게임 밖 private data_dir를 이용해 network.enabled=false인 TOML을 원자적·배타적으로 만듭니다. 기본 config 경로는 OS별 위 위치를 사용합니다. 이미 존재하는 설정을 덮어쓰지 않습니다. `index`는 기술 스크립트와 한·영 현지화 하위 경로만 읽어 원본 SHA를 두 번 검증하고 SQLite snapshot과 cache를 private data_dir에 저장합니다. `doctor`는 기존 설정/runtime 검사만 수행합니다. 기존 Python API와 CLI가 연결된 대상·미구현 refs/diff는 [CLI 계약](CLI.md)으로 구분합니다.
+`init`은 명시 game_root와 게임 밖 private data_dir를 이용해 network.enabled=false인 TOML을 원자적·배타적으로 만듭니다. 기본 config 경로는 OS별 위 위치를 사용합니다. 이미 존재하는 설정을 덮어쓰지 않습니다. `index`는 기술 스크립트와 한·영 현지화 하위 경로만 읽어 원본 SHA를 두 번 검증하고 SQLite snapshot과 cache를 private data_dir에 저장합니다. `doctor`는 기존 설정/runtime 검사만 수행합니다. 기존 Python API와 CLI의 참조 조회·후속 diff 범위는 [CLI 계약](CLI.md)으로 구분합니다.

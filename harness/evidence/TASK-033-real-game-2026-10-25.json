@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-25",
+  "installation_metadata_version": "Cygnus v4.5.2 (9776)",
+  "game_window": {
+    "identified_by_full_executable_pid_hwnd": true,
+    "client_pixels": [
+      2560,
+      1440
+    ],
+    "dpi": 144,
+    "style": "borderless_or_fullscreen; exclusive fullscreen not distinguished"
+  },
+  "full_index": {
+    "passed": false,
+    "error": "LIMIT_EXCEEDED",
+    "seconds": 80.3313776999712,
+    "original_user_active_snapshot_existed": false,
+    "user_database_modified_by_test": false
+  },
+  "localisation_diagnostic_probe": {
+    "files": 464,
+    "collected_entries": 296328,
+    "incomplete_documents": 100,
+    "diagnostics": {
+      "LOC_UNSUPPORTED_ESCAPE": 26554,
+      "LOC_TRAILING_SYNTAX": 1466,
+      "LOC_UNSUPPORTED_SYNTAX": 2448,
+      "LIMIT_EXCEEDED": 1
+    },
+    "largest_document_entries": 5172,
+    "collected_count_is_lower_bound": true,
+    "current_catalog_entries_limit": 100000,
+    "current_catalog_diagnostics_limit": 1000,
+    "current_repository_records_limit": 100000
+  },
+  "technology_only_probe": {
+    "scope": "actual_technology_only_diagnostic_no_localisation",
+    "files": 35,
+    "technologies": 692,
+    "snapshot_status": "partial",
+    "id_search_status": "partial",
+    "answer_status": "partial",
+    "facts_exact_source_span_matches": 11,
+    "reference_status": "ok",
+    "reference_edges": 1,
+    "resolved_edges": 1,
+    "bilingual_name_test": false,
+    "overlay_input_test": false
+  },
+  "ui_control": {
+    "sky": "failed before initialization: helper_sandbox_lock_failed / SetNamedSecurityInfoW error 5",
+    "cua": "failed before initialization on both attempts with same sandbox ACL error",
+    "hotkeys_mouse_keyboard": "not_run",
+    "window_minimize_restore_exit": "not_run",
+    "position_opacity_restart": "not_run"
+  },
+  "production_code_changed": false,
+  "git_integration_performed": false
+}

@@ -1,0 +1,1399 @@
+{
+  "schema_version": 1,
+  "version": "desktop-gold-1",
+  "environment": {
+    "os": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "cpu": "AMD64 Family 25 Model 33 Stepping 2, AuthenticAMD",
+    "logical_cpu_count": 16
+  },
+  "evaluations": {
+    "E-001": "not_run",
+    "E-002": "not_run",
+    "E-003": "not_run",
+    "E-004": "not_run",
+    "E-005": "not_run",
+    "E-006": "not_run",
+    "E-007": "not_run",
+    "E-008": "not_run",
+    "E-009": "not_run",
+    "E-010": "not_run",
+    "E-011": "not_run",
+    "E-012": "not_run",
+    "E-013": "not_run",
+    "E-014": "not_run",
+    "E-015": "not_run",
+    "E-016": "not_run",
+    "E-017": "not_run",
+    "E-018": "not_run",
+    "E-019": "not_run",
+    "E-020": "not_run",
+    "E-021": "not_run",
+    "E-022": "not_run",
+    "E-023": "not_run",
+    "E-024": "not_run",
+    "E-025": "not_run",
+    "E-026": "not_run",
+    "E-027": "not_run",
+    "E-028": "not_run",
+    "E-029": "not_run",
+    "E-030": "not_run",
+    "E-031": "not_run",
+    "E-032": "not_run",
+    "E-033": "not_run",
+    "E-034": "pass",
+    "E-035": "pass",
+    "E-036": "not_run"
+  },
+  "corpus_hash": "cd0de300d2900274c6539bcd43c9f7399099084b014aedd68a814af42896c8bb",
+  "index_seconds": 34.11827989993617,
+  "entity_count": 10001,
+  "benchmark": {
+    "cold_definition": "new SearchService/projection; OS filesystem cache not purged",
+    "cold_ms": [
+      18800.0205,
+      18307.131,
+      18271.3762,
+      18091.0686,
+      18220.4197
+    ],
+    "warm_ms": [
+      11.0213,
+      8.631,
+      8.6313,
+      7.913,
+      8.1082,
+      7.793,
+      8.8048,
+      7.9502,
+      7.8808,
+      7.7582,
+      7.9254,
+      7.8207,
+      7.6919,
+      7.7781,
+      7.4967,
+      7.9723,
+      7.5125,
+      8.6212,
+      8.9655,
+      8.3532,
+      7.6008,
+      7.9811,
+      7.5007,
+      8.0108,
+      7.5562,
+      7.8458,
+      7.5679,
+      7.9037,
+      7.5903,
+      7.9634
+    ],
+    "cold_p95_ms": 18800.0205,
+    "warm_p95_ms": 8.9655,
+    "memory": {
+      "peak_working_set_bytes": 119881728,
+      "host_ram_bytes": 34281668608
+    },
+    "warm_target_ms": 500,
+    "warm_target_met": true
+  },
+  "gold_corpus_hash": "805469112fb8f06ea843344fcd6f4e7d7813d1be026824e72ef9d522957cc207",
+  "retrieval": {
+    "version": "desktop-gold-1",
+    "case_hash": "98828ea0437f9260c26e6e1075fbe5b8cd8e2c9dc31439518e2a203b44fcb348",
+    "groups": {
+      "id": 8,
+      "korean": 8,
+      "english": 8,
+      "normalization": 9,
+      "missing": 8,
+      "short": 8,
+      "collision": 2
+    },
+    "count": 51,
+    "recall_at_5": 1.0,
+    "exact_first": 1.0,
+    "correct_abstention": 1.0,
+    "passed": true,
+    "records": [
+      {
+        "group": "id",
+        "text": "demo_00000",
+        "language": "korean",
+        "expected": [
+          "demo_00000"
+        ],
+        "duplicates": 2,
+        "actual_top5": [
+          "demo_00000",
+          "demo_00000"
+        ],
+        "status": "partial",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "korean",
+        "text": "우주 항법 00000",
+        "language": "korean",
+        "expected": [
+          "demo_00000"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00000",
+          "demo_00000"
+        ],
+        "status": "partial",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "english",
+        "text": "Space Navigation 00000",
+        "language": "english",
+        "expected": [
+          "demo_00000"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00000",
+          "demo_00000"
+        ],
+        "status": "partial",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "normalization",
+        "text": "  우주   항법 00000  ",
+        "language": "korean",
+        "expected": [
+          "demo_00000"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00000",
+          "demo_00000"
+        ],
+        "status": "partial",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "missing",
+        "text": "absent_00000",
+        "language": "korean",
+        "expected": [],
+        "duplicates": null,
+        "actual_top5": [],
+        "status": "not_found",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "short",
+        "text": "우주",
+        "language": "korean",
+        "expected": [
+          "demo_00000",
+          "demo_00001",
+          "demo_00002",
+          "demo_00003",
+          "demo_00004",
+          "demo_00005",
+          "demo_00006",
+          "demo_00007",
+          "demo_00008",
+          "demo_00009",
+          "demo_00010",
+          "demo_00011",
+          "demo_00012",
+          "demo_00013",
+          "demo_00014",
+          "demo_00015",
+          "demo_00016",
+          "demo_00017",
+          "demo_00018",
+          "demo_00019",
+          "demo_00020",
+          "demo_00021",
+          "demo_00022",
+          "demo_00023",
+          "demo_00024",
+          "demo_00025",
+          "demo_00026",
+          "demo_00027",
+          "demo_00028",
+          "demo_00029",
+          "demo_00030",
+          "demo_00031",
+          "demo_00032",
+          "demo_00033",
+          "demo_00034",
+          "demo_00035",
+          "demo_00036",
+          "demo_00037",
+          "demo_00038",
+          "demo_00039",
+          "demo_00040",
+          "demo_00041",
+          "demo_00042",
+          "demo_00043",
+          "demo_00044",
+          "demo_00045",
+          "demo_00046",
+          "demo_00047",
+          "demo_00048",
+          "demo_00049",
+          "demo_00050",
+          "demo_00051",
+          "demo_00052",
+          "demo_00053",
+          "demo_00054",
+          "demo_00055",
+          "demo_00056",
+          "demo_00057",
+          "demo_00058",
+          "demo_00059",
+          "demo_00060",
+          "demo_00061",
+          "demo_00062",
+          "demo_00063"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00000",
+          "demo_00000",
+          "demo_00001",
+          "demo_00002",
+          "demo_00003"
+        ],
+        "status": "partial",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "id",
+        "text": "demo_00001",
+        "language": "korean",
+        "expected": [
+          "demo_00001"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00001"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "korean",
+        "text": "우주 항법 00001",
+        "language": "korean",
+        "expected": [
+          "demo_00001"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00001"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "english",
+        "text": "Space Navigation 00001",
+        "language": "english",
+        "expected": [
+          "demo_00001"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00001"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "normalization",
+        "text": "  우주   항법 00001  ",
+        "language": "korean",
+        "expected": [
+          "demo_00001"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00001"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "missing",
+        "text": "absent_00001",
+        "language": "korean",
+        "expected": [],
+        "duplicates": null,
+        "actual_top5": [],
+        "status": "not_found",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "short",
+        "text": "항법",
+        "language": "korean",
+        "expected": [
+          "demo_00000",
+          "demo_00001",
+          "demo_00002",
+          "demo_00003",
+          "demo_00004",
+          "demo_00005",
+          "demo_00006",
+          "demo_00007",
+          "demo_00008",
+          "demo_00009",
+          "demo_00010",
+          "demo_00011",
+          "demo_00012",
+          "demo_00013",
+          "demo_00014",
+          "demo_00015",
+          "demo_00016",
+          "demo_00017",
+          "demo_00018",
+          "demo_00019",
+          "demo_00020",
+          "demo_00021",
+          "demo_00022",
+          "demo_00023",
+          "demo_00024",
+          "demo_00025",
+          "demo_00026",
+          "demo_00027",
+          "demo_00028",
+          "demo_00029",
+          "demo_00030",
+          "demo_00031",
+          "demo_00032",
+          "demo_00033",
+          "demo_00034",
+          "demo_00035",
+          "demo_00036",
+          "demo_00037",
+          "demo_00038",
+          "demo_00039",
+          "demo_00040",
+          "demo_00041",
+          "demo_00042",
+          "demo_00043",
+          "demo_00044",
+          "demo_00045",
+          "demo_00046",
+          "demo_00047",
+          "demo_00048",
+          "demo_00049",
+          "demo_00050",
+          "demo_00051",
+          "demo_00052",
+          "demo_00053",
+          "demo_00054",
+          "demo_00055",
+          "demo_00056",
+          "demo_00057",
+          "demo_00058",
+          "demo_00059",
+          "demo_00060",
+          "demo_00061",
+          "demo_00062",
+          "demo_00063"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00000",
+          "demo_00000",
+          "demo_00001",
+          "demo_00002",
+          "demo_00003"
+        ],
+        "status": "partial",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "id",
+        "text": "demo_00002",
+        "language": "korean",
+        "expected": [
+          "demo_00002"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00002"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "korean",
+        "text": "우주 항법 00002",
+        "language": "korean",
+        "expected": [
+          "demo_00002"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00002"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "english",
+        "text": "Space Navigation 00002",
+        "language": "english",
+        "expected": [
+          "demo_00002"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00002"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "normalization",
+        "text": "  우주   항법 00002  ",
+        "language": "korean",
+        "expected": [
+          "demo_00002"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00002"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "missing",
+        "text": "absent_00002",
+        "language": "korean",
+        "expected": [],
+        "duplicates": null,
+        "actual_top5": [],
+        "status": "not_found",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "short",
+        "text": "우주",
+        "language": "korean",
+        "expected": [
+          "demo_00000",
+          "demo_00001",
+          "demo_00002",
+          "demo_00003",
+          "demo_00004",
+          "demo_00005",
+          "demo_00006",
+          "demo_00007",
+          "demo_00008",
+          "demo_00009",
+          "demo_00010",
+          "demo_00011",
+          "demo_00012",
+          "demo_00013",
+          "demo_00014",
+          "demo_00015",
+          "demo_00016",
+          "demo_00017",
+          "demo_00018",
+          "demo_00019",
+          "demo_00020",
+          "demo_00021",
+          "demo_00022",
+          "demo_00023",
+          "demo_00024",
+          "demo_00025",
+          "demo_00026",
+          "demo_00027",
+          "demo_00028",
+          "demo_00029",
+          "demo_00030",
+          "demo_00031",
+          "demo_00032",
+          "demo_00033",
+          "demo_00034",
+          "demo_00035",
+          "demo_00036",
+          "demo_00037",
+          "demo_00038",
+          "demo_00039",
+          "demo_00040",
+          "demo_00041",
+          "demo_00042",
+          "demo_00043",
+          "demo_00044",
+          "demo_00045",
+          "demo_00046",
+          "demo_00047",
+          "demo_00048",
+          "demo_00049",
+          "demo_00050",
+          "demo_00051",
+          "demo_00052",
+          "demo_00053",
+          "demo_00054",
+          "demo_00055",
+          "demo_00056",
+          "demo_00057",
+          "demo_00058",
+          "demo_00059",
+          "demo_00060",
+          "demo_00061",
+          "demo_00062",
+          "demo_00063"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00000",
+          "demo_00000",
+          "demo_00001",
+          "demo_00002",
+          "demo_00003"
+        ],
+        "status": "partial",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "id",
+        "text": "demo_00003",
+        "language": "korean",
+        "expected": [
+          "demo_00003"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00003"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "korean",
+        "text": "우주 항법 00003",
+        "language": "korean",
+        "expected": [
+          "demo_00003"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00003"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "english",
+        "text": "Space Navigation 00003",
+        "language": "english",
+        "expected": [
+          "demo_00003"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00003"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "normalization",
+        "text": "  우주   항법 00003  ",
+        "language": "korean",
+        "expected": [
+          "demo_00003"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00003"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "missing",
+        "text": "absent_00003",
+        "language": "korean",
+        "expected": [],
+        "duplicates": null,
+        "actual_top5": [],
+        "status": "not_found",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "short",
+        "text": "항법",
+        "language": "korean",
+        "expected": [
+          "demo_00000",
+          "demo_00001",
+          "demo_00002",
+          "demo_00003",
+          "demo_00004",
+          "demo_00005",
+          "demo_00006",
+          "demo_00007",
+          "demo_00008",
+          "demo_00009",
+          "demo_00010",
+          "demo_00011",
+          "demo_00012",
+          "demo_00013",
+          "demo_00014",
+          "demo_00015",
+          "demo_00016",
+          "demo_00017",
+          "demo_00018",
+          "demo_00019",
+          "demo_00020",
+          "demo_00021",
+          "demo_00022",
+          "demo_00023",
+          "demo_00024",
+          "demo_00025",
+          "demo_00026",
+          "demo_00027",
+          "demo_00028",
+          "demo_00029",
+          "demo_00030",
+          "demo_00031",
+          "demo_00032",
+          "demo_00033",
+          "demo_00034",
+          "demo_00035",
+          "demo_00036",
+          "demo_00037",
+          "demo_00038",
+          "demo_00039",
+          "demo_00040",
+          "demo_00041",
+          "demo_00042",
+          "demo_00043",
+          "demo_00044",
+          "demo_00045",
+          "demo_00046",
+          "demo_00047",
+          "demo_00048",
+          "demo_00049",
+          "demo_00050",
+          "demo_00051",
+          "demo_00052",
+          "demo_00053",
+          "demo_00054",
+          "demo_00055",
+          "demo_00056",
+          "demo_00057",
+          "demo_00058",
+          "demo_00059",
+          "demo_00060",
+          "demo_00061",
+          "demo_00062",
+          "demo_00063"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00000",
+          "demo_00000",
+          "demo_00001",
+          "demo_00002",
+          "demo_00003"
+        ],
+        "status": "partial",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "id",
+        "text": "demo_00004",
+        "language": "korean",
+        "expected": [
+          "demo_00004"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00004"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "korean",
+        "text": "우주 항법 00004",
+        "language": "korean",
+        "expected": [
+          "demo_00004"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00004"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "english",
+        "text": "Space Navigation 00004",
+        "language": "english",
+        "expected": [
+          "demo_00004"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00004"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "normalization",
+        "text": "  우주   항법 00004  ",
+        "language": "korean",
+        "expected": [
+          "demo_00004"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00004"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "missing",
+        "text": "absent_00004",
+        "language": "korean",
+        "expected": [],
+        "duplicates": null,
+        "actual_top5": [],
+        "status": "not_found",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "short",
+        "text": "우주",
+        "language": "korean",
+        "expected": [
+          "demo_00000",
+          "demo_00001",
+          "demo_00002",
+          "demo_00003",
+          "demo_00004",
+          "demo_00005",
+          "demo_00006",
+          "demo_00007",
+          "demo_00008",
+          "demo_00009",
+          "demo_00010",
+          "demo_00011",
+          "demo_00012",
+          "demo_00013",
+          "demo_00014",
+          "demo_00015",
+          "demo_00016",
+          "demo_00017",
+          "demo_00018",
+          "demo_00019",
+          "demo_00020",
+          "demo_00021",
+          "demo_00022",
+          "demo_00023",
+          "demo_00024",
+          "demo_00025",
+          "demo_00026",
+          "demo_00027",
+          "demo_00028",
+          "demo_00029",
+          "demo_00030",
+          "demo_00031",
+          "demo_00032",
+          "demo_00033",
+          "demo_00034",
+          "demo_00035",
+          "demo_00036",
+          "demo_00037",
+          "demo_00038",
+          "demo_00039",
+          "demo_00040",
+          "demo_00041",
+          "demo_00042",
+          "demo_00043",
+          "demo_00044",
+          "demo_00045",
+          "demo_00046",
+          "demo_00047",
+          "demo_00048",
+          "demo_00049",
+          "demo_00050",
+          "demo_00051",
+          "demo_00052",
+          "demo_00053",
+          "demo_00054",
+          "demo_00055",
+          "demo_00056",
+          "demo_00057",
+          "demo_00058",
+          "demo_00059",
+          "demo_00060",
+          "demo_00061",
+          "demo_00062",
+          "demo_00063"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00000",
+          "demo_00000",
+          "demo_00001",
+          "demo_00002",
+          "demo_00003"
+        ],
+        "status": "partial",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "id",
+        "text": "demo_00005",
+        "language": "korean",
+        "expected": [
+          "demo_00005"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00005"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "korean",
+        "text": "우주 항법 00005",
+        "language": "korean",
+        "expected": [
+          "demo_00005"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00005"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "english",
+        "text": "Space Navigation 00005",
+        "language": "english",
+        "expected": [
+          "demo_00005"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00005"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "normalization",
+        "text": "  우주   항법 00005  ",
+        "language": "korean",
+        "expected": [
+          "demo_00005"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00005"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "missing",
+        "text": "absent_00005",
+        "language": "korean",
+        "expected": [],
+        "duplicates": null,
+        "actual_top5": [],
+        "status": "not_found",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "short",
+        "text": "항법",
+        "language": "korean",
+        "expected": [
+          "demo_00000",
+          "demo_00001",
+          "demo_00002",
+          "demo_00003",
+          "demo_00004",
+          "demo_00005",
+          "demo_00006",
+          "demo_00007",
+          "demo_00008",
+          "demo_00009",
+          "demo_00010",
+          "demo_00011",
+          "demo_00012",
+          "demo_00013",
+          "demo_00014",
+          "demo_00015",
+          "demo_00016",
+          "demo_00017",
+          "demo_00018",
+          "demo_00019",
+          "demo_00020",
+          "demo_00021",
+          "demo_00022",
+          "demo_00023",
+          "demo_00024",
+          "demo_00025",
+          "demo_00026",
+          "demo_00027",
+          "demo_00028",
+          "demo_00029",
+          "demo_00030",
+          "demo_00031",
+          "demo_00032",
+          "demo_00033",
+          "demo_00034",
+          "demo_00035",
+          "demo_00036",
+          "demo_00037",
+          "demo_00038",
+          "demo_00039",
+          "demo_00040",
+          "demo_00041",
+          "demo_00042",
+          "demo_00043",
+          "demo_00044",
+          "demo_00045",
+          "demo_00046",
+          "demo_00047",
+          "demo_00048",
+          "demo_00049",
+          "demo_00050",
+          "demo_00051",
+          "demo_00052",
+          "demo_00053",
+          "demo_00054",
+          "demo_00055",
+          "demo_00056",
+          "demo_00057",
+          "demo_00058",
+          "demo_00059",
+          "demo_00060",
+          "demo_00061",
+          "demo_00062",
+          "demo_00063"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00000",
+          "demo_00000",
+          "demo_00001",
+          "demo_00002",
+          "demo_00003"
+        ],
+        "status": "partial",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "id",
+        "text": "demo_00006",
+        "language": "korean",
+        "expected": [
+          "demo_00006"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00006"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "korean",
+        "text": "우주 항법 00006",
+        "language": "korean",
+        "expected": [
+          "demo_00006"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00006"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "english",
+        "text": "Space Navigation 00006",
+        "language": "english",
+        "expected": [
+          "demo_00006"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00006"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "normalization",
+        "text": "  우주   항법 00006  ",
+        "language": "korean",
+        "expected": [
+          "demo_00006"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00006"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "missing",
+        "text": "absent_00006",
+        "language": "korean",
+        "expected": [],
+        "duplicates": null,
+        "actual_top5": [],
+        "status": "not_found",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "short",
+        "text": "우주",
+        "language": "korean",
+        "expected": [
+          "demo_00000",
+          "demo_00001",
+          "demo_00002",
+          "demo_00003",
+          "demo_00004",
+          "demo_00005",
+          "demo_00006",
+          "demo_00007",
+          "demo_00008",
+          "demo_00009",
+          "demo_00010",
+          "demo_00011",
+          "demo_00012",
+          "demo_00013",
+          "demo_00014",
+          "demo_00015",
+          "demo_00016",
+          "demo_00017",
+          "demo_00018",
+          "demo_00019",
+          "demo_00020",
+          "demo_00021",
+          "demo_00022",
+          "demo_00023",
+          "demo_00024",
+          "demo_00025",
+          "demo_00026",
+          "demo_00027",
+          "demo_00028",
+          "demo_00029",
+          "demo_00030",
+          "demo_00031",
+          "demo_00032",
+          "demo_00033",
+          "demo_00034",
+          "demo_00035",
+          "demo_00036",
+          "demo_00037",
+          "demo_00038",
+          "demo_00039",
+          "demo_00040",
+          "demo_00041",
+          "demo_00042",
+          "demo_00043",
+          "demo_00044",
+          "demo_00045",
+          "demo_00046",
+          "demo_00047",
+          "demo_00048",
+          "demo_00049",
+          "demo_00050",
+          "demo_00051",
+          "demo_00052",
+          "demo_00053",
+          "demo_00054",
+          "demo_00055",
+          "demo_00056",
+          "demo_00057",
+          "demo_00058",
+          "demo_00059",
+          "demo_00060",
+          "demo_00061",
+          "demo_00062",
+          "demo_00063"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00000",
+          "demo_00000",
+          "demo_00001",
+          "demo_00002",
+          "demo_00003"
+        ],
+        "status": "partial",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "id",
+        "text": "demo_00007",
+        "language": "korean",
+        "expected": [
+          "demo_00007"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00007"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "korean",
+        "text": "우주 항법 00007",
+        "language": "korean",
+        "expected": [
+          "demo_00007"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00007"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "english",
+        "text": "Space Navigation 00007",
+        "language": "english",
+        "expected": [
+          "demo_00007"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00007"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "normalization",
+        "text": "  우주   항법 00007  ",
+        "language": "korean",
+        "expected": [
+          "demo_00007"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00007"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "missing",
+        "text": "absent_00007",
+        "language": "korean",
+        "expected": [],
+        "duplicates": null,
+        "actual_top5": [],
+        "status": "not_found",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "short",
+        "text": "항법",
+        "language": "korean",
+        "expected": [
+          "demo_00000",
+          "demo_00001",
+          "demo_00002",
+          "demo_00003",
+          "demo_00004",
+          "demo_00005",
+          "demo_00006",
+          "demo_00007",
+          "demo_00008",
+          "demo_00009",
+          "demo_00010",
+          "demo_00011",
+          "demo_00012",
+          "demo_00013",
+          "demo_00014",
+          "demo_00015",
+          "demo_00016",
+          "demo_00017",
+          "demo_00018",
+          "demo_00019",
+          "demo_00020",
+          "demo_00021",
+          "demo_00022",
+          "demo_00023",
+          "demo_00024",
+          "demo_00025",
+          "demo_00026",
+          "demo_00027",
+          "demo_00028",
+          "demo_00029",
+          "demo_00030",
+          "demo_00031",
+          "demo_00032",
+          "demo_00033",
+          "demo_00034",
+          "demo_00035",
+          "demo_00036",
+          "demo_00037",
+          "demo_00038",
+          "demo_00039",
+          "demo_00040",
+          "demo_00041",
+          "demo_00042",
+          "demo_00043",
+          "demo_00044",
+          "demo_00045",
+          "demo_00046",
+          "demo_00047",
+          "demo_00048",
+          "demo_00049",
+          "demo_00050",
+          "demo_00051",
+          "demo_00052",
+          "demo_00053",
+          "demo_00054",
+          "demo_00055",
+          "demo_00056",
+          "demo_00057",
+          "demo_00058",
+          "demo_00059",
+          "demo_00060",
+          "demo_00061",
+          "demo_00062",
+          "demo_00063"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00000",
+          "demo_00000",
+          "demo_00001",
+          "demo_00002",
+          "demo_00003"
+        ],
+        "status": "partial",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "collision",
+        "text": "demo_00000",
+        "language": "english",
+        "expected": [
+          "demo_00000"
+        ],
+        "duplicates": 2,
+        "actual_top5": [
+          "demo_00000",
+          "demo_00000"
+        ],
+        "status": "partial",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "collision",
+        "text": "우주 항법 00000",
+        "language": "korean",
+        "expected": [
+          "demo_00000"
+        ],
+        "duplicates": 2,
+        "actual_top5": [
+          "demo_00000",
+          "demo_00000"
+        ],
+        "status": "partial",
+        "passed": true,
+        "exact": true
+      },
+      {
+        "group": "normalization",
+        "text": "  SPACE   NAVIGATION 00003 ",
+        "language": "english",
+        "expected": [
+          "demo_00003"
+        ],
+        "duplicates": null,
+        "actual_top5": [
+          "demo_00003"
+        ],
+        "status": "ok",
+        "passed": true,
+        "exact": true
+      }
+    ]
+  },
+  "seconds": 146.1286427974701
+}

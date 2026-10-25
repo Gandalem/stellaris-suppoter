@@ -16,6 +16,12 @@ dev = [
   "ruff>=0.16.8,<0.17",
 ]
 
+desktop = ["PySide6-Essentials>=6.12,<6.13"]
+package = ["pyinstaller>=6.22.3,<7", "build>=1.6.1,<2"]
+
+[project.gui-scripts]
+stellaris-supporter-gui = "stellaris_supporter.desktop.app:main"
+
 [project.scripts]
 stellaris-supporter = "stellaris_supporter.cli:main"
 

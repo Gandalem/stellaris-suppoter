@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-25",
+  "evidence_source": "direct user observation",
+  "game_restart_card_restore": {
+    "status": "pass",
+    "report": "게임 껐다 켜도 잘 유지됨"
+  },
+  "app_restart_card_restore": {
+    "status": "pass",
+    "report": "프로그램 껐다 켜도 잘 유지됨",
+    "latest_report": "종료 후 재실행하면 카드가 다시 나타남"
+  },
+  "alt_tab_hide_restore": {
+    "status": "pass",
+    "evidence": "User confirmed both requested Alt+Tab hide/return and minimise/restore checks work."
+  },
+  "minimize_hide_restore": {
+    "status": "pass",
+    "evidence": "User confirmed both requested checks work."
+  },
+  "game_exit_cards_hidden_without_leftover_window": "not explicitly reported",
+  "exact_position_size_opacity_roundtrip": "not separately reported; general card persistence confirmed",
+  "dpi_multi_monitor": "pass_user_reported_current_setup",
+  "product_code_changed": false,
+  "overall_overlay_acceptance": "Current user setup: click/drag/keyboard, restart restoration, Alt+Tab, minimise/restore and application exit visible-card cleanup confirmed by user. Exact layout/opacity, game-exit residual input windows and full DPI/multimonitor matrix not inferred.",
+  "app_exit_all_cards_disappear": {
+    "status": "pass",
+    "evidence_source": "direct user observation",
+    "report": "프로그램을 끄면 카드 전부 사라지고 켜면 다시 나타남"
+  },
+  "dpi_multi_monitor_observation": {
+    "report": "화면 배율·다중 모니터에서 카드 위치/크기 유지 확인 안내에 이것도 된다고 응답",
+    "method": "direct user observation",
+    "scope": "current user setup; monitor count, scale values and full mode matrix not separately enumerated"
+  }
+}

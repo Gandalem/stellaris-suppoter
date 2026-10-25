@@ -1,0 +1,151 @@
+{
+  "date": "2026-10-25",
+  "scope": "Code frozen; existing overlay runtime acceptance before further implementation",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "existing_desktop_tests": {
+    "tests": 16,
+    "errors": 0,
+    "failures": 0,
+    "skipped": 0
+  },
+  "runtime_worker": {
+    "snapshot_id": "c48fc0b37561bad95ee155963953faff6c25b913aa70a155a32f41bfe0795592",
+    "lookups": {
+      "korean": {
+        "status": "partial",
+        "game_id": "tech_lasers_2",
+        "name": "청색 레이저"
+      },
+      "english": {
+        "status": "partial",
+        "game_id": "tech_lasers_2",
+        "name": "Blue Lasers"
+      }
+    },
+    "missing_query_no_results": true,
+    "missing_query_partial_preserved": true,
+    "pinned_card_exact_entity": true,
+    "plain_text_card_fields": true,
+    "live_source_span_matches": 24,
+    "fact_value_span_matches": 11,
+    "reference_edges": 1,
+    "private_card_position_opacity_roundtrip": true,
+    "user_preferences_unchanged": true,
+    "active_snapshot_unchanged": true,
+    "elapsed_seconds": 1.0698336999630556
+  },
+  "cli_worker": {
+    "cli_worker_queries": [
+      {
+        "language": "korean",
+        "matches": 2,
+        "same_order_names_entities": true,
+        "exit_code": 0
+      },
+      {
+        "language": "english",
+        "matches": 1,
+        "same_order_names_entities": true,
+        "exit_code": 0
+      }
+    ]
+  },
+  "diff_card": {
+    "same_snapshot_diff_card_no_changes": true,
+    "partial_summary_preserved": true,
+    "status": "partial",
+    "elapsed_seconds": 17.100200399989262
+  },
+  "native_own_window": {
+    "identity": true,
+    "ambiguity_rejected": true,
+    "passive_flags": true,
+    "hotkey_conflict_release": true,
+    "minimized_hidden": true,
+    "dpi": 96,
+    "actual_game_input_test": false
+  },
+  "real_game_observation": {
+    "candidate_count": 1,
+    "game_running": true,
+    "client_size": [
+      2560,
+      1440
+    ],
+    "dpi": 144,
+    "foreground_at_observation": false,
+    "steam_discovery_matches_selected_root": true,
+    "window_mode": "unknown"
+  },
+  "packaged_real_data_smoke_exit": 0,
+  "source_test_script_executable_files_compared": 93,
+  "code_changes": [],
+  "ui_tools": {
+    "sky": "failed helper_sandbox_lock_failed / SetNamedSecurityInfoW sandbox dir failed: 5",
+    "cua": "same initialization error"
+  },
+  "manual_game_input_result": {
+    "overlay_window_show_hide": "user reports working; screenshot shows overlay search window above game",
+    "manager_search": "user screenshot shows empty results and status error",
+    "overlay_search": "user screenshot shows empty results; completion/error code not visible",
+    "three_toggle_repetitions_focus": "not confirmed",
+    "game_click_key_passthrough": "not confirmed; card cannot be pinned from failed search",
+    "minimize_restore_exit": "not confirmed"
+  },
+  "commit_push_merge_deploy": false,
+  "further_diagnostics": {
+    "worker_qthread_real_data": "2 results, partial, no worker error",
+    "isolated_manager_real_data": "2 results, partial, no worker error",
+    "original_archive_code_with_frozen_paths": "2 results, partial",
+    "isolated_frozen_console_manager": {
+      "frozen": true,
+      "errors": [],
+      "responses": [
+        {
+          "worker_error": null,
+          "status": "partial",
+          "diagnostics": [
+            {
+              "code": "PARTIAL_SNAPSHOT",
+              "severity": "warning",
+              "message": "Snapshot is incomplete; results may be partial."
+            }
+          ],
+          "result_count": 2
+        }
+      ],
+      "selected_snapshot": "c48fc0b37561bad95ee155963953faff6c25b913aa70a155a32f41bfe0795592",
+      "both_workers_stopped": true
+    },
+    "isolated_frozen_windowed_manager": {
+      "frozen": true,
+      "errors": [],
+      "responses": [
+        {
+          "worker_error": null,
+          "status": "partial",
+          "diagnostics": [
+            {
+              "code": "PARTIAL_SNAPSHOT",
+              "severity": "warning",
+              "message": "Snapshot is incomplete; results may be partial."
+            }
+          ],
+          "result_count": 2
+        }
+      ],
+      "selected_snapshot": "c48fc0b37561bad95ee155963953faff6c25b913aa70a155a32f41bfe0795592",
+      "both_workers_stopped": true
+    },
+    "original_app_restart_result": "user confirmed same search error after complete exit and restart",
+    "cause": "Not established. Original and diagnostic archives contain identical module sets and equivalent product bytecode for all 43 product modules; package omission/stale product code is not supported by this comparison.",
+    "production_files_unchanged": 93,
+    "diagnostic_harness_location": "ignored private .venv directory only",
+    "archive_comparison": {
+      "product_modules_compared": 43,
+      "different_product_code": [],
+      "diagnostic_only_modules": [],
+      "original_only_modules": []
+    }
+  }
+}

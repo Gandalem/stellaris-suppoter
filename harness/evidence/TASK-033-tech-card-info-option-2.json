@@ -1,0 +1,76 @@
+{
+  "date": "2026-10-25",
+  "scope": "technology-card-information-option-2",
+  "checks": {
+    "core_regression_passed": 77,
+    "card_desktop_documents_passed": 57,
+    "final_layout_passed": 2,
+    "additional_boundary_passed": 3,
+    "ruff": true,
+    "wheel": true,
+    "windows_folder_build": true,
+    "archive_modules_match": 47
+  },
+  "actual_private_data": {
+    "source_count": 522,
+    "localisation_entries": 297964,
+    "partial_localisation_files": 32,
+    "snapshot_id": "67ab711828b38f615fe5ac43235c002e2dbf34735b33fc8dfeaf5a43e58ca119",
+    "name": "청색 레이저",
+    "base_cost": "1,250",
+    "area": "물리학",
+    "tier": "1단계",
+    "prerequisites": [
+      "적색 레이저"
+    ],
+    "cost_proofs": 3,
+    "proofs_valid": true,
+    "cold_run_seconds_under_concurrent_test_load": 517.063,
+    "view_query_ms": 502.88
+  },
+  "packaged": {
+    "exit_code": 0,
+    "search_result_count": 2,
+    "card_completed": true,
+    "base_cost": "1,250",
+    "cost_proofs": 3,
+    "exe_sha256": "4e18158c1408eadc5fcf85104913c4edf7ac3dd27edee524c5ac547d7502124f"
+  },
+  "native_own_window": {
+    "opacity": [
+      30,
+      90,
+      100
+    ],
+    "passive_flags": true,
+    "editing_controls": true,
+    "plain_text_dialog": true,
+    "font_families": 425,
+    "korean_font_families": 107,
+    "actual_game_input": false
+  },
+  "user_application_first_adoption": "display_confirmed_by_user_screenshots",
+  "full_E046_E048_status_changed": false,
+  "git_integration": false,
+  "user_screenshot_acceptance": {
+    "initial_display": "legacy data showed missing_data for cost",
+    "updated_display": {
+      "search_base_cost": "1,250",
+      "detail_base_cost": "1,250",
+      "overlay_base_cost": "1,250",
+      "area": "물리학",
+      "tier": "1단계",
+      "prerequisite": "적색 레이저",
+      "korean_text_readable": true,
+      "description_visible": true,
+      "raw_cost_reference_visible": "@tier1cost2"
+    },
+    "confirmation_method": "direct screenshots supplied by user; not automated desktop interaction",
+    "variable_definition_source_opened": "not_confirmed",
+    "existing_card_uid_rect_preserved": "not_confirmed",
+    "new_build_game_input_matrix": "not_repeated",
+    "full_dpi_multimonitor_exit_matrix": "not_confirmed",
+    "app_exit_all_cards_disappear": "pass_by_subsequent_user_report",
+    "app_restart_card_restore": "pass_by_subsequent_user_report"
+  }
+}

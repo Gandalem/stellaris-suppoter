@@ -1,0 +1,3 @@
+# TASK-033 local implementation
+
+Owner approved option 1 and Steam discovery/manual override. All functional code written before essential verification. Local manager/card/worker/discovery/package code is present. Evidence: [TASK-033](../evidence/TASK-033-desktop-option-1.md). Earlier TASK-015/016 changes preserved. No Git integration or deployment. Remaining acceptance: actual Stellaris clicks/keys/DPI monitor moves and Linux clean wheel/remote CI. The Windows automation runtime failed its own sandbox ACL initialization; do not claim visual/real-game acceptance from own-window API checks. TASK-033 stays active for this acceptance; do not rewrite implementation from scratch.

@@ -320,8 +320,11 @@ class AnswerService:
 
     def answer(
         self, query: Query, *, field: str | None = None,
-        exact_game_id: bool = False,
+        exact_game_id: bool = False, entity_key: str | None = None,
     ) -> AnswerEnvelope:
+        if entity_key is not None and (not isinstance(entity_key, str) or not re.fullmatch(r"[0-9a-f]{64}", entity_key)):
+            return AnswerEnvelope(1, "error", query, None, (),
+                                  (_diag("QUERY_INVALID", "Invalid entity selector.", "error"),), False)
         if field is not None and (
             not isinstance(field, str) or not field or len(field) > 128
         ):
@@ -376,6 +379,8 @@ class AnswerService:
                       if hit.game_id == query.text and hit.match_reason == "game_id_exact")
                 if exact_game_id else found.results
             )
+            if entity_key is not None:
+                selected = tuple(hit for hit in selected if hit.entity_key == entity_key)
             if not selected:
                 return AnswerEnvelope(
                     1, "partial" if found.status == "partial" else "not_found",

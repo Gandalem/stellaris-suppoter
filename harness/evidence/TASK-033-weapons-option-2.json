@@ -1,0 +1,227 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-25",
+  "task": "TASK-033",
+  "scope": "weapon component option 2, local essential checks after all feature code",
+  "environment": {
+    "os": "Windows 11 10.0.26200",
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "pyside6": "6.12",
+    "pyinstaller": "6.22.3"
+  },
+  "batches": [
+    {
+      "name": "weapon, technology card, desktop, normative documentation",
+      "result": "75 passed",
+      "seconds": 194.67
+    },
+    {
+      "name": "inventory, incremental diff, disk storage, answers, CLI",
+      "result": "156 passed, 5 skipped, 2 initial failures",
+      "seconds": 391.05
+    },
+    {
+      "name": "corrected CLI recoverable grammar and invalid UTF-8 tests, installed console with venv PATH",
+      "result": "3 passed",
+      "seconds": 13.25
+    },
+    {
+      "name": "weapon feature, source proof and extra-kind rejection after fixes",
+      "result": "16 passed",
+      "seconds": 154.35
+    },
+    {
+      "name": "full rebuild/CSV snapshot preservation and size-scaled special marker",
+      "result": "2 passed",
+      "seconds": 16.54
+    },
+    {
+      "name": "latest Qt technology proof/history tab and stale-response test",
+      "result": "1 passed, 16 deselected",
+      "seconds": 6.94
+    }
+  ],
+  "batch_counts_overlap": true,
+  "skips": [
+    "4 Windows symlink cases require unavailable symlink privilege",
+    "1 POSIX-only surrogate filename case"
+  ],
+  "actual": {
+    "definitions": 555,
+    "groups": 439,
+    "related_rows": 3,
+    "related_complete": false,
+    "damage": "8.00–21.00",
+    "range": "40.00",
+    "power": "7.00",
+    "power_label": "소비 전력",
+    "resources": [
+      {
+        "id": "alloys",
+        "section": "cost",
+        "value": "15",
+        "status": "resolved"
+      },
+      {
+        "id": "energy",
+        "section": "upkeep",
+        "value": "0.15",
+        "status": "resolved"
+      },
+      {
+        "id": "alloys",
+        "section": "upkeep",
+        "value": "0.030",
+        "status": "resolved"
+      }
+    ],
+    "links": [
+      {
+        "id": "tech_lasers_2",
+        "kind": "technology",
+        "status": "resolved"
+      },
+      {
+        "id": "SMALL_UV_LASER",
+        "kind": "component_template",
+        "status": "resolved"
+      }
+    ],
+    "run_seconds": 118.748,
+    "cold_weapon_query_ms": 2864.287,
+    "warm_related_ms": 17.013
+  },
+  "actual_index": {
+    "snapshot_id": "e06ec2d7e9ca4e6928a64246f1761f7fe246a794cad59a7bac18d1cf7777a425",
+    "previous_active": "67ab711828b38f615fe5ac43235c002e2dbf34735b33fc8dfeaf5a43e58ca119",
+    "source_count": 602,
+    "status": "partial",
+    "processing": {
+      "mode": "incremental",
+      "parsed_files": 115,
+      "reused_files": 487,
+      "file_changes": {
+        "added": 80,
+        "removed": 0,
+        "modified": 0,
+        "unchanged": 522
+      },
+      "reprocess_reason": null,
+      "derived_reused": 1384,
+      "derived_rebuilt": 0
+    },
+    "storage": {
+      "localisation_entries": 297964,
+      "partial_localisation_files": 32
+    }
+  },
+  "group_count_scope": "all captured component_set definitions, not a count of weapon families",
+  "frozen": {
+    "weapon_exit": 0,
+    "technology_exit": 0,
+    "weapon_identity": {
+      "snapshot_id": "e06ec2d7e9ca4e6928a64246f1761f7fe246a794cad59a7bac18d1cf7777a425",
+      "entity_key": "94f3d0c20fbd5c3088bdb988a96de316cb59507cc0d46a68b77e38b640b8b416",
+      "game_id": "SMALL_BLUE_LASER",
+      "kind": "component_template",
+      "language": "korean"
+    },
+    "damage": "8.00–21.00",
+    "power": "7.00",
+    "link_count": 2,
+    "technology_results": 2,
+    "technology_cost": "1,250",
+    "archive_modules": 50,
+    "source_match": true,
+    "exe_sha256": "ab007d3d591b9c3ce2dee21a7257f9fac7316f8221a3795cd26f4a9401eaaacc"
+  },
+  "legacy": {
+    "old_technology_cost": "1,250",
+    "old_weapon_available": false
+  },
+  "wheel": {
+    "filename": "stellaris_supporter-0.0.1-py3-none-any.whl",
+    "sha256": "f3d792912e1f42b4731e815b14f9ff5b6b06f4214c8094833294f055207c72a0"
+  },
+  "source_files_sha256": {
+    "src/stellaris_supporter/__init__.py": "6992f8a968a4c883ccb8119726ef259b450a26aa25ebd082ebb3e80e41cd4e02",
+    "src/stellaris_supporter/__main__.py": "fce7d75cace65d7f6f079e69b656de494cf555da5fca0eb6ac685952e5cdbb7f",
+    "src/stellaris_supporter/answers.py": "496c22fe5cb6021c3c496bb8499cf6e0763304fddccee04f7af4de14c9053da3",
+    "src/stellaris_supporter/card_information.py": "3f3161c785c1dbb31bce79c6452f4cb230283fccf952de43b80aed0b8613113c",
+    "src/stellaris_supporter/cli.py": "c692a2a04bdc1279ae1b9ae508fbaa52c96d604c65f506c17e8ee08f8be63d6e",
+    "src/stellaris_supporter/cli_index.py": "4fb5236662a84e2c5fbd9d2c8f74d347a2b5e2db0ff7940a62b5bbe88261f335",
+    "src/stellaris_supporter/cli_setup.py": "bcf7bcb6cf824b5074c3ffea0bb9723ae4d75ac2db2aaede90a03dc1d016f552",
+    "src/stellaris_supporter/comparison.py": "a301f8f0dcbdad5d6b5b93b2ab2d6eda243aa60dc9f2c44c82c1c055e10c4d12",
+    "src/stellaris_supporter/config.py": "1615157fddbf5ff9da4c5f73c1aea5111b30cad8d4d63c7957396f4c81e54ebe",
+    "src/stellaris_supporter/desktop/__init__.py": "d6fb2a047d1b739fe65f9e453b080cc35bb62c81e2e59aa32c4aaf35b40577e0",
+    "src/stellaris_supporter/desktop/__main__.py": "5cb26d1fa030bdeff482d5f4280a7913ac02908a5cd6808264a7f194c9989004",
+    "src/stellaris_supporter/desktop/app.py": "623d6f4da942718a44fa0dc67772a465132c401fe2f93c0d6a7e3d853e52792f",
+    "src/stellaris_supporter/desktop/diagnostics.py": "155c358fbdb8c486a8b5c000c894bcff261ad7f5cbf27f4aea92644b9528914b",
+    "src/stellaris_supporter/desktop/model.py": "0444965348a3db43281653e0ca8a9f6ef2cf9533633614f378acce0738391e66",
+    "src/stellaris_supporter/desktop/presentation.py": "3b7f07c6466d1786d21b3186c5b7503605dcceeedcbf962ca45741a6ac6c0ebc",
+    "src/stellaris_supporter/desktop/settings.py": "115484ff8de698fe2e1d13e9043c5697ab541abffdadd850c40277cf2f7c2cea",
+    "src/stellaris_supporter/desktop/steam.py": "f07ef8b991156d72e7428fbf291000c23b02623b71f279aa067b9178e82ca0d8",
+    "src/stellaris_supporter/desktop/technology_card.py": "820664e039d3bd240892ffd39bbd17e27b8ef83960534f82ba52a499925303a7",
+    "src/stellaris_supporter/desktop/weapon_browser.py": "baf903b5910cb7854c6750bdb62d0a26893eddb51cde532d6de5226774470e99",
+    "src/stellaris_supporter/desktop/windows.py": "5dbb92daf6a397f00dbe8f3729bc2c175934c01e7d41e92895dcb890e7481d6d",
+    "src/stellaris_supporter/desktop/worker.py": "05dba3fd8040411ec9fef20b8f5515312c3ff15e6e8a9b4826afd42a977104bd",
+    "src/stellaris_supporter/diagnostics.py": "23cfa240178000c8317e98822a3b6e72a6804290dca835d6c76705a9b3c88e97",
+    "src/stellaris_supporter/discovery/__init__.py": "e8e201bd47523e85724bf703012adedb5bfcdaedb5a9982ca01af42b8bda8211",
+    "src/stellaris_supporter/discovery/inventory.py": "366deaa813ddcad2dd21bd31431301bcc349b1d529fb20975e45e2f4ff1541a6",
+    "src/stellaris_supporter/discovery/versioning.py": "75bd9aaeef8ac1f9a8d5f7f5df4e7de313f7b117ce88625acb778a4e8f9445af",
+    "src/stellaris_supporter/disk_index.py": "c3e8b608f7a9532a28bd9bc8f2797f7e96c4ca31b7234195310cdc56cb2dbe24",
+    "src/stellaris_supporter/doctor.py": "d18f6f7724e20e03eb6e7ca48fb1b7b35a904fdc8027abee94a40fd1126d594e",
+    "src/stellaris_supporter/domain/__init__.py": "72bb33ea00be816a7a8ead4073088c87a5be88826821fc90015442ae9b82f756",
+    "src/stellaris_supporter/domain/event.py": "3d8973c43429eb943e3cf1d68aaed1e9707a8f5b5899046487509f65eb6531b6",
+    "src/stellaris_supporter/domain/event_references.py": "db4304e30ce28a991e5685074dd0ed3b667df9c0efd945f8361784b64246b77f",
+    "src/stellaris_supporter/domain/generic.py": "60bbfda8f173fa4eda4cdf1d2946caa8058156f46c804beaa722b40f0ef3dc35",
+    "src/stellaris_supporter/domain/technology.py": "c353f649c950a89fd4305f76f05492cc5679ddea6c7871f68d946e01a5a544b3",
+    "src/stellaris_supporter/evaluation.py": "68d545897784bd136d10408255c1bac565b568cb2c8d012782188bbc2b68aa92",
+    "src/stellaris_supporter/incremental.py": "4254f4f2bfdc5a0499ca75e5f63b4de7adaac1ac149231f4dd2ee25033bf3a29",
+    "src/stellaris_supporter/localisation/__init__.py": "72d089f13a3f976b8f04cdd1277c938adf53e478cba0ab58879dad721ca248fb",
+    "src/stellaris_supporter/localisation/reader.py": "e9ac925b9921b52a617651e415a736c48378f6891d9d1a5736a66da0a5539e0a",
+    "src/stellaris_supporter/localisation/resolver.py": "72a12ed1f0ecd13268ac84079463cf0c700d6c6aec69eebe8423d227fbe60f6e",
+    "src/stellaris_supporter/parsing/__init__.py": "94b815377bdb03aa39d4d07284606d82ac501a549d1401e6d9e6509b01d43a47",
+    "src/stellaris_supporter/parsing/lexer.py": "f81d9d71d89fb1a63f85ef3e30bb08e37f327682e03fcb93b3f689d768e0ea9e",
+    "src/stellaris_supporter/parsing/parser.py": "f65271dcc3bdd551bcf6a524fca9bb40e3c099a8073e867ca504f0a7e6721917",
+    "src/stellaris_supporter/references.py": "b71ada32021fe1ff143482dd27933fab2846628de6924fb351aa43e66f729cf7",
+    "src/stellaris_supporter/retrieval.py": "c6e352f1e678efe7768b9718c2122fd0076770be08d6b27987462831f7c6aaec",
+    "src/stellaris_supporter/static_values.py": "f9e28170b4e48f3541bea71d9fa5076482e693eca7f3ebc472f3b91b9050999d",
+    "src/stellaris_supporter/storage/__init__.py": "14b648c4923c888d40308613b55611a945cebf80af5e7f6bb75247362b17906c",
+    "src/stellaris_supporter/storage/cache.py": "1b0539c45ded5bb9e7fcef761b2db49efffb72b603701d652d30d1730ed1b5d9",
+    "src/stellaris_supporter/storage/catalogue.py": "a97a660ca9ba4c0e99bfa995274a813331337331e029300110f0048c51e4c50b",
+    "src/stellaris_supporter/storage/disk_comparison.py": "f7ba9b7337377e137bec9eb4abb1ea646964831e6c702ac42de0e36978440f6b",
+    "src/stellaris_supporter/storage/identity.py": "45a9fc1a026750fd1458a92b948afee911b3026311f44efee82b108c3a31823f",
+    "src/stellaris_supporter/storage/projection.py": "22b9e78203f2387c5cd060533b6328027459bb1878a14b65044c6441bddf8e38",
+    "src/stellaris_supporter/storage/reference_reader.py": "adff0fb7540497274801a666d41b7a407fa5fb03c177160e3246ae6e0773602c",
+    "src/stellaris_supporter/storage/repository.py": "515730ef451eb7cc66e1154084975faf2eb5836986a8becf5fa83aaf5e5009f9",
+    "src/stellaris_supporter/storage/schema.py": "9867715d189123c3ca0f4c3983a203254b2dadf35cf098ac1aaeba731658bdaa",
+    "src/stellaris_supporter/storage/source_pool.py": "44697247c52527d523352a3b05f432ee4ca51627e0b5860c62371f8b68f18a69",
+    "src/stellaris_supporter/weapon_data.py": "69b5be453d51a3ccb5fc2cfd770b7d8793a1005cdb4c141a9986bca7230b1a64",
+    "src/stellaris_supporter/weapons.py": "a6b3ddceed376442ed8334f8ab47a7d012796bf23bd1090738faaa54a5387cda"
+  },
+  "user_default_data_changed": false,
+  "git_integration_performed": false,
+  "limitations": [
+    "actual user app must index its own store before new weapon data is available",
+    "partial localisation consent retained",
+    "full E-046/E-048 matrix unchanged",
+    "no effective combat or player unlock calculation",
+    "no original game text, private DB, settings, paths or screenshots published"
+  ],
+  "final_checks": {
+    "ruff": "All checks passed",
+    "harness_valid": true,
+    "wheel_build": true,
+    "windows_build": true,
+    "rendered_screens": 3,
+    "korean_glyphs": true,
+    "same_snapshot_navigation": true
+  },
+  "user_followup": {
+    "date": "2026-10-25",
+    "observation": "User reports the new feature works in their app",
+    "scope": "general operation; individual detailed acceptance cases not inferred"
+  }
+}

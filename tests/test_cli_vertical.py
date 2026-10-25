@@ -236,7 +236,8 @@ def test_e026_duplicate_game_ids_are_not_merged(tmp_path: Path) -> None:
 def test_e026_partial_explicit_opt_in_keeps_diagnostics(tmp_path: Path) -> None:
     game, _, config = initialised(tmp_path)
     script = game / "common/technology/demo.txt"
-    script.write_bytes(script.read_bytes().replace(b"tier = 2", b"tier = \xff"))
+    # Recoverable grammar is eligible for explicit partial use; broken encoding is not.
+    script.write_bytes(script.read_bytes() + b"\nbroken = {")
     failed_code, failed, _ = query(config, "index")
     assert failed_code == 5 and failed["status"] == "error"
     assert query(config, "snapshots")[1]["results"][0]["status"] == "partial"
@@ -244,6 +245,16 @@ def test_e026_partial_explicit_opt_in_keeps_diagnostics(tmp_path: Path) -> None:
     assert rc == 0 and permitted["status"] == "partial"
     assert permitted["activated"] is True
 
+
+
+def test_e026_invalid_utf8_is_hard_error_with_partial_opt_in(tmp_path: Path) -> None:
+    game, _, config = initialised(tmp_path)
+    script = game / "common/technology/demo.txt"
+    script.write_bytes(script.read_bytes().replace(b"tier = 2", b"tier = \xff"))
+    for options in ((), ("--allow-partial",)):
+        code, result, _ = query(config, "index", *options)
+        assert code == 5 and result["status"] == "error"
+    assert not query(config, "snapshots")[1]["results"]
 
 def test_e026_allow_partial_never_bypasses_root_security(tmp_path: Path) -> None:
     game, _, config = initialised(tmp_path)
@@ -452,7 +463,7 @@ def test_e026_argparse_failure_is_single_sanitized_json(arguments: tuple[str, ..
 def test_e026_partial_localisation_can_only_activate_with_consent(tmp_path: Path) -> None:
     game, _, config = initialised(tmp_path)
     loc = game / "localisation/korean/demo_l_korean.yml"
-    loc.write_bytes(b"l_korean:\n demo_tech:0 \xff\n")
+    loc.write_bytes(b'l_korean:\n demo_tech:0 "unterminated\n')
     rc, failed, _ = query(config, "index")
     assert rc == 5 and failed["status"] == "error"
     rc, listed, _ = query(config, "snapshots")
@@ -836,12 +847,13 @@ def test_review_r1_resolver_visit_and_output_bounds(
         'l_korean:\n demo_tech:0 "합금 $suffix$ 연구"\n suffix:0 "연구"\n',
         encoding="utf-8",
     )
-    original = pipeline.resolve_technology_name
+    from stellaris_supporter.storage import catalogue as disk_catalogue
+    original = disk_catalogue.resolve_localisation
 
-    def limited(candidate, catalog, **kwargs):
-        return original(candidate, catalog, **{**kwargs, bound: limit})
+    def limited(catalog, key, language="korean", **kwargs):
+        return original(catalog, key, language, **{**kwargs, bound: limit})
 
-    monkeypatch.setattr(pipeline, "resolve_technology_name", limited)
+    monkeypatch.setattr(disk_catalogue, "resolve_localisation", limited)
     with pytest.raises(SnapshotError) as error:
         pipeline.index_technologies(repo, settings, allow_partial=True)
     assert error.value.code == "LIMIT_EXCEEDED"

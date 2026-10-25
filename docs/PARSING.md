@@ -129,3 +129,8 @@ Scripted Trigger/Effect는 이번 합성 규칙에서 **표시 이름 현지화 
 `tests/test_domain_e027_matrix.py`는 기존 foundation, Phase A/B/C1/C2 구현을 복제하지 않고 **13개 opt-in authored synthetic 범주**를 하나의 공통 테스트 행렬 A–F(정상 정의·오류·충돌·현지화·원본 출처 R1/R2·진단/자원 한도)에서 교차 검사합니다. 실제 게임의 정의, 엔진 해석, 적용 우선순위, 게임 버전, 설치본 경로를 검증했다는 의미가 아닙니다. 이벤트는 파일 단위 `namespace`와 고유 `id`, scripted trigger/effect는 표시 이름 localisation 없이 원문 정적 정의 키로 평가합니다. 종류별 특수 문법에 동일한 잘못된 가정을 강요하지 않으며 보안 변조 차단과 resource hard stop은 이전과 동일합니다.
 
 E-027은 검증된 신규 PR head의 전체 pytest/Ruff/harness/Documentation, **독립 리뷰·소유자 병합·실제 새 main 양 OS CI**가 모두 확인된 후에만 `pass` 전환을 제안합니다. C3 PR 자체에서는 `not_run`, TASK-014 `doing`, F-005 `in_progress`를 유지하고, 별도 closure-readiness Evidence를 통해 향후 상태 전환을 계획합니다. R1/R2를 우회하지 않는 후보별 canonical reparse P3 개선은 [Issue #34](https://github.com/Gandalem/stellaris-suppoter/issues/34)로 분리합니다.
+
+
+## TASK-015 이벤트 정적 호출
+
+기존 event adapter의 country_event/planet_event 합성 정의에서 immediate/option 내부의 같은 이름 호출을 조회한다. if/else_if/else/hidden_effect 블록을 원문 순서로 따라가며 wrapper/limit를 원문과 SourceRef로 보존한다. call 블록의 유일한 직접 literal id만 target으로 기록한다. 정의 자체의 id, 주석, 문자열, trigger 내부의 비효과 문맥은 call로 보지 않는다. 동적/중복 ID, 미지원 scope와 구조는 reference_coverage에 이유를 남긴다. scope 전이·조건 충족·일정·엔진 실행 결과는 계산하지 않는다. 이벤트 정의의 실제 게임 문법 범위는 TASK-014와 동일하며 지원 범위 확장은 별도 근거로 결정한다.

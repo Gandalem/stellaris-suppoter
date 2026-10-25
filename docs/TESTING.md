@@ -66,3 +66,14 @@ TASK-013 PR #25 R1–R5 추가 합성 테스트: 실제 subprocess와 작은 제
 ## 후속 Windows 오버레이 테스트 계획
 
 TASK-032/E-048의 Windows 게임 창 기술 실험과 TASK-030/E-046의 정식 OVL-01~06 검증을 구별합니다. 합성 테스트는 상태 전이·단축키 충돌·서비스 검색/출처 일치·입력 차단 방지 논리를, 실제 Windows 수동 테스트는 게임 전경에서 표시·클릭/키 입력 통과·DPI·다중 모니터·최소화/종료 안전 숨김을 검증합니다. 개인 원문·설치 경로·화면 캡처를 공개하지 않습니다. [오버레이 기준](OVERLAY.md).
+
+
+## TASK-015 참조 조회
+
+소유자 지시에 따라 기능 구현 100% 뒤에 참조 테스트와 검수를 시작했다. `tests/test_references.py`와 `tests/test_references_cli.py`는 E-028의 기술/이벤트 missing·ambiguous, E-029의 기술/이벤트 cycle·depth와 다이아몬드 구별, BOM/CRLF/한글 출처, 중복 occurrence, snapshot 변경 중 고정·카드/이동·원문 패널, 저장 관계/출처/cache 변조, 누적 자원 한도, opt-in event 색인, 기존 search/show 격리, 실제 subprocess 출력을 확인한다. `harness/evidence/TASK-015-refs-option-2.md`가 이 개발의 실행 기록이다.
+
+**TASK-033 필수 로컬 검사**
+
+전체 기능 작성 후 `tests/test_desktop.py`와 영향 CLI/answer/index 회귀를 실행했다. Qt 검사는 `.[desktop]`에서 실행하며 기본 CLI 설치에서는 optional dependency 검사가 skip될 수 있다. `scripts/native_desktop_smoke.py`는 자체 창 API 확인이고 실제 게임 입력 수용과 구분한다. 근거는 [TASK-033](../harness/evidence/TASK-033-desktop-option-1.md).
+
+**로컬 데이터 저장 2안:** `tests/test_disk_storage.py`는 파일별 저장/진단 스트리밍, 누락 의존관계·언어 대체·중복, 재시작 투영과 손상 복구, 전체 번역 비교, 취소/실패 재시도, writer 충돌, 색인 중 이전 스냅샷 검색을 검사한다. 인코딩 손상은 partial 동의로 우회하지 않는다. 실제 설치 결과와 겹치는 실행 묶음은 [근거](../harness/evidence/TASK-033-data-option-2.md)에 기록한다.

@@ -125,6 +125,7 @@ class LocalisationEntry:
     value_column_start: int
     has_unsupported_escape: bool
     _source: bytes = field(repr=False, compare=False)
+    _game_escapes: bool = field(default=False, repr=False, compare=False)
 
     @property
     def raw_value(self) -> str:
@@ -150,7 +151,10 @@ class LocalisationEntry:
             if raw[i] == "\\" and i + 1 < len(raw):
                 result.write(raw[start:i])
                 next_char = raw[i + 1]
-                result.write(next_char if next_char in {'"', "\\"} else raw[i : i + 2])
+                if self._game_escapes and next_char in {"n", "t", "r"}:
+                    result.write({"n": "\n", "t": "\t", "r": "\r"}[next_char])
+                else:
+                    result.write(next_char if next_char in {'"', "\\"} else raw[i : i + 2])
                 i += 2
                 start = i
             else:
@@ -238,22 +242,51 @@ def _ref(
     )
 
 
-def _end_of_quote(line: str, opening: int) -> tuple[int | None, bool]:
+def _end_of_quote(line: str, opening: int, *, game_compatibility: bool = False) -> tuple[int | None, bool]:
     i = opening + 1
     unsupported = False
     while i < len(line):
         ch = line[i]
         if ch == '"':
-            return i, unsupported
+            tail = line[i+1:].lstrip(" \t")
+            if not game_compatibility or not tail or tail.startswith("#"):
+                return i, unsupported
         if ch == "\\":
             if i + 1 >= len(line):
                 return None, unsupported
-            if line[i + 1] not in {'"', "\\"}:
+            if line[i + 1] not in ({'"', "\\", "n", "t", "r"} if game_compatibility else {'"', "\\"}):
                 unsupported = True
             i += 2
         else:
             i += 1
     return None, unsupported
+
+
+class _StreamRecords:
+    def __init__(self, sink, kind):
+        self.sink, self.kind, self.count = sink, kind, 0
+
+    def append(self, value):
+        self.count += 1
+        self.sink(self.kind, value)
+
+    def __len__(self):
+        return self.count
+
+    def __iter__(self):
+        return iter(())
+
+
+class _DiagnosticSamples(list):
+    def __init__(self, counts):
+        super().__init__()
+        self.counts = counts
+
+    def append(self, value):
+        key = value.code + ":" + value.severity
+        self.counts[key] = self.counts.get(key, 0) + 1
+        if self.counts[key] <= 3:
+            super().append(value)
 
 
 def parse_localisation(
@@ -265,6 +298,9 @@ def parse_localisation(
     max_entries: int = MAX_LOCALISATION_ENTRIES,
     max_records: int = MAX_LOCALISATION_ENTRIES,
     max_diagnostics: int = MAX_LOCALISATION_DIAGNOSTICS,
+    sink=None,
+    diagnostic_counts=None,
+    game_compatibility: bool = False,
 ) -> LocalisationDocument:
     """Read one verified source file; all spans are original byte offsets.
 
@@ -288,6 +324,14 @@ def parse_localisation(
     unknown: list[SourceRef] = []
     diagnostics: list[LocalisationDiagnostic] = []
     complete = True
+
+    if sink is not None:
+        entries = _StreamRecords(sink, "entry")
+        headers = _StreamRecords(sink, "header")
+        comments = _StreamRecords(sink, "comment")
+        unknown = _StreamRecords(sink, "unknown")
+    if diagnostic_counts is not None:
+        diagnostics = _DiagnosticSamples(diagnostic_counts)
 
     def make_result() -> LocalisationDocument:
         return LocalisationDocument(
@@ -465,7 +509,7 @@ def parse_localisation(
             continue
 
         opening = match.opening
-        closing, unsupported_escape = _end_of_quote(text, opening)
+        closing, unsupported_escape = _end_of_quote(text, opening, game_compatibility=game_compatibility)
         if closing is None:
             if not reserve_record(line_ref):
                 break
@@ -517,6 +561,7 @@ def parse_localisation(
                 value_column_start=opening + 2,
                 has_unsupported_escape=unsupported_escape,
                 _source=source,
+                _game_escapes=game_compatibility,
             )
         )
         if occurrence > 1 and not emit(

@@ -21,7 +21,7 @@ from contextlib import closing, contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from stellaris_supporter.domain import SourceRef, TechnologyAdaptResult, TechnologyCandidate
 from stellaris_supporter.localisation import (
@@ -49,6 +49,12 @@ from stellaris_supporter.storage.identity import (
     storage_json,
 )
 from stellaris_supporter.storage.schema import check_schema, connect, initialise_schema
+
+if TYPE_CHECKING:
+    from stellaris_supporter.domain.event_references import EventReferenceRecord
+    from stellaris_supporter.domain.generic import DomainAdaptResult
+
+_ACTIVE_UNCHECKED = object()
 
 MAX_RECORDS = 100_000
 MAX_JSON_BYTES = 1024 * 1024
@@ -359,9 +365,12 @@ class SnapshotRepository:
         policy: SnapshotPolicy,
         *,
         technology_results: tuple[TechnologyAdaptResult, ...] = (),
+        event_results: tuple[DomainAdaptResult, ...] = (),
+        event_records: tuple[EventReferenceRecord, ...] = (),
         localisation_documents: tuple[LocalisationDocument, ...] = (),
         localised_names: tuple[TechnologyLocalisedName, ...] = (),
         cancel: _CANCEL | None = None,
+        extra_partial: bool = False,
     ) -> SnapshotIdentity:
         """Safe adapter/reader boundary: preserve original diagnostics/completeness.
 
@@ -372,7 +381,8 @@ class SnapshotRepository:
         """
         expected = snapshot_identity(sources, policy)
         descriptions = {d.key: d for d in expected.sources}
-        original = {s.descriptor().key: s.data for s in sources}
+        from stellaris_supporter.storage.source_pool import SourceBytes
+        original = SourceBytes(sources)
         for doc in localisation_documents:
             context = doc.context
             key = (context.source_kind, context.source_id, context.relative_path)
@@ -386,6 +396,12 @@ class SnapshotRepository:
                     "SOURCE_CHANGED", "Localisation document and input manifest differ."
                 )
         candidates = tuple(c for result in technology_results for c in result.candidates)
+        if tuple(r.candidate for r in event_records) != tuple(
+                c for result in event_results for c in result.candidates):
+            raise SnapshotError("SOURCE_CHANGED", "Event records do not cover adapter results.")
+        candidates = (*candidates, *event_records)
+        if any(result.blocked for result in event_results):
+            raise SnapshotError("LIMIT_EXCEEDED", "Event adapter stopped at a hard limit.")
         entries = tuple(entry for doc in localisation_documents for entry in doc.entries)
         diagnostics = tuple(
             diagnostic
@@ -393,8 +409,12 @@ class SnapshotRepository:
         ) + tuple(
             diagnostic for doc in localisation_documents for diagnostic in doc.diagnostics
         )
+        diagnostics += tuple(d for result in event_results for d in result.diagnostics)
         partial = (
-            any(not result.complete or not result.ok for result in technology_results)
+            extra_partial
+            or any(not result.complete or not result.ok for result in event_results)
+            or any(not record.coverage_complete for record in event_records)
+            or any(not result.complete or not result.ok for result in technology_results)
             or any(not doc.complete or not doc.ok for doc in localisation_documents)
         )
         return self.stage(
@@ -408,7 +428,7 @@ class SnapshotRepository:
         sources: tuple[SourceFileInput, ...],
         policy: SnapshotPolicy,
         *,
-        candidates: tuple[TechnologyCandidate, ...] = (),
+        candidates: tuple[TechnologyCandidate | EventReferenceRecord, ...] = (),
         entries: tuple[LocalisationEntry, ...] = (),
         localised_names: tuple[TechnologyLocalisedName, ...] = (),
         diagnostics: tuple[Any, ...] = (),
@@ -430,7 +450,8 @@ class SnapshotRepository:
         sid = identity.snapshot_id
         by_key = {d.key: d for d in identity.sources}
         source_by_key = {item.descriptor().key: item for item in sources}
-        bytes_by_key = {key: item.data for key, item in source_by_key.items()}
+        from stellaris_supporter.storage.source_pool import SourceBytes
+        bytes_by_key = SourceBytes(sources)
         relation_count = sum(len(candidate.prerequisites) for candidate in candidates)
         if (len(candidates) + len(entries) + relation_count > MAX_RECORDS
                 or len(diagnostics) > MAX_DIAGNOSTICS):
@@ -499,15 +520,20 @@ class SnapshotRepository:
                     key=lambda c: (
                         c.source_ref.source_kind, c.source_ref.source_id,
                         c.source_ref.relative_path, c.source_ref.byte_start,
-                        c.source_ref.byte_end, c.game_id,
+                        c.source_ref.byte_end, c.game_id or "",
                     ),
                 )
                 keys: dict[tuple[str, str], int] = {}
-                entity_map: dict[tuple[str, str, str, str, int, int], str] = {}
+                entity_map: dict[tuple[str, str, str, str, str, int, int], str] = {}
                 for candidate in ordered_candidates:
                     if cancel is not None and cancel():
                         raise SnapshotError("CANCELLED", "Staging was cancelled.")
                     ref = candidate.source_ref
+                    if not isinstance(candidate.game_id, str) or not candidate.game_id:
+                        if candidate.kind != "event":
+                            raise SnapshotError("SOURCE_CHANGED", "Technology definition has no static ID.")
+                        is_partial = True
+                        continue
                     _validate_ref(ref, sid, by_key)
                     _validate_own_source(
                         candidate.items[0]._source if candidate.items else bytes_by_key[(
@@ -524,7 +550,7 @@ class SnapshotRepository:
                         "source": ref.to_dict(), "occurrence": occurrence,
                     }, max_bytes=MAX_JSON_BYTES)).hexdigest()
                     match = (
-                        candidate.game_id, ref.source_kind, ref.source_id,
+                        candidate.kind, candidate.game_id, ref.source_kind, ref.source_id,
                         ref.relative_path, ref.byte_start, ref.byte_end,
                     )
                     if match in entity_map:
@@ -549,9 +575,11 @@ class SnapshotRepository:
                             "relation_kind,target_game_id,target_entity_key,status,"
                             "source_ref_json,conditions_raw) VALUES(?,?,?,?,?,?,?,?,?)",
                             (
-                                sid, entity_key, ordinal, "prerequisite",
+                                sid, entity_key, ordinal,
+                                "prerequisite" if candidate.kind == "technology" else "event_reference",
                                 prerequisite.target_game_id, None, "unresolved",
-                                _as_json(prerequisite.source_ref.to_dict()), None,
+                                _as_json(prerequisite.source_ref.to_dict()),
+                                getattr(prerequisite, "conditions_raw", None),
                             ),
                         )
 
@@ -559,7 +587,7 @@ class SnapshotRepository:
                     c = name.candidate
                     ref = c.source_ref
                     match = (
-                        c.game_id, ref.source_kind, ref.source_id,
+                        c.kind, c.game_id, ref.source_kind, ref.source_id,
                         ref.relative_path, ref.byte_start, ref.byte_end,
                     )
                     entity_key = entity_map.get(match)
@@ -702,6 +730,69 @@ class SnapshotRepository:
             conn.execute("ROLLBACK")
             return records, len(rows) > limit
 
+    def verify_index_products(self, sid, candidates, documents, names, *, additional_kinds=()):
+        """A full parse may reuse an immutable ID only if stored products agree."""
+        if additional_kinds not in ((), ("component_template",)):
+            raise SnapshotError("QUERY_INVALID", "Unsupported extra snapshot kinds.")
+        def key(candidate):
+            ref = candidate.source_ref
+            return (ref.source_kind, ref.source_id, ref.relative_path, ref.byte_start,
+                    ref.byte_end, candidate.kind, candidate.game_id)
+        expected = sorted((c for c in candidates if c.game_id is not None), key=key)
+        translated = {key(n.candidate): n.localisation.to_dict() for n in names}
+        entries = sorted((entry for doc in documents for entry in doc.entries), key=lambda e: (
+            e.source_ref.source_kind, e.source_ref.source_id, e.source_ref.relative_path,
+            e.source_ref.byte_start, e.language, e.key, e.occurrence))
+        with self._connection(read_only=True) as conn:
+            self._ensure_ready(conn, sid)
+            rows = conn.execute("SELECT * FROM entities WHERE snapshot_id=? AND (?=0 OR kind<>'component_template') ORDER BY "
+                                "source_kind,source_id,relative_path,byte_start,byte_end,kind,game_id", (sid, int(bool(additional_kinds))))
+            for candidate in expected:
+                row = next(rows, None)
+                if row is None or json.loads(row["candidate_json"]) != candidate.to_dict(include_raw=False):
+                    raise SnapshotError("SOURCE_CHANGED", "Existing snapshot differs from full extraction.")
+                actual_name = None if row["localisation_json"] is None else json.loads(row["localisation_json"])
+                if actual_name != translated.get(key(candidate)):
+                    raise SnapshotError("SOURCE_CHANGED", "Existing localisation differs from full extraction.")
+                relations = conn.execute("SELECT occurrence,target_game_id,source_ref_json,conditions_raw "
+                                         "FROM relations WHERE snapshot_id=? AND from_entity_key=? "
+                                         "ORDER BY occurrence", (sid, row["entity_key"]))
+                for ordinal, link in enumerate(candidate.prerequisites, 1):
+                    relation = next(relations, None)
+                    if (relation is None or relation["occurrence"] != ordinal
+                            or relation["target_game_id"] != link.target_game_id
+                            or json.loads(relation["source_ref_json"]) != link.source_ref.to_dict()
+                            or relation["conditions_raw"] != getattr(link, "conditions_raw", None)):
+                        raise SnapshotError("SOURCE_CHANGED", "Existing relations differ from full extraction.")
+                if next(relations, None) is not None:
+                    raise SnapshotError("SOURCE_CHANGED", "Existing snapshot has extra relations.")
+            if next(rows, None) is not None:
+                raise SnapshotError("SOURCE_CHANGED", "Existing snapshot has extra definitions.")
+            rows = conn.execute("SELECT entry_json FROM localisation_entries WHERE snapshot_id=? "
+                                "ORDER BY source_kind,source_id,relative_path,byte_start,language,"
+                                "localisation_key,occurrence", (sid,))
+            for entry in entries:
+                row = next(rows, None)
+                if row is None or json.loads(row[0]) != _entry_data(entry):
+                    raise SnapshotError("SOURCE_CHANGED", "Existing translations differ from full extraction.")
+            if next(rows, None) is not None:
+                raise SnapshotError("SOURCE_CHANGED", "Existing snapshot has extra translations.")
+
+    def source_manifest(self, snapshot_id: str):
+        """Bounded immutable manifest, independent of live input paths."""
+        from stellaris_supporter.storage.identity import SourceDescriptor
+        with self._connection(read_only=True) as conn:
+            self._ensure_ready(conn, snapshot_id)
+            rows = conn.execute(
+                "SELECT source_kind,source_id,relative_path,file_sha256,byte_size "
+                "FROM source_files WHERE snapshot_id=? ORDER BY source_kind,source_id,relative_path LIMIT 50001",
+                (snapshot_id,),
+            ).fetchall()
+            if len(rows) > 50_000:
+                raise SnapshotError("LIMIT_EXCEEDED", "Manifest file count exceeded.")
+            return tuple(SourceDescriptor(r["source_kind"], r["source_id"], r["relative_path"],
+                                          r["file_sha256"], r["byte_size"]) for r in rows)
+
     def active_snapshot_id(self) -> str | None:
         with self._connection(read_only=True) as conn:
             row = conn.execute(
@@ -824,6 +915,18 @@ class SnapshotRepository:
                     else json.loads(row["localisation_json"])
                 ),
             }
+
+    @contextmanager
+    def reference_reader(self, snapshot_id: str | None = None):
+        """Pin roots, edges, policy and source proofs in one read transaction."""
+        from stellaris_supporter.storage.reference_reader import ReferenceReader
+        with self._connection(read_only=True) as conn:
+            conn.execute("BEGIN")
+            sid = self._snapshot_for_query(conn, snapshot_id)
+            try:
+                yield ReferenceReader(self, conn, sid)
+            finally:
+                conn.execute("ROLLBACK")
 
     @contextmanager
     def citation_reader(self, snapshot_id: str):
@@ -985,12 +1088,21 @@ class SnapshotRepository:
         sources: tuple[SourceFileInput, ...] | None = None,
         cancel: _CANCEL | None = None,
         before_commit: _HOOK | None = None,
+        expected_active: str | None | object = _ACTIVE_UNCHECKED,
+        source_check: _HOOK | None = None,
     ) -> None:
         """Atomic pointer change; all failure paths leave old active untouched."""
         if cancel is not None and cancel():
             raise SnapshotError("CANCELLED", "Activation was cancelled.")
         with self._connection() as conn, _immediate(conn):
             row = self._ensure_ready(conn, snapshot_id)
+            if expected_active is not _ACTIVE_UNCHECKED:
+                active = conn.execute("SELECT value FROM settings WHERE key='active_snapshot'").fetchone()
+                current = None if active is None else active[0]
+                if current != expected_active:
+                    raise SnapshotError("SOURCE_CHANGED", "Active snapshot changed during indexing.")
+            if source_check is not None:
+                source_check()
             if row["status"] == "partial" and not allow_partial:
                 raise SnapshotError("PARTIAL_INDEX", "Partial snapshots require explicit approval.")
             self._verify_live_manifest(conn, snapshot_id, sources)

@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-25",
+  "scope": "remove weapon value-proof UI only",
+  "qt_test": "1 passed, 16 deselected, 5.90s",
+  "rendered_screens": 3,
+  "ruff_pass": true,
+  "harness_valid": true,
+  "binary_exit": 0,
+  "damage": "8.00–21.00",
+  "power": "7.00",
+  "archive_modules": 50,
+  "source_match": true,
+  "exe_sha256": "baa472898da79f61276d4c7594399935bdbf1398cabcc044b6aa8b7447ddcf7d",
+  "user_default_data_changed": false,
+  "git_integration": false
+}

@@ -390,7 +390,7 @@
     {
       "id": "TASK-015",
       "title": "Static references",
-      "status": "todo",
+      "status": "done",
       "feature_ids": [
         "F-010",
         "F-011"
@@ -404,17 +404,23 @@
       ],
       "docs": [
         "docs/BACKLOG.md",
-        "docs/DATA_CONTRACTS.md"
+        "docs/DATA_CONTRACTS.md",
+        "docs/CLI.md",
+        "docs/REFS.md",
+        "docs/REFS-OPTION-2.md",
+        "harness/tasks/TASK-015.md"
       ],
       "acceptance": [
         "Missing, ambiguous and cyclic references are bounded and explicit."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-015-refs-option-2.md"
+      ]
     },
     {
       "id": "TASK-016",
       "title": "Incremental index and diff",
-      "status": "todo",
+      "status": "done",
       "feature_ids": [
         "F-012",
         "F-011"
@@ -429,17 +435,22 @@
       ],
       "docs": [
         "docs/BACKLOG.md",
-        "docs/UPDATES.md"
+        "docs/UPDATES.md",
+        "harness/tasks/TASK-016.md",
+        "docs/CLI.md",
+        "docs/DATA_CONTRACTS.md"
       ],
       "acceptance": [
         "Adds, changes, deletions and mid-index changes preserve a valid active snapshot."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-016-incremental-diff-option-1.md"
+      ]
     },
     {
       "id": "TASK-017",
       "title": "Safety regression suite",
-      "status": "todo",
+      "status": "done",
       "feature_ids": [
         "F-013"
       ],
@@ -459,12 +470,14 @@
       "acceptance": [
         "Original files, network consent and private data boundaries survive negative tests."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-033-desktop-option-1.md"
+      ]
     },
     {
       "id": "TASK-018",
       "title": "Evaluation runner and corpus",
-      "status": "todo",
+      "status": "done",
       "feature_ids": [
         "F-014"
       ],
@@ -485,12 +498,14 @@
       "acceptance": [
         "Automated v0.1 cases have reproducible executions; at least 40 balanced queries exist; manual and later cases stay pending."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-033-desktop-option-1.md"
+      ]
     },
     {
       "id": "TASK-019",
       "title": "Performance baseline",
-      "status": "todo",
+      "status": "done",
       "feature_ids": [
         "F-014"
       ],
@@ -507,7 +522,9 @@
       "acceptance": [
         "A 10000-entity benchmark records environment, samples, cold/warm and p95."
       ],
-      "evidence": []
+      "evidence": [
+        "harness/evidence/TASK-033-desktop-option-1.md"
+      ]
     },
     {
       "id": "TASK-020",
@@ -815,6 +832,48 @@
         "Document unsupported cases and do not claim final UI release."
       ],
       "evidence": []
+    },
+    {
+      "id": "TASK-033",
+      "title": "Desktop and card overlay option 1 integration",
+      "status": "doing",
+      "feature_ids": [
+        "F-013",
+        "F-014",
+        "F-020"
+      ],
+      "depends_on": [
+        "TASK-014",
+        "TASK-016"
+      ],
+      "eval_ids": [
+        "E-006",
+        "E-032",
+        "E-033",
+        "E-034",
+        "E-035",
+        "E-036",
+        "E-046",
+        "E-048"
+      ],
+      "docs": [
+        "docs/OVERLAY.md",
+        "harness/tasks/TASK-033.md"
+      ],
+      "acceptance": [
+        "Implement approved local safety/evaluation/performance/packaging foundations and manager/card overlay; implement all code before essential verification.",
+        "Reuse snapshot services; hidden/passive/interactive modes, identity-bound Windows tracking, hotkeys, card persistence, worker ownership and standalone package.",
+        "Record synthetic, native Windows and actual Stellaris acceptance separately; no Git integration or deployment without user request."
+      ],
+      "evidence": [
+        "harness/evidence/TASK-033-desktop-option-1.md",
+        "harness/evidence/TASK-033-real-game-2026-10-25.md",
+        "harness/evidence/TASK-033-tech-card-info-option-2.md",
+        "harness/evidence/TASK-033-weapons-option-2.md",
+        "harness/evidence/TASK-033-weapons-simple-ui.md",
+        "harness/evidence/TASK-033-weapon-cards-option-2.md",
+        "harness/evidence/TASK-033-weapon-resource-fix.md"
+      ]
     }
   ]
 }

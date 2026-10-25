@@ -44,7 +44,7 @@ src/stellaris_supporter/
 
 TASK-010에서는 `stellaris_supporter.storage`의 `identity`, `schema`, `cache`, `repository` 경계가 이를 구현합니다. Inventory/technology/localisation이 제공한 원본 bytes와 SourceRef를 Repository 경계에서 다시 검증하며, 파일 해시→canonical snapshot identity→cache 저장→building record→ready/partial 검증→SQLite active pointer 갱신 순서를 유지합니다. 각 row는 snapshot_id 및 원본 source FK에 묶이고 `game_id` 자체는 unique하지 않습니다. 명시적 selected snapshot만 조회하며 building/failed는 노출하지 않습니다. 검색 및 FTS는 구현·합성 검증된 TASK-011 범위입니다.
 
-SearchService는 검증된 SnapshotRepository의 snapshot-scoped 스트리밍 읽기를 이용해 메모리의 재생성 가능한 SQL projection을 만듭니다. 검색 경로에서 파서·게임 파일·네트워크·모델을 실행하지 않으며 FTS5는 실행 환경에서 지원 여부만 검사하는 선택적 기능이며, 현재 같은 LIKE 후보를 중복하는 FTS query branch를 제거했으므로 검색 가속 성능은 검증되거나 주장되지 않습니다. 한 query의 active snapshot 선택은 고정되고 result limit은 SQL에서 적용합니다. DB migration·영속 FTS 생성은 수행하지 않습니다.
+SearchService는 검증된 SnapshotRepository의 snapshot-scoped 스트리밍 읽기를 이용해 재생성 가능한 SQL projection을 만듭니다. 저장 행의 fingerprint와 보조 DB의 hash/size가 맞으면 재시작 후에도 영구 projection을 읽고, 손상·버전 차이는 재생성합니다. 검색 경로에서 파서·게임 파일·네트워크·모델을 실행하지 않습니다. FTS5는 선택적 기능이며 중복 LIKE 후보 분기는 사용하지 않습니다. 한 query의 active snapshot 선택은 고정되고 result limit은 SQL에서 적용합니다. 원본 SQLite v1 schema는 유지합니다.
 
 TASK-012의 `answers.py`는 검색→정적 formatter와 출처 검증의 메모리 계층이며 UI/LLM을 포함하지 않습니다. TASK-013의 CLI는 이 서비스를 호출합니다. Repository는 `answer_entity(snapshot_id,entity_key)`의 bounded point lookup과 `citation_bytes(SourceRef)`의 hash/byte/UTF-8/line 검증을 제공하고, 변하는 active pointer를 답변 중 다시 조회하지 않습니다. 조회된 raw 필드는 원문 그대로만 보여 주며 중복 정의를 병합하지 않고 번역의 root/dependency 참조는 별도로 유지합니다.
 
@@ -69,3 +69,14 @@ TASK-012의 `answers.py`는 검색→정적 formatter와 출처 검증의 메모
 ## 후속 Windows 오버레이 설계 (미구현)
 
 게임과 별도 프로세스 오버레이는 기존 SearchService/AnswerService/SnapshotRepository의 동일 pinned snapshot/SourceRef를 안전한 텍스트로 렌더링합니다. 게임 창은 일반 OS 창/프로세스 메타데이터로만 식별하며 메모리/그래픽/입력 후킹 및 게임 조작은 하지 않습니다. 기본은 별도 네트워크 서버 없는 서비스 재사용이며 접힘·게임 창 소실 시 완전 숨김 또는 검증된 입력 통과를 요구합니다. 기술 후보와 수용 기준은 [오버레이 계획](OVERLAY.md)을 따릅니다.
+
+
+## 참조 조회와 화면 경계
+
+`ReferenceService`는 `SnapshotRepository.reference_reader`의 단일 읽기 트랜잭션에서 root/target/relations/manifest를 고정한다. `domain/event_references.py`가 원문에 명시된 호출을 추출하고 `storage/reference_reader.py`가 원본 AST와 저장된 정의·관계를 대조한다. BFS 탐색과 순환 표시는 references.py에 둔다. CLI와 향후 창/오버레이는 같은 typed 응답을 표시한다. 카드에는 entity key와 snapshot을 함께 보존하며 source_text를 원문 패널로 연결한다. GUI toolkit 의존성은 추가하지 않는다.
+
+**Desktop option 1**
+
+`desktop` 선택 패키지의 Qt 관리창/카드 창이 같은 앱 프로세스에서 동작한다. 단일 worker thread가 repository/search 수명을 소유하며 UI는 요청 번호로 오래된 응답을 버린다. Steam manifest 탐색은 경로 제안만 하고 색인은 명시적 버튼으로 실행한다. 세부 계약과 로컬 실행은 [OVERLAY](OVERLAY.md)를 따른다.
+
+**로컬 저장 2안:** 전체 번역은 별도 파일별 SQLite 카탈로그로 배치 저장하며 스냅샷 manifest와 연결합니다. 기존 API용 주 DB에는 필요한 참조 집합만 투영합니다. bounded 원문 LRU, 누락 키를 포함한 파생 의존관계, 색인·검색 별도 worker를 사용합니다. 자세한 저장·복구 계약은 [로컬 데이터 저장 2안](DATA-STORAGE-OPTION-2.md)을 따릅니다.

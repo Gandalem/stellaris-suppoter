@@ -1,0 +1,119 @@
+{
+  "date": "2026-10-25",
+  "scope": "TASK-033 search startup correction and duplicate/theme card fix",
+  "cause": {
+    "actual_error": "SNAPSHOT_NOT_READY",
+    "actual_message": "No active snapshot.",
+    "same_logical_database_path": true,
+    "different_observed_file_ids": true,
+    "agent_observed_database_bytes": 33927168,
+    "user_app_observed_database_bytes": 94208,
+    "agent_snapshots": {
+      "partial": 1
+    },
+    "initial_user_app_snapshots": {},
+    "filesystem_redirection_mechanism": "not established; differing runtime file views are observed",
+    "prior_actual_user_index_completion_claim_corrected": true
+  },
+  "user_confirmed_search_restored": true,
+  "user_confirmation": "검색 결과가 나옴",
+  "changes": [
+    "first-run search availability and index guidance",
+    "index progress and fixed options during jobs",
+    "explicit partial-consent retry with cached file reuse",
+    "manager and overlay error explanations",
+    "bounded private diagnostic metadata and read-only binary diagnostic command",
+    "same-card re-pin reuses existing card without changing saved layout",
+    "standalone card dark theme and localised title",
+    "optional duplicate cleanup with confirmation, settings backup and custom-field preservation"
+  ],
+  "essential_tests": [
+    {
+      "scope": "desktop+retrieval initial diagnostics",
+      "passed": 68,
+      "seconds": 102.83
+    },
+    {
+      "scope": "final startup flow before card follow-up",
+      "passed": 19,
+      "seconds": 64.65
+    },
+    {
+      "scope": "final desktop including repeated pin, theme palette, cleanup confirmation+backup",
+      "passed": 20,
+      "seconds": 63.94
+    },
+    {
+      "scope": "package and normative documentation",
+      "passed": 16,
+      "seconds": 0.98
+    }
+  ],
+  "overlapping_batches_do_not_sum": true,
+  "ruff": "passed",
+  "wheel": "built",
+  "windows_onedir": "built",
+  "final_archive": {
+    "product_modules_compared": 44,
+    "different_modules": [],
+    "exe_sha256": "b30dadb7c603948b138ede93cf4125c19d5e9d164dce609541e0e7ba0ae099a9"
+  },
+  "packaged_search": {
+    "completed": true,
+    "worker_error": null,
+    "status": "partial",
+    "result_count": 2,
+    "diagnostics": [
+      {
+        "code": "PARTIAL_SNAPSHOT",
+        "severity": "warning",
+        "message": "Snapshot is incomplete; results may be partial."
+      }
+    ]
+  },
+  "empty_store_packaged_diagnostic": {
+    "exit": 1,
+    "completed": true,
+    "error": "SNAPSHOT_NOT_READY",
+    "expected": true
+  },
+  "git_commit_push_pr_merge_deployment": false,
+  "remaining_native_acceptance": [
+    "game click/key passthrough",
+    "DPI/multiple monitors",
+    "minimise/restore/exit full sequence"
+  ],
+  "actual_new_card_theme_and_cleanup_manual_acceptance": "not yet observed; synthetic GUI and palette checks passed",
+  "font_preview_followup": {
+    "offscreen_fonts_before": 0,
+    "registered_local_families": [
+      "Segoe UI",
+      "Malgun Gothic"
+    ],
+    "offscreen_missing_glyphs_after": 0,
+    "native_font_count": 425,
+    "native_korean_font_count": 107,
+    "native_missing_glyphs": 0,
+    "rendered_image_visually_checked": true,
+    "product_code_executable_changed": false
+  },
+  "card_native_display_recheck": {
+    "platform": "windows",
+    "native_font_count": 425,
+    "uses_isolated_preferences": true,
+    "actual_game_interaction": false,
+    "pin_attempts": 11,
+    "persistent_card_count": 1,
+    "card_window_count": 1,
+    "existing_uid_and_position_preserved": true,
+    "header": "청색 레이저",
+    "body_background": "#101720",
+    "missing_glyphs": 0,
+    "rendered_font_families": [
+      "Malgun Gothic",
+      "Segoe UI"
+    ],
+    "passed": true,
+    "executable_unchanged": true
+  }
+}

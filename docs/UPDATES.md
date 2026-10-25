@@ -45,3 +45,18 @@ DLC는 `installed`, `owned`, `enabled`를 각각 `true|false|null`로 유지하�
 metadata branch가 존재하지만 stable/beta로 해석되지 않으면 이는 "metadata 없음"이 아닙니다. 이 경우 branch는 unknown으로 유지하고 user-reported branch를 선택하지 않습니다. metadata 원문은 unrecognized, 유효한 user report는 suppressed_by_metadata observation으로 남깁니다.
 
 원본 observation은 persistence/private evidence용 `to_dict()`에 포함하고, 공개 보고용 `to_public_dict()`에서는 제외합니다. Diagnostic 메시지는 원본 version/build/branch 문자열을 삽입하지 않는 정적 문구를 유지합니다.
+
+
+## TASK-016 1안 구현
+
+파일별 중간 결과는 기존 private SHA blob cache에 versioned JSON으로 저장하고 settings에 해시/크기 포인터를 둔다. 캐시 키는 source 종류·ID·상대 경로·원본 SHA와 처리 정책의 해시다. SourceRef/Context의 snapshot은 중립 값으로 저장하고 새 스냅샷 조립 시 재연결한다. 이벤트 guard의 내부 출처도 재연결한다. 원문 bytes는 재복제하지 않는다. 캐시 손상/구형/예산 초과는 원본 재처리로 복귀한다. 현지화 파일 파싱을 재사용하더라도 전체 catalog와 기술 표시 이름은 새 스냅샷에서 구성한다.
+
+증분/전체 처리 경로는 동일 SnapshotPolicy와 입력 manifest를 사용한다. source 파일 게시 전·활성화 트랜잭션 내부 재수집으로 파일 membership와 해시를 대조한다. 활성 pointer에는 expected_active 비교를 적용해 다른 작업의 전환을 덮어쓰지 않는다. 게임 폴더의 원자적 파일시스템 snapshot을 제공한다고 주장하지 않으며 실제 확인된 수집 경계의 일치를 조건으로 한다.
+
+DiffService.compare(DiffQuery)는 두 immutable snapshot을 고정해 읽는다. lexical scalar, 순서 있는 pair/block 구조를 비교하므로 주석/공백은 제외하고 표현식·중복·순서는 보존한다. 관계 상태는 각 snapshot 안에서 계산하고 snapshot별 entity key를 비교 키로 사용하지 않는다. 제목/이름은 기존 현지화 resolver를 재사용한다. 관심 ID 필터와 전후 SourceRef로 향후 화면·카드에 연결한다. 실제 GUI는 이 범위에 포함하지 않는다.
+
+분석 산출물은 요청 공통 최대 200,000개/직렬화 기준 64MiB다. 양쪽의 SHA 로딩/파싱은 기존 ReferenceReader 요청당 64MiB씩, 파일 최대 16MiB와 definition/관계 JSON 각 1MiB 제한을 따른다. 최종 API JSON은 1MiB다. 분석 중단 시 요약 불완전을 표시하고 부분 수집으로 삭제를 추론하지 않는다. 비교 결과를 영속 diff 테이블에 저장하지 않으며 DB schema v1을 유지한다.
+
+## 2026-10-21 — 관리창·카드 오버레이 1안
+
+사용자 승인 범위의 Qt 관리창, 작은 카드 창, Steam 자동 탐색/수동 경로, snapshot 고정/비교/갱신, 작업 스레드/취소와 Windows 로컬 패키지를 추가했다. 기능 작성 후 필수 합성/자체 Windows 창/패키지 smoke를 실행했다. 실제 게임 입력과 Linux clean package는 별도 수용으로 유지한다. Git 통합은 수행하지 않았다.

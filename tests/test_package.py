@@ -22,9 +22,9 @@ def test_package_import_exposes_installed_version() -> None:
 def test_module_help_advertises_implemented_product_commands_only() -> None:
     result = run_module("--help")
     assert result.returncode == 0
-    assert "{init,doctor,index,search,show,snapshots}" in result.stdout
-    assert "refs" not in result.stdout
-    assert "diff" not in result.stdout
+    assert "{init,doctor,index,search,show,refs,diff,snapshots}" in result.stdout
+    assert "Trace exact technology prerequisites or literal event" in result.stdout
+    assert "Compare immutable snapshot definitions" in result.stdout
 
 
 def test_module_version_succeeds() -> None:

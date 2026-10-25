@@ -22,6 +22,8 @@ HEADING_CONTRACTS = {
         "## 질의·답변",
         "## 저장 구조",
         "## 후속 오버레이 데이터 표시 계약 (F-020 계획)",
+        "## TASK-015 정적 참조 계약",
+        "## TASK-016 증분·비교 계약",
     ),
     "PARSING.md": (
         "# 정적 파싱·현지화",
@@ -30,6 +32,7 @@ HEADING_CONTRACTS = {
         "## 도메인 adapter",
         "## 현지화",
         "## 로컬 조사 보고",
+        "## TASK-015 이벤트 정적 호출",
     ),
     "REQUIREMENTS.md": (
         "# 기능·비기능 요구사항",
@@ -46,6 +49,7 @@ HEADING_CONTRACTS = {
         "## 스냅샷과 정합성",
         "## 오류와 자원",
         "## 후속 Windows 오버레이 설계 (미구현)",
+        "## 참조 조회와 화면 경계",
     ),
     "TESTING.md": (
         "# 테스트 전략",
@@ -55,6 +59,7 @@ HEADING_CONTRACTS = {
         "## 현재 명령",
         "## 품질 게이트",
         "## 후속 Windows 오버레이 테스트 계획",
+        "## TASK-015 참조 조회",
     ),
 }
 
@@ -205,5 +210,7 @@ def test_overlay_mvp_plan_preserves_six_conditions_and_future_gates() -> None:
     assert "TASK-032 / E-048" in plan
     assert "TASK-030 / E-046" in plan
     assert "Windows borderless/windowed" in plan
-    assert "F-020=planned" in plan
-    assert "E-048/E-046=not_run" in plan
+    assert "TASK-033" in plan
+    assert "사용자 승인 1안" in plan
+    assert "실제 게임 수용 평가" in plan
+    assert "Git 통합·원격 CI·배포는 별도 요청" in plan

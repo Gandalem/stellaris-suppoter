@@ -65,6 +65,9 @@ def build_parser() -> argparse.ArgumentParser:
     _add_common(index, subcommand=True)
     index.add_argument("--allow-partial", action="store_true",
                        help="Explicitly activate parsed-but-partial snapshot; never bypass security.")
+    index.add_argument("--include-events", action="store_true",
+                       help="Also index supported literal event references.")
+    index.add_argument("--full", action="store_true", help="Parse all files without product reuse.")
     search = sub.add_parser("search", help="Search IDs and Korean/English names.")
     _add_common(search, subcommand=True)
     search.add_argument("text")
@@ -77,6 +80,23 @@ def build_parser() -> argparse.ArgumentParser:
     show.add_argument("--kind", default="technology")
     show.add_argument("--snapshot", default=None)
     show.add_argument("--limit", type=int, default=None)
+    refs = sub.add_parser("refs", help="Trace exact technology prerequisites or literal event calls.")
+    _add_common(refs, subcommand=True)
+    refs.add_argument("game_id")
+    refs.add_argument("--kind", default="technology", choices=("technology", "event"))
+    refs.add_argument("--snapshot", default=None)
+    refs.add_argument("--entity-key", default=None)
+    refs.add_argument("--depth", type=int, default=1)
+    refs.add_argument("--limit", type=int, default=None)
+    diff = sub.add_parser("diff", help="Compare immutable snapshot definitions, references and translations.")
+    _add_common(diff, subcommand=True)
+    diff.add_argument("before_snapshot")
+    diff.add_argument("after_snapshot")
+    diff.add_argument("--kind", choices=("technology", "event"), default=None)
+    diff.add_argument("--game-id", default=None)
+    diff.add_argument("--include-source-changes", action="store_true")
+    diff.add_argument("--limit", type=int, default=None)
+    diff.add_argument("--offset", type=int, default=0)
     snaps = sub.add_parser("snapshots", help="List snapshot statuses and active pointer.")
     _add_common(snaps, subcommand=True)
     snaps.add_argument("--limit", type=int, default=100)
@@ -210,6 +230,51 @@ def _failed(command: str | None, code: str, *, exit_code: int | None = None) -> 
 
 
 def _emit_text(payload: dict) -> None:
+    if payload.get("command") == "diff":
+        query = payload.get("query") or {}
+        lines = ["command: diff", f"status: {payload.get('status')}",
+                 f"before: {query.get('before_snapshot', 'unknown')}",
+                 f"after: {query.get('after_snapshot', 'unknown')}",
+                 f"summary_complete: {payload.get('summary_complete', False)}",
+                 "summary: " + json.dumps(payload.get("summary", {}), ensure_ascii=False, sort_keys=True)]
+        for item in payload.get("results", []):
+            lines.append(f"- {item['change_kind']} {item['kind']} {item['game_id']}")
+            for side in ("before", "after"):
+                value = item.get(side)
+                if isinstance(value, dict):
+                    ref = value.get("source_ref")
+                    if ref:
+                        lines.append(f"  {side}: {ref['relative_path']}:{ref['line_start']}-{ref['line_end']}")
+            for detail in item.get("details", []):
+                lines.append(f"  {detail.get('field', detail['section'])}: "
+                             + json.dumps(detail.get("before"), ensure_ascii=False)
+                             + " -> " + json.dumps(detail.get("after"), ensure_ascii=False))
+        for diagnostic in payload.get("diagnostics", []):
+            lines.append(f"- {diagnostic['code']}: {diagnostic['message']}")
+        if payload.get("truncated"):
+            lines.append("truncated: " + ", ".join(payload.get("truncation_reasons", [])))
+        print("\n".join(_safe_terminal_line(line) for line in lines))
+        return
+    if payload.get("command") == "refs":
+        lines = ["command: refs", f"status: {payload.get('status')}",
+                 f"snapshot: {payload.get('snapshot_id') or 'unknown'}"]
+        if payload.get("truncated"):
+            lines.append("truncated: " + ", ".join(payload.get("truncation_reasons", [])))
+        for node in (*payload.get("candidates", []), *payload.get("nodes", [])):
+            ref = node["source_ref"]
+            lines.append(f"- {node['game_id']} key={node['entity_key']} depth={node['depth']} "
+                         f"[{ref['relative_path']}:{ref['line_start']}-{ref['line_end']}]")
+        for edge in payload.get("edges", []):
+            ref = edge["source_ref"]
+            lines.append(f"  {edge['from_entity_key']} -> {edge['target_game_id']} "
+                         f"({edge['status']}, occurrence={edge['occurrence']}) "
+                         f"[{ref['relative_path']}:{ref['line_start']}-{ref['line_end']}]")
+        for cycle in payload.get("cycles", []):
+            lines.append("cycle: " + " -> ".join(cycle))
+        for diagnostic in payload.get("diagnostics", []):
+            lines.append(f"- {diagnostic['code']}: {diagnostic['message']}")
+        print("\n".join(_safe_terminal_line(line) for line in lines))
+        return
     if payload.get("command") == "snapshots":
         lines = [
             "command: snapshots", f"status: {payload.get('status')}",
@@ -238,6 +303,8 @@ def _emit_text(payload: dict) -> None:
              f"version: {context.get('game_version') or payload.get('game_version') or 'unknown'}",
              f"context_kind: {context.get('context_kind') or payload.get('context_kind') or 'unknown'}",
              f"branch: {context.get('branch') or payload.get('branch') or 'unknown'}"]
+    if payload.get("processing"):
+        lines.append("processing: " + json.dumps(payload["processing"], ensure_ascii=False, sort_keys=True))
     if payload.get("reused") is not None:
         lines.append(f"reused: {str(payload['reused']).lower()}")
     if payload.get("activated") is not None:
@@ -343,15 +410,17 @@ def _run_command(args: argparse.Namespace) -> tuple[int, dict]:
         return 0, payload
     settings = _load_checked(args)
     selected_limit = None
-    if command in {"search", "show"}:
+    if command in {"search", "show", "refs"}:
         selected = args.text if command == "search" else args.game_id
         selected_limit = _bounded_query_limit(
             selected, args.limit, settings=settings,
-            default=20 if command == "search" else 100,
+            default=20 if command in {"search", "refs"} else 100,
         )
     repo = SnapshotRepository(settings.data_dir, game_root=settings.game_root)
     if command == "index":
-        answer = index_technologies(repo, settings, allow_partial=args.allow_partial)
+        answer = index_technologies(repo, settings, allow_partial=args.allow_partial,
+                                    **({"include_events": True} if args.include_events else {}),
+                                    **({"full": True} if args.full else {}))
         return 0, {"schema_version": 1, "command": command, **answer}
     if command == "snapshots":
         rows, truncated = repo.list_snapshots(limit=args.limit, offset=args.offset)
@@ -360,6 +429,22 @@ def _run_command(args: argparse.Namespace) -> tuple[int, dict]:
             "results": list(rows), "truncated": truncated, "diagnostics": [],
             "limit": args.limit, "offset": args.offset,
         }
+    if command == "diff":
+        from stellaris_supporter.comparison import DiffQuery, DiffService
+        limit = _bounded_query_limit(args.game_id or "diff", args.limit, settings=settings, default=20)
+        result = DiffService(repo).compare(DiffQuery(
+            args.before_snapshot, args.after_snapshot, args.kind, args.game_id,
+            args.include_source_changes, limit, args.offset,
+        ))
+        payload = {"command": command, **result.to_dict()}
+        return _response_code(payload), payload
+    if command == "refs":
+        from stellaris_supporter.references import ReferenceQuery, ReferenceService
+        answer = ReferenceService(repo).refs(ReferenceQuery(
+            args.game_id, args.kind, args.snapshot, args.entity_key, args.depth, selected_limit,
+        ))
+        payload = {"command": command, **answer.to_dict()}
+        return _response_code(payload), payload
     service = SearchService(repo)
     try:
         if command == "search":

@@ -90,3 +90,55 @@ schema_version과 앱 버전은 다릅니다. migration에는 백업·복구가 
 ## 후속 오버레이 데이터 표시 계약 (F-020 계획)
 
 UI는 기존 Query → SearchService/AnswerService의 AnswerEnvelope와 verified SourceRef를 읽기 전용으로 표시합니다. 같은 pinned snapshot의 game_id, raw_expression, 상대 경로·행·해시, 번역 fallback, partial/not_found/unsupported를 보존합니다. 검증하지 않은 게임 효과를 실제 계산값처럼 표시하지 않습니다. 창 위치·크기·투명도·단축키는 게임 폴더 외부의 개인 설정에 저장하고 snapshot identity/SQLite v1 schema에는 넣지 않습니다. 원문은 안전한 텍스트로만 렌더링합니다. [오버레이 수용 기준](OVERLAY.md).
+
+
+## TASK-015 정적 참조 계약
+
+`ReferenceQuery(game_id,kind=technology,snapshot_id=null,entity_key=null,depth=1,limit=20)`는 정확 ID, technology/event 범주, 64자 소문자 SHA snapshot/entity key를 받는다. depth=1..16, limit=1..100. 요청 시작 시 active 또는 명시 snapshot을 읽기 트랜잭션 하나로 고정한다.
+
+`ReferenceEnvelope`는 schema_version, status(ok|partial|not_found|unsupported|error), snapshot_id, context, query, root_entity_key, candidates, nodes, edges, cycles, truncated, truncation_reasons, diagnostics, abstained를 갖는다. Node는 entity_key, game_id, kind, occurrence, 최소 depth, SourceRef, coverage_complete/coverage_reasons를 갖는다. Edge는 from_entity_key, occurrence, relation_kind, target_game_id, status(resolved|unresolved|ambiguous), target_entity_key, candidate_entity_keys, source_ref, depth, conditions_raw, candidates_truncated를 갖는다. 후보 key는 최대 2개이고 추가 후보 여부를 표시한다. ambiguous 루트 후보는 query.limit까지 반환한다.
+
+resolved는 같은 snapshot/kind에 유일한 정적 정의가 있음을 뜻한다. unresolved/ambiguous는 임의 정의와 연결하지 않는다. 각 관계의 중복 occurrence와 원문 순서를 보존한다. BFS로 최소 깊이를 부여하고, 반환 그래프에 반복 없는 DFS를 적용해 순환을 구별한다. 각 노드를 한 번 확장하므로 순환에서 탐색이 종료된다.
+
+검사 노드 256개, 스캔 edge 1024개, definition 당 relation 1024개, 누적 원본 로딩/파싱 64MiB, definition/candidate/definition relation JSON 각 1MiB, 최종 API JSON 1MiB다. 파일 최대 16MiB, 원본+newline LRU 24MiB/행 위치 최대 100만을 재사용한다. 노드/스캔/깊이/반환 한도는 partial/truncated이고, 출처·파서·저장 레코드·최종 출력의 hard budget 또는 무결성 오류는 error/abstained와 빈 nodes/edges/candidates다.
+
+읽기 시 canonical 전체 파일 AST의 top-level 정의, candidate payload 전체, entity identity/occurrence, 관계의 부모·대상·순서·토큰·span·원문 조건을 대조한다. 파일 SHA, byte/행/UTF-8 경계, manifest와 snapshot도 대조한다. 관계 row의 누락·추가를 거부한다. 관계 해석은 읽기 응답에서만 계산하며 원본/DB/active pointer를 갱신하지 않는다.
+
+이벤트 candidate JSON에 reference_extractor, references, reference_coverage를 추가하며 기존 기술 candidate JSON과 schema v1은 유지한다. 관계 kind는 event_reference, target은 명시 literal ID, conditions_raw는 wrapper/guard 원문과 SourceRef의 순서 있는 JSON이다. 이벤트 제목 번역키 누락은 참조 범위의 완전성과 별도로 취급한다. 미지원 scope·동적/중복 call ID는 coverage partial이며 빈 결과를 완전 성공으로 올리지 않는다. opt-in 정책 analysis_context.event_references=literal-event-refs-1을 사용한다.
+
+`ReferenceService.refs`, `navigate`, `source_text`, `pin`, `refresh`는 CLI와 향후 관리창/오버레이의 공통 호출 경계다. `ReferenceCard`는 snapshot_id/game_id/kind/entity_key/depth/limit을 보존하며 active 변경 후에도 같은 snapshot을 새로 조회한다. source_text는 SHA와 위치를 확인한 캐시 원문을 plain text로 반환하며 기본 64KiB, 최대 1MiB다.
+
+
+## TASK-016 증분·비교 계약
+
+DiffQuery(before_snapshot,after_snapshot,kind=null,game_id=null,include_source_changes=false,limit=20,offset=0,interest_ids=())는 두 64자 SHA snapshot, technology/event 필터와 최대 100개 관심 ID를 받는다. DiffEnvelope는 schema_version/status/query/context/summary/results/summary_complete/truncated/truncation_reasons/diagnostics/abstained를 갖는다. 결과는 section(entities/localisation/files), change_kind(added/removed/modified/source_changed/ambiguous), kind/game_id, before/after 또는 후보 목록, details를 담는다. 전후 SourceRef와 정의 ID는 독립 snapshot에 속한다.
+
+context는 양쪽 snapshot 정보·처리 정책·공통 비교 범위·정의 비교 가능 여부다. summary.files는 공통 지원 파일 전체의 추가/수정/삭제/동일 집계이며 필터된 결과의 changes/sections/total_results와 구별한다. 목록 제한은 정확한 집계를 유지하고, 분석 제한·정책 비호환·불완전 번역은 summary_complete=false를 사용한다. 불완전 번역에서 삭제/표시 이름 변경을 단정하지 않는다. 하드 출처/출력 오류는 빈 results와 abstained를 반환한다.
+
+파일 중간 결과의 직렬화는 등록 dataclass만 허용하는 versioned JSON이며 snapshot-neutral SourceRef와 원본 SHA/정책을 함께 묶는다. bytes는 원본 cache로 연결하고 pickle이나 캐시 유래 코드를 실행하지 않는다. 기존 settings와 blob cache를 활용해 schema migration을 추가하지 않는다. 캐시 포인터는 active_snapshot과 독립 key다.
+
+**로컬 저장 2안 적용:** 기존 파일별 reader와 SQLite v1의 한도는 유지합니다. 새 색인 정책 `localisation_storage=localisation-disk-2`는 전체 번역을 별도 카탈로그에 최대 200만 행/2GiB로 저장하고, v1에는 필요한 참조 집합만 기록합니다. 반복 진단은 코드·심각도별 총계와 최초 3개 샘플을 보존합니다. 게임 lexical 호환 모드는 내부 인용부호와 `\n`/`\t`/`\r`을 처리하며 원문 span은 유지합니다. 기존 reader 기본 동작은 유지합니다. 인코딩 손상과 자원 한도는 partial 동의로 우회하지 않습니다. 두 언어의 이름 투영을 저장하여 표시 언어 변경은 스냅샷을 재생성하지 않습니다. 상세 내용은 [저장·복구 계약](DATA-STORAGE-OPTION-2.md)을 따릅니다.
+
+
+**기술 카드 정보 2안 표시 계약**
+
+GUI 응답의 `card_view`는 identity(snapshot_id/entity_key/game_id/language), name, fields(value/status/raw/sources/dependencies), prerequisites, prerequisites_complete, flags, partial, definition_source_ref, fallback을 제공한다. 기존 AnswerEnvelope/AnswerFact JSON과 CLI 출력은 유지한다. 숫자는 0 이상 유한 십진수 최대 64자, 또는 같은 스냅샷의 단일 @변수에서 직접 숫자로 연결한다. unknown/ambiguous/incomplete/unsupported/missing_data를 0으로 대체하지 않는다. 비용 필드 원문과 변수 정의·값 SourceRef를 함께 확인한다.
+
+변수 파일은 기존 inventory 한도·원본 SHA 캐시에 포함한다. 파일별 snapshot-neutral 산출물은 버전/완전성/선언의 순서·중복·바이트 위치를 보존하고 16MiB로 제한한다. 스냅샷 manifest는 1MiB, 전역 변수 자료는 32MiB/10만 선언으로 제한한다. 정책 버전과 파일 소속을 검증하고 읽을 때 원문 AST와 대조한다. 누락 조회도 로컬/전역 키에 의존한다. SID가 바뀌면 의존성·표시 이름·값은 독립적으로 다시 해석한다. 기존 SID에는 현재 파일을 읽는 보완 경로가 없다.
+
+
+**무기 부품 2안 계약**
+
+component_template/weapon 엔티티는 원문 key/정의 occurrence/SID로 구분한다. weapon_requires_technology와 weapon_upgrade는 서로 다른 target kind를 검증한다. 세미콜론 표의 헤더·행·셀 span을 보존하며 CSV cost를 제작 자원으로 전용하지 않는다. 직접 숫자와 TXT 한 단계 변수, 필드별 부호/범위를 적용한다. 수치·자원·조건·표 전체 범위의 상태는 분리한다. 기존 SQLite v1과 기술 CLI JSON은 유지한다.
+
+무기 search 응답은 snapshot_id/items/offset/limit/truncated/coverage_complete를, detail은 identity/summary/fields/resources/conditions/effects/links/source_ref를 제공한다. 상세 section 요청은 제한된 자원/조건/연결/항목별 근거 페이지를 반환한다. 게임 텍스트는 plain text다. CSV는 파일당 10만 행/128열/셀 64KiB, 파일 산출물 16MiB/목록 64MiB, 결과 기본20 최대100, 상세64KiB/이력32개 한도를 적용한다. 한도 초과는 활성화 동의로 우회하지 않는다. [정의와 화면](WEAPON-COMPONENT-OPTION-2.md)을 따른다.
+
+
+**무기 고정 카드 2안**
+
+설정 카드 kind=weapon은 domain=component_template, 고정 snapshot_id/game_id/entity_key, UID/fields/rect를 사용한다. 무기 수치 원문은 설정에 복제하지 않는다. worker card 응답은 기존 무기 detail과 card_request를 사용하며 UI가 같은 상태/값을 요약한다. 요청 번호와 현재 UID/종류/정의/항목/언어/저장소 설정 세대를 반영 직전 대조한다. 무기 card_preview는 before/after의 기존 무기 상세를 반환하고 확인한 양쪽 응답을 적용 직전에 다시 대조한다. 첫 무기 설정 저장 백업, 경로별 단일 저장/파일 세대 확인, 실패 시 기존 설정 보존을 적용한다. 기술/참조/변경 카드 JSON과 조회 경로는 유지한다.
+
+
+**무기 비용 제어 범위**
+
+무기 detail의 resource_policy=weapon-resource-scope-2와 resource_scopes.cost/upkeep는 자원 제어/불완전/중복/잘린 범위 코드를 제공한다. mult/multiplier/trigger/inline_script 등 제어 필드는 resources 자원 행에서 제외하고 기존 원문 위치를 보존한다. 조건·배율·인라인 범위의 자원 값은 value/number=null과 개별 상태를 유지하며 0 또는 선언값을 최종 비용으로 반환하지 않는다. 반복 cost/upkeep 블록은 합산하지 않고 각 선언을 ambiguous 후보로 보존한다. 기존 무기 snapshot-neutral 제품은 재사용한다. UI의 변이 수치 안내 통합은 원본 fields의 상태/선언값/근거를 바꾸지 않는다.

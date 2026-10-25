@@ -1,4 +1,4 @@
-"""Technology-only CLI indexing pipeline; every input is a verified live source.
+"""Technology/localisation and opt-in event CLI indexing pipeline; every input is a verified live source.
 
 This module deliberately composes existing inventory, parser, adapter, localisation,
 snapshot and activation contracts. No inferred effective game rules or network I/O.
@@ -7,11 +7,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable
 
 from stellaris_supporter.cli_setup import _check_components
 from stellaris_supporter.config import Settings
 from stellaris_supporter.discovery.inventory import scan_inventory
 from stellaris_supporter.domain import SourceContext, adapt_technologies
+from stellaris_supporter.domain.event_references import EXTRACTOR_VERSION, extract_event_records
+from stellaris_supporter.domain.generic import adapt_domain
+from stellaris_supporter.incremental import FileProducts, classify_files
 from stellaris_supporter.localisation import (
     build_localisation_catalog,
     parse_localisation,
@@ -26,10 +30,14 @@ from stellaris_supporter.storage import (
     snapshot_identity,
 )
 from stellaris_supporter.storage.cache import _read_verified_file, live_source_relative_path
+from stellaris_supporter.weapon_data import TABLES
 
 # Explicit v0.1 scope: no implicit mods, DLC, or general game directory crawl.
 _INDEX_ROOTS = (
     ("common/technology", ".txt"),
+    ("common/scripted_variables", ".txt"),
+    ("common/component_templates", ".txt"),
+    ("common/component_sets", ".txt"),
     ("localisation/korean", ".yml"),
     ("localisation/english", ".yml"),
 )
@@ -38,6 +46,11 @@ _RESOURCE_LIMIT_CODES = frozenset({
     "LIMIT_EXCEEDED", "PARSE_DEPTH_LIMIT", "PARSE_NODE_LIMIT",
     "PARSE_DIAGNOSTIC_LIMIT",
 })
+
+
+def _check_cancel(cancel):
+    if cancel is not None and cancel():
+        raise SnapshotError("CANCELLED", "Indexing cancelled before activation.")
 
 
 def _reject_resource_limits(diagnostics) -> None:
@@ -55,7 +68,7 @@ def _language(value: str) -> str:
         raise SnapshotError("QUERY_INVALID", "CLI supports korean and english only.") from exc
 
 
-def _inventory_sources(settings: Settings) -> tuple[SourceFileInput, ...]:
+def _inventory_sources(settings: Settings, *, include_events: bool = False, cancel: Callable[[], bool] | None = None, pool=None) -> tuple[SourceFileInput, ...]:
     root = settings.game_root
     if root is None:
         raise SnapshotError("GAME_ROOT_MISSING", "Explicit game root required.")
@@ -64,7 +77,9 @@ def _inventory_sources(settings: Settings) -> tuple[SourceFileInput, ...]:
     collected: list[SourceFileInput] = []
     count_bytes = 0
     count_files = 0
-    for prefix, suffix in _INDEX_ROOTS:
+    roots = (*_INDEX_ROOTS, ("events", ".txt")) if include_events else _INDEX_ROOTS
+    for prefix, suffix in roots:
+        _check_cancel(cancel)
         folder = root.joinpath(*prefix.split("/"))
         _check_components(folder)
         if folder.is_symlink():
@@ -75,7 +90,8 @@ def _inventory_sources(settings: Settings) -> tuple[SourceFileInput, ...]:
             continue
         result = scan_inventory(
             folder, limits=settings.limits, allowed_root=root,
-            include_suffixes=(suffix,),
+            include_suffixes=(".txt", ".csv") if prefix == "common/component_templates" else (suffix,),
+            **({"include_file": lambda relative: relative.lower().endswith(".txt") or "common/component_templates/"+relative in TABLES} if prefix == "common/component_templates" else {}),
         )
         if not result.ok or result.inventory is None:
             diagnostic = next(
@@ -86,7 +102,11 @@ def _inventory_sources(settings: Settings) -> tuple[SourceFileInput, ...]:
                 "Supported source inventory failed its safety checks.",
             )
         for entry in result.inventory.files:
-            if not entry.relative_path.lower().endswith(suffix):
+            if prefix == "common/component_templates" and entry.relative_path.endswith(".csv"):
+                if "common/component_templates/" + entry.relative_path not in TABLES:
+                    continue
+            _check_cancel(cancel)
+            if not entry.relative_path.lower().endswith(suffix) and not (prefix == "common/component_templates" and "common/component_templates/"+entry.relative_path in TABLES):
                 continue
             relative = prefix + "/" + entry.relative_path
             path = root.joinpath(*relative.split("/"))
@@ -110,20 +130,27 @@ def _inventory_sources(settings: Settings) -> tuple[SourceFileInput, ...]:
             count_bytes += len(data)
             if count_files > settings.limits.max_files or count_bytes > settings.limits.total_bytes:
                 raise SnapshotError("LIMIT_EXCEEDED", "Index aggregate size exceeded.")
-            collected.append(SourceFileInput(
+            captured = SourceFileInput(
                 "base", "base_install", relative, data,
                 expected_sha256=entry.sha256, live_path=path,
-            ))
+            )
+            if pool is not None:
+                from stellaris_supporter.storage.source_pool import CachedSource
+                descriptor = captured.descriptor()
+                pool.cache.put(data, descriptor.file_sha256)
+                captured = CachedSource(descriptor, path, pool)
+            collected.append(captured)
     if not any(x.relative_path.startswith("common/technology/") for x in collected):
         raise SnapshotError("GAME_ROOT_MISSING", "No supported technology scripts found.")
     return tuple(sorted(collected, key=lambda x: (x.source_kind, x.source_id, x.relative_path)))
 
 
-def _policy(settings: Settings) -> SnapshotPolicy:
+def _policy(settings: Settings, *, include_events: bool = False) -> SnapshotPolicy:
     language = _language(settings.language)
+    roots = (*_INDEX_ROOTS, ("events", ".txt")) if include_events else _INDEX_ROOTS
     payload = json.dumps(
-        {"index_policy": _POLICY_VERSION, "language": language,
-         "source_roots": [x[0] for x in _INDEX_ROOTS],
+        {"index_policy": _POLICY_VERSION if not include_events else EXTRACTOR_VERSION, "language": language,
+         "source_roots": [x[0] for x in roots],
          "limits": settings.limits.to_dict()},
         sort_keys=True, separators=(",", ":"), ensure_ascii=False,
     ).encode("utf-8")
@@ -133,7 +160,8 @@ def _policy(settings: Settings) -> SnapshotPolicy:
         context_kind="base_install", game_version=None,
         game_version_source="unknown", branch="unknown",
         mod_state="unknown",
-        analysis_context={"scope": "technology_and_localisation", "language": language},
+        analysis_context={"scope": "technology_events_localisation" if include_events else "technology_and_localisation", "language": language,
+                          **({"event_references": EXTRACTOR_VERSION} if include_events else {})},
     )
 
 
@@ -159,90 +187,135 @@ def _verify_adapted_ids(source: SourceFileInput, adapted) -> None:
             raise SnapshotError("SOURCE_CHANGED", "Adapter technology ID differs from source.")
 
 
-def index_technologies(
+def _index_legacy(
     repository: SnapshotRepository, settings: Settings, *, allow_partial: bool = False,
+    include_events: bool = False, full: bool = False,
+    cancel: Callable[[], bool] | None = None,
 ) -> dict[str, object]:
-    """Capture original source identities and atomically activate only verified data."""
-    sources = _inventory_sources(settings)
-    policy = _policy(settings)
+    """Capture, reuse compatible neutral products, then compare-and-swap activation."""
+    def capture():
+        _check_cancel(cancel)
+        if cancel is not None:
+            return _inventory_sources(settings, include_events=include_events, cancel=cancel)
+        return (_inventory_sources(settings, include_events=True)
+                if include_events else _inventory_sources(settings))
+
+    previous = repository.active_snapshot_id()
+    sources = capture()
+    policy = _policy(settings, include_events=True) if include_events else _policy(settings)
     identity = snapshot_identity(sources, policy)
     sid = identity.snapshot_id
-    previous = repository.active_snapshot_id()
+    baseline = () if previous is None else repository.source_manifest(previous)
+    changes = classify_files(baseline, sources)
+    processing = {"mode": "full" if full else "incremental", "parsed_files": 0,
+                  "reused_files": 0, "file_changes": {k: len(v) for k, v in changes.items()},
+                  "reprocess_reason": "requested_full" if full else None}
+
+    def recheck_sources():
+        try:
+            current = capture()
+        except SnapshotError as exc:
+            if exc.code == "GAME_ROOT_MISSING":
+                raise SnapshotError("SOURCE_CHANGED", "Source inventory changed during indexing.") from exc
+            raise
+        if snapshot_identity(current, policy).sources != identity.sources:
+            raise SnapshotError("SOURCE_CHANGED", "Source membership or hash changed during indexing.")
+
+    def activate():
+        _check_cancel(cancel)
+        repository.activate(sid, sources=sources, allow_partial=allow_partial,
+                            expected_active=previous, source_check=recheck_sources,
+                            **({"cancel": cancel} if cancel is not None else {}))
+
+    def response(stored, reused):
+        return {"snapshot_id": sid, "status": "partial" if stored.status == "partial" else "ok",
+                "snapshot_status": stored.status, "activated": True, "reused": reused,
+                "previous_active": previous, "source_count": len(sources),
+                "context_kind": "base_install", "game_version": None, "branch": "unknown",
+                "diagnostics": [], "processing": processing}
+
     existing = repository.snapshot(sid)
     if existing is not None:
         if existing.status not in {"ready", "partial"}:
             raise SnapshotError("SNAPSHOT_EXISTS", "Unfinished or failed snapshot cannot be reused.")
-        if existing.status == "ready":
-            # A ready snapshot cannot contain a resource-bound partial diagnostic.
-            repository.activate(sid, sources=sources, allow_partial=allow_partial)
-            return {
-                "snapshot_id": sid, "status": "ok", "snapshot_status": "ready",
-                "activated": True, "reused": True, "previous_active": previous,
-                "source_count": len(sources), "context_kind": "base_install",
-                "game_version": None, "branch": "unknown", "diagnostics": [],
-            }
-        # Re-evaluate partial snapshots before consenting to activation. This
-        # also rejects old partial snapshots staged before the resource guard.
+        if existing.status == "ready" and not full:
+            activate()
+            processing["mode"] = "snapshot_reuse"
+            processing["reused_files"] = len(sources)
+            return response(existing, True)
 
-    technology_results = []
-    documents = []
+    products = FileProducts(repository, policy)
+    technology_results, event_results, event_records, documents = [], [], [], []
     for source in sources:
-        context = SourceContext(
-            sid, source.source_kind, source.source_id, source.relative_path,
-            hashlib.sha256(source.data).hexdigest(),
-        )
+        _check_cancel(cancel)
+        context = SourceContext(sid, source.source_kind, source.source_id, source.relative_path,
+                                hashlib.sha256(source.data).hexdigest())
+        product = None if full else products.get(source, context)
+        cached = product is not None
         if source.relative_path.startswith("common/technology/"):
-            adapted = adapt_technologies(
-                parse_bytes(source.data), source.data, context,
-            )
+            if product is None:
+                product = adapt_technologies(parse_bytes(source.data), source.data, context)
+                _verify_adapted_ids(source, product)
+            _reject_resource_limits(product.diagnostics)
+            technology_results.append(product)
+        elif source.relative_path.startswith("events/"):
+            if product is None:
+                parsed = parse_bytes(source.data)
+                adapted = adapt_domain(parsed, source.data, context, "event")
+                _reject_resource_limits(adapted.diagnostics)
+                if adapted.blocked:
+                    raise SnapshotError("LIMIT_EXCEEDED", "Event adapter budget exhausted.")
+                product = (adapted, extract_event_records(adapted.candidates, parsed, source.data, context))
+            adapted, records = product
             _reject_resource_limits(adapted.diagnostics)
-            _verify_adapted_ids(source, adapted)
-            technology_results.append(adapted)
+            if adapted.blocked:
+                raise SnapshotError("LIMIT_EXCEEDED", "Event adapter budget exhausted.")
+            event_results.append(adapted)
+            event_records.extend(records)
         else:
-            documents.append(parse_localisation(source.data, context))
+            if product is None:
+                product = parse_localisation(source.data, context)
+            documents.append(product)
+        processing["reused_files" if cached else "parsed_files"] += 1
+        if not cached:
+            products.put(source, product)
+    products.flush()
+    if not full and not processing["reused_files"]:
+        processing["mode"] = "full_fallback"
+        processing["reprocess_reason"] = "no_compatible_file_products"
     catalog = build_localisation_catalog(tuple(documents))
     for diagnostic in catalog.diagnostics:
         if diagnostic.code in {"LIMIT_EXCEEDED", "LOC_SNAPSHOT_MISMATCH"}:
-            # Catalog security/identity failures cannot be made safe by
-            # --allow-partial. Individual document parse diagnostics belong
-            # to stage_from_results and must remain visible as partial.
-            raise SnapshotError(
-                "LIMIT_EXCEEDED" if diagnostic.code == "LIMIT_EXCEEDED" else "SOURCE_CHANGED",
-                "Localisation catalog identity or bound is invalid.",
-            )
-    names = tuple(
-        resolve_technology_name(candidate, catalog, requested_language=_language(settings.language))
-        for result in technology_results for candidate in result.candidates
-    )
+            raise SnapshotError("LIMIT_EXCEEDED" if diagnostic.code == "LIMIT_EXCEEDED" else "SOURCE_CHANGED",
+                                "Localisation catalog identity or bound is invalid.")
+    names = tuple(resolve_technology_name(candidate, catalog,
+                  requested_language=_language(settings.language))
+                  for result in technology_results for candidate in result.candidates)
     for name in names:
         _reject_resource_limits(name.localisation.diagnostics)
         if name.localisation.truncated:
             raise SnapshotError("LIMIT_EXCEEDED", "Localisation expansion was truncated.")
-    if existing is not None:
-        # Existing partial was just rechecked for hard limits; normal parser
-        # partials still require explicit --allow-partial consent.
-        repository.activate(sid, sources=sources, allow_partial=allow_partial)
-        return {
-            "snapshot_id": sid, "status": "partial", "snapshot_status": "partial",
-            "activated": True, "reused": True, "previous_active": previous,
-            "source_count": len(sources), "context_kind": "base_install",
-            "game_version": None, "branch": "unknown", "diagnostics": [],
-        }
-    summary = repository.stage_from_results(
-        sources, policy, technology_results=tuple(technology_results),
-        localisation_documents=tuple(documents), localised_names=names,
-    )
+    recheck_sources()
+    if existing is None:
+        repository.stage_from_results(
+            sources, policy, technology_results=tuple(technology_results),
+            localisation_documents=tuple(documents), localised_names=names,
+            **({"cancel": cancel} if cancel is not None else {}),
+            **({"event_results": tuple(event_results), "event_records": tuple(event_records)}
+               if include_events else {}),
+        )
+    else:
+        repository.verify_index_products(sid, tuple(c for r in technology_results for c in r.candidates)
+                                         + tuple(event_records), documents, names)
     stored = repository.snapshot(sid)
     if stored is None:
         raise SnapshotError("SQLITE_ERROR", "Staged snapshot was not stored.")
-    # Requires caller consent for partial, never bypassing manifest/cache protection.
-    repository.activate(sid, sources=sources, allow_partial=allow_partial)
-    return {
-        "snapshot_id": summary.snapshot_id,
-        "status": "partial" if stored.status == "partial" else "ok",
-        "snapshot_status": stored.status,
-        "activated": True, "reused": False, "previous_active": previous,
-        "source_count": len(sources), "context_kind": "base_install",
-        "game_version": None, "branch": "unknown",
-        "diagnostics": [],
-    }
+    activate()
+    return response(stored, existing is not None)
+
+
+def index_technologies(repository, settings, *, allow_partial=False, include_events=False,
+                       full=False, cancel=None, progress=None):
+    from stellaris_supporter.disk_index import index_disk
+    return index_disk(repository, settings, allow_partial=allow_partial, include_events=include_events,
+                      full=full, cancel=cancel, progress=progress)

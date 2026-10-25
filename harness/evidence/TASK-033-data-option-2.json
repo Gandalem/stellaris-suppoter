@@ -1,0 +1,95 @@
+{
+  "date": "2026-10-25",
+  "scope": "TASK-033 data storage option 2, local Windows only",
+  "functional_code_completed_before_validation": true,
+  "real_install": {
+    "source_files": 499,
+    "technology_definitions": 692,
+    "localisation_entries": 297964,
+    "partial_localisation_files": 32,
+    "status": "partial",
+    "explicit_partial_consent_required": true,
+    "first_build_including_strict_retry_seconds": 300.75672549998853,
+    "first_build_peak_python_working_set_bytes": 136548352,
+    "final_reuse": {
+      "seconds": 6.5249406000366434,
+      "processing": {
+        "mode": "snapshot_reuse",
+        "parsed_files": 0,
+        "reused_files": 499,
+        "file_changes": {
+          "added": 0,
+          "removed": 0,
+          "modified": 0,
+          "unchanged": 499
+        },
+        "reprocess_reason": null,
+        "derived_reused": 0,
+        "derived_rebuilt": 0
+      },
+      "storage": {
+        "localisation_entries": 297964,
+        "partial_localisation_files": 32
+      },
+      "status": "partial"
+    },
+    "fresh_query": {
+      "fresh_process": true,
+      "required_cache": true,
+      "first_query_ms": 165.23040004540235,
+      "warm_query_ms": 5.497399950399995,
+      "korean_lookup": true,
+      "english_lookup": true,
+      "name_lookup": true,
+      "facts_source_span_matches": 11,
+      "reference_edges": 1,
+      "snapshot_status": "partial",
+      "memory": {
+        "peak_working_set_bytes": 43253760,
+        "host_ram_bytes": 34281668608
+      }
+    },
+    "self_diff": {
+      "actual_self_diff_seconds": 23.411383699974976,
+      "status": "partial",
+      "changes": 0,
+      "summary_complete": false,
+      "diagnostic_codes": [
+        "DIFF_PARTIAL_LOCALISATION",
+        "DIFF_PARTIAL_DEFINITION"
+      ]
+    }
+  },
+  "essential_batches": [
+    {
+      "scope": "disk storage + incremental diff",
+      "passed": 34,
+      "seconds": 117.41
+    },
+    {
+      "scope": "retrieval/answers/CLI/refs/docs initial affected paths",
+      "passed": 166,
+      "failed": 1,
+      "seconds": 254.22,
+      "failure": "Old encoding-partial fixture contradicted new hard-stop contract; valid UTF partial-consent fixture retained and encoding hard-stop checked separately."
+    },
+    {
+      "scope": "final disk storage, explicit partial consent, v1 storage",
+      "passed": 92,
+      "seconds": 80.02
+    },
+    {
+      "scope": "normative docs final",
+      "passed": 12,
+      "seconds": 0.05
+    }
+  ],
+  "batches_overlap_do_not_sum": true,
+  "ruff": "passed repository-wide",
+  "wheel": "built",
+  "windows_onedir": "built",
+  "packaged_smoke_exit": 0,
+  "native_game_input_acceptance": "not_run; previous UI tool ACL initialization failure persists",
+  "user_default_database_and_preferences_changed": false,
+  "git_commit_push_pr_merge_deployment": false
+}

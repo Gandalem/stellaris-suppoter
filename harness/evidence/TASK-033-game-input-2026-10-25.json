@@ -1,0 +1,104 @@
+{
+  "date": "2026-10-25",
+  "scope": "game input passthrough only; no product code changes",
+  "preflight": {
+    "game_target_detected": true,
+    "client_size": [
+      2560,
+      1440
+    ],
+    "dpi": 144,
+    "game_is_foreground": false,
+    "actual_input_events_sent": false,
+    "native_helper_error": "helper_sandbox_lock_failed; SetNamedSecurityInfoW failed 5",
+    "production_executable_sha256": "b30dadb7c603948b138ede93cf4125c19d5e9d164dce609541e0e7ba0ae099a9"
+  },
+  "own_window_checks": {
+    "own_window_only": true,
+    "actual_game_input_test": false,
+    "checks": [
+      {
+        "opacity": 30,
+        "mode": "passive",
+        "layered": true,
+        "mouse_transparent": true,
+        "no_activate": true
+      },
+      {
+        "opacity": 30,
+        "mode": "interactive",
+        "layered": true,
+        "mouse_transparent": false,
+        "no_activate": false
+      },
+      {
+        "opacity": 30,
+        "mode": "passive",
+        "layered": true,
+        "mouse_transparent": true,
+        "no_activate": true
+      },
+      {
+        "opacity": 90,
+        "mode": "passive",
+        "layered": true,
+        "mouse_transparent": true,
+        "no_activate": true
+      },
+      {
+        "opacity": 90,
+        "mode": "interactive",
+        "layered": true,
+        "mouse_transparent": false,
+        "no_activate": false
+      },
+      {
+        "opacity": 90,
+        "mode": "passive",
+        "layered": true,
+        "mouse_transparent": true,
+        "no_activate": true
+      },
+      {
+        "opacity": 100,
+        "mode": "passive",
+        "layered": true,
+        "mouse_transparent": true,
+        "no_activate": true
+      },
+      {
+        "opacity": 100,
+        "mode": "interactive",
+        "layered": false,
+        "mouse_transparent": false,
+        "no_activate": false
+      },
+      {
+        "opacity": 100,
+        "mode": "passive",
+        "layered": true,
+        "mouse_transparent": true,
+        "no_activate": true
+      }
+    ],
+    "passed": true
+  },
+  "actual_game_click": {
+    "status": "pass",
+    "evidence": "User reports card-covered game button responds to clicks.",
+    "reported_game_state": "title screen"
+  },
+  "actual_game_drag": {
+    "status": "pass",
+    "evidence": "After being asked whether dragging over a card still allows game map movement or selection in gameplay, user confirmed it works."
+  },
+  "actual_game_keyboard": {
+    "status": "pass",
+    "evidence": "User reports opening game settings and closing it with Esc works in card-view state."
+  },
+  "actual_game_acceptance": "pass for the requested click/drag/keyboard-through-card checks, based on user observations",
+  "security_settings_changed": false,
+  "game_input_injected": false,
+  "production_executable_unchanged": true,
+  "acceptance_limits": "Observed current user setup only. Not a blanket pass for other window modes, monitors or DPI, nor full E-046/E-048 acceptance."
+}

@@ -147,6 +147,7 @@ class SearchService:
         *,
         aliases: tuple[VerifiedAlias, ...] = (),
         enable_fts: bool = True,
+        error_reporter=None,
     ) -> None:
         if not isinstance(repository, SnapshotRepository):
             raise TypeError("repository must be a SnapshotRepository")
@@ -155,6 +156,7 @@ class SearchService:
         self.repository = repository
         self.aliases = aliases
         self.enable_fts = enable_fts
+        self.error_reporter = error_reporter
         self._lock = threading.RLock()
         self._index: sqlite3.Connection | None = None
         self._indexed_sid: str | None = None
@@ -171,6 +173,13 @@ class SearchService:
             self._index = None
             self._indexed_sid = None
             self._fts_available = False
+
+    def _record_error(self, stage, error):
+        if self.error_reporter is not None:
+            try:
+                self.error_reporter(stage, error)
+            except Exception:
+                pass
 
     def _error(
         self, query: Query, code: str, message: str,
@@ -315,6 +324,11 @@ class SearchService:
                 self.repository.source_bytes(selected)
             return json.dumps(items, ensure_ascii=False)
 
+        alternate_names = {}
+        with self.repository._connection(read_only=True) as source_conn:
+            for stored_name in source_conn.execute("SELECT entity_key,content_json FROM search_documents WHERE snapshot_id=? AND document_kind IN ('name:korean','name:english')", (sid,)):
+                charge(stored_name["content_json"])
+                alternate_names.setdefault(stored_name["entity_key"], []).append(json.loads(stored_name["content_json"]))
         try:
             conn.execute("BEGIN")
             for row in self.repository.iter_search_rows(sid, "localisation"):
@@ -334,32 +348,37 @@ class SearchService:
                 )
 
             for row in self.repository.iter_search_rows(sid, "entities"):
+                if row["kind"] not in _ALLOWED_KINDS:
+                    continue
                 key = row["game_id"]
                 korean, ko_ref, ko_resolution, ko_references = translated(key, "korean")
                 english, en_ref, en_resolution, en_references = translated(key, "english")
-                resolved = json.loads(row["localisation_json"]) if row["localisation_json"] else None
-                if resolved is not None and resolved["resolution"] == "resolved":
-                    used = resolved["language_used"]
-                    selected = resolved["display_value"]
-                    selected_ref = resolved["source_ref"]
-                    if (
-                        used in _ALLOWED_LANGUAGES and selected_ref is not None
-                        and isinstance(selected, str) and _safe_name(selected)
-                    ):
-                        # Only the complete resolver expansion may promote a
-                        # raw $KEY$ expression. All provenance must be grounded.
-                        proven = resolved_references(resolved, key, used)
-                        loc_json = json.dumps(selected_ref, ensure_ascii=False)
-                        charge(proven, loc_json)
-                        if used == "korean":
-                            korean, ko_ref, ko_resolution, ko_references = (
-                                selected, loc_json, "resolved", proven
-                            )
-                        elif used == "english":
-                            english, en_ref, en_resolution, en_references = (
-                                selected, loc_json, "resolved", proven
-                            )
-
+                resolved_options = alternate_names.get(row["entity_key"], [])
+                if not resolved_options:
+                    resolved_options = [json.loads(row["localisation_json"])] if row["localisation_json"] else []
+                resolved = None
+                for resolved in resolved_options:
+                    if resolved is not None and resolved["resolution"] == "resolved":
+                        used = resolved["language_used"]
+                        selected = resolved["display_value"]
+                        selected_ref = resolved["source_ref"]
+                        if (
+                            used in _ALLOWED_LANGUAGES and selected_ref is not None
+                            and isinstance(selected, str) and _safe_name(selected)
+                        ):
+                            # Only the complete resolver expansion may promote a
+                            # raw $KEY$ expression. All provenance must be grounded.
+                            proven = resolved_references(resolved, key, used)
+                            loc_json = json.dumps(selected_ref, ensure_ascii=False)
+                            charge(proven, loc_json)
+                            if used == "korean":
+                                korean, ko_ref, ko_resolution, ko_references = (
+                                    selected, loc_json, "resolved", proven
+                                )
+                            elif used == "english":
+                                english, en_ref, en_resolution, en_references = (
+                                    selected, loc_json, "resolved", proven
+                                )
                 warning = None
                 if ko_resolution == "ambiguous" or en_resolution == "ambiguous":
                     warning = "LOC_DUPLICATE_KEY"
@@ -368,8 +387,10 @@ class SearchService:
                 if resolved is not None and resolved["resolution"] in {"ambiguous", "partial"}:
                     warning = "LOC_" + resolved["resolution"].upper()
                 chosen_resolution = (
-                    resolved["resolution"] if resolved is not None
-                    else ("ambiguous" if warning == "LOC_DUPLICATE_KEY" else "unresolved")
+                    json.dumps({r["language_requested"]: r["resolution"] for r in resolved_options})
+                    if row["entity_key"] in alternate_names else
+                    resolved["resolution"] if resolved is not None else
+                    ("ambiguous" if warning == "LOC_DUPLICATE_KEY" else "unresolved")
                 )
                 def_ref = {
                     "snapshot_id": sid, "source_kind": row["source_kind"],
@@ -467,7 +488,18 @@ class SearchService:
 
     def _index_for(self, sid: str) -> sqlite3.Connection:
         if self._indexed_sid != sid or self._index is None:
-            new_index, fts = self._new_index(sid)
+            from stellaris_supporter.storage import projection
+            key = projection.fingerprint(self.repository, sid, self.enable_fts) if not self.aliases else None
+            cached = projection.load(self.repository, key) if key else None
+            if cached is not None:
+                new_index, fts = cached
+            else:
+                new_index, fts = self._new_index(sid)
+                if key:
+                    try:
+                        projection.save(self.repository, key, new_index, fts)
+                    except (OSError, sqlite3.DatabaseError, SnapshotError):
+                        pass
             old_index = self._index
             self._index, self._indexed_sid, self._fts_available = new_index, sid, fts
             if old_index is not None:
@@ -551,6 +583,7 @@ class SearchService:
             return self._error(query, "QUERY_INVALID", error or "Invalid query.")
         with self._lock:
             context: SearchContext | None = None
+            stage = "snapshot"
             try:
                 # Resolve the pointer exactly once; a concurrent activation
                 # cannot make one response span two snapshot IDs.
@@ -560,18 +593,23 @@ class SearchService:
                     sid, query.kind, meta["game_version"], meta["checked_at"],
                     str(meta["status"]),
                 )
+                stage = "search_projection"
                 index = self._index_for(sid)
+                stage = "search_query"
                 rows = self._sql_matches(index, term, query, self._fts_available)
                 truncated = len(rows) > query.limit
                 verified_files: set[tuple[str, str, str, str]] = set()
                 hits: list[SearchHit] = []
                 any_partial = meta["status"] == "partial"
+                stage = "search_provenance"
                 for row in rows[:query.limit]:
                     definition = _ref(row["definition_ref"])
                     used: str | None = None
                     fallback = "id"
                     localisation_source: SourceRef | None = None
                     chosen_status = str(row["chosen_resolution"])
+                    if chosen_status.startswith("{"):
+                        chosen_status = json.loads(chosen_status).get(query.language, "unresolved")
                     display_references: tuple[LocalisationReferenceSelection, ...] = ()
                     if query.language == "korean":
                         if row["korean"] is not None and row["korean_ref"]:
@@ -660,8 +698,10 @@ class SearchService:
                     truncated, self._fts_available,
                 )
             except SnapshotError as exc:
+                self._record_error(stage, exc)
                 return self._error(query, exc.code, str(exc), context)
-            except (sqlite3.DatabaseError, ValueError, KeyError, TypeError, UnicodeError):
+            except (sqlite3.DatabaseError, ValueError, KeyError, TypeError, UnicodeError) as exc:
+                self._record_error(stage, exc)
                 return self._error(
                     query, "SQLITE_ERROR",
                     "Search projection or its stored provenance is invalid.", context,
